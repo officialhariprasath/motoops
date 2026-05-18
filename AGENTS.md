@@ -1,4 +1,4 @@
-
+﻿
 # AGENTS.md
 
 ## Repository Location
@@ -21,9 +21,9 @@ This is a full-stack SaaS-style garage operations system built to demonstrate pr
 
 Core features:
 - Admin dashboard with live users, vehicles, active/completed services, and daily/weekly/monthly revenue
-- Admin management for users, vehicles, services/job cards, tasks, parts, comments, invoices, and payment updates
+- Admin management for users, mechanic designations, vehicles, services/job cards, tasks, parts, comments, invoices, and payment updates
 - Service/job card workflow with vehicle, customer, assigned mechanics, accountable technician, tasks, subtasks, parts, comments, cost totals, discount, tax, and invoice generation
-- Mechanic dashboard for assigned services, active tasks, previous/completed tasks, task details, comments, and subtask progress/status updates
+- Mechanic dashboard for assigned services, active tasks, previous/completed tasks, task details, comments, admin-assigned designation display, and subtask progress/status updates
 - User/customer dashboard for viewing own vehicles, own services, mechanic comments, adding comments/questions, and viewing own invoices
 - Professional printable invoice view with service breakdown, task/subtask progress, parts needed, labour cost, totals, paid amount, and due amount
 - Garage procurement/inventory workflow for tracking tools/parts, available stock, mechanic requests, issued items, and returned items
@@ -138,9 +138,11 @@ Page routes:
 - app/(admin)/dashboard/admin/invoices/[id]/page.tsx
 - app/(admin)/dashboard/admin/invoices/[id]/payment/page.tsx
 - app/(admin)/dashboard/admin/procurement/page.tsx
+- app/(admin)/dashboard/admin/workforce/page.tsx
 - app/(admin)/dashboard/mechanic/page.tsx
 - app/(admin)/dashboard/mechanic/services/page.tsx
 - app/(admin)/dashboard/mechanic/procurement/page.tsx
+- app/(admin)/dashboard/mechanic/leave/page.tsx
 - app/(admin)/dashboard/user/page.tsx
 - app/(admin)/dashboard/user/my-services/page.tsx
 - app/(admin)/dashboard/user/my-invoices/page.tsx
@@ -435,9 +437,11 @@ Supported roles:
 
 Admin:
 - Full access
+- Can create/update user records and set mechanic designations such as Junior, Senior, Lead, or custom titles
 
 Mechanic:
 - View assigned services
+- Can view their admin-assigned designation but cannot update it from profile or mechanic pages
 - View tasks
 - View comments
 - Add comments
@@ -445,6 +449,19 @@ Mechanic:
 
 Customer:
 - View own services/invoices only
+
+## User Account Fields
+
+The users table includes a nullable designation field. This is mainly for mechanics, for example Junior Mechanic, Senior Mechanic, Lead Technician, or other garage-specific titles.
+
+Designation rules:
+- Backend entity: server-nestjs/src/modules/users/entities/user.entity.ts
+- DTO flow: CreateUserDto and UpdateUserDto include designation
+- Admin edit UI: client-nextjs/app/(admin)/dashboard/admin/users/UserForm.tsx
+- Admin users table shows/searches designation
+- Profile page displays designation read-only
+- Workforce page displays designation for mechanic availability and assigned task progress
+- Mechanics/users must not be given UI controls to update designation; only admin user management should update it
 
 ---
 
@@ -762,3 +779,5 @@ Do not run:
 prisma generate
 prisma migrate
 ```
+
+

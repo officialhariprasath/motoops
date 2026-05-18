@@ -1,4 +1,4 @@
-# Auto Garage Management System
+﻿# Auto Garage Management System
 
 A full-stack, role-based garage operations platform built with Next.js, NestJS, TypeORM, and PostgreSQL.
 
@@ -92,9 +92,12 @@ The application supports three roles:
 
 Each role gets a different sidebar and dashboard experience.
 
+Admins can maintain mechanic designations separately from role permissions. This lets the garage track whether a mechanic is junior, senior, lead, or another custom title while keeping the mechanic unable to edit that designation from their own profile.
+
 ### Admin Features
 
 - Manage users
+- Set mechanic designations such as Junior, Senior, Lead, or custom titles
 - Manage vehicles
 - Create and update service/job cards
 - Assign accountable technicians and mechanics
@@ -111,6 +114,7 @@ Each role gets a different sidebar and dashboard experience.
 ### Mechanic Features
 
 - View assigned services
+- View their admin-assigned designation on profile and workforce views
 - See active tasks and previous/completed tasks
 - View task details, required work, subtasks, and comments
 - Update subtask progress from the mechanic dashboard
@@ -368,5 +372,7 @@ This project demonstrates my ability to:
 ## Author
 
 Built as a full-stack portfolio project to demonstrate practical SaaS-style application development using Next.js, NestJS, PostgreSQL, TypeORM, and role-based business workflows.
+
+
 
 
