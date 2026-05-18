@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -105,7 +105,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardContent className="p-6">
             <h2 className="font-semibold">Service Status</h2>
@@ -120,18 +120,8 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="font-semibold">Suggestions</h2>
-            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-600">
-              <li>Add date filters for revenue and invoice reports.</li>
-              <li>Add mechanic productivity by completed subtasks.</li>
-              <li>Add customer due report for unpaid invoices.</li>
-              <li>Add printable PDF export for monthly accounts.</li>
-            </ul>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
+

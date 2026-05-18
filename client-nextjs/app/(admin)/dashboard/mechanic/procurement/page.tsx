@@ -1,11 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import ListControls from "@/components/dashboard/ListControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useGaragePageSize } from "@/lib/list-settings";
 
 async function apiGet(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -27,6 +29,9 @@ async function createRequest(data: any) {
 
 export default function MechanicProcurementPage() {
   const queryClient = useQueryClient();
+  const pageSize = useGaragePageSize();
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryPage, setInventoryPage] = useState(1);
   const [requestDrafts, setRequestDrafts] = useState<
     Record<string, { quantity: number; reason: string }>
   >({});
@@ -54,6 +59,31 @@ export default function MechanicProcurementPage() {
     },
   });
 
+  const items = itemsQuery.data ?? [];
+  const requests = requestsQuery.data ?? [];
+  const heldItems = requests.filter((request: any) => request.status === "issued");
+
+  const filteredItems = useMemo(() => {
+    const query = inventorySearch.trim().toLowerCase();
+    if (!query) return items;
+
+    return items.filter((item: any) =>
+      [item.name, item.type, item.sku, item.code, item.location, item.notes]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [items, inventorySearch]);
+
+  const inventoryTotalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const paginatedItems = filteredItems.slice(
+    (inventoryPage - 1) * pageSize,
+    inventoryPage * pageSize
+  );
+
+  useEffect(() => {
+    setInventoryPage((current) => Math.min(current, inventoryTotalPages));
+  }, [inventoryTotalPages]);
+
   if (itemsQuery.isLoading || requestsQuery.isLoading) {
     return <p>Loading procurement...</p>;
   }
@@ -69,10 +99,6 @@ export default function MechanicProcurementPage() {
       </p>
     );
   }
-
-  const items = itemsQuery.data ?? [];
-  const requests = requestsQuery.data ?? [];
-  const heldItems = requests.filter((request: any) => request.status === "issued");
 
   return (
     <div className="space-y-6">
@@ -90,11 +116,71 @@ export default function MechanicProcurementPage() {
         </div>
       )}
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="font-semibold">What I Have Right Now</h2>
+            <div className="mt-4 space-y-3">
+              {heldItems.length === 0 && (
+                <p className="text-sm text-gray-500">No tools or parts issued.</p>
+              )}
+              {heldItems.map((request: any) => (
+                <div key={request.id} className="rounded border p-4">
+                  <p className="font-medium">{request.item?.name}</p>
+                  <p className="text-sm text-gray-500">
+                    Quantity {request.quantity} - {request.item?.type}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="font-semibold">My Requests</h2>
+            <div className="mt-4 space-y-3">
+              {requests.length === 0 && (
+                <p className="text-sm text-gray-500">No requests yet.</p>
+              )}
+              {requests.map((request: any) => (
+                <div key={request.id} className="rounded border p-4">
+                  <p className="font-medium">{request.item?.name}</p>
+                  <p className="text-sm text-gray-500">
+                    Qty {request.quantity} - Status: {request.status}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {request.reason || "No reason provided"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
-        <CardContent className="p-6">
-          <h2 className="font-semibold">Available Garage Inventory</h2>
-          <div className="mt-4 grid gap-4">
-            {items.map((item: any) => {
+        <CardContent className="space-y-4 p-6">
+          <div>
+            <h2 className="font-semibold">Available Garage Inventory</h2>
+            <p className="text-sm text-gray-500">
+              Search tools or parts and request only what you need for the job.
+            </p>
+          </div>
+
+          <ListControls
+            search={inventorySearch}
+            onSearchChange={setInventorySearch}
+            searchPlaceholder="Search inventory by name, type, SKU, location, or notes"
+            page={inventoryPage}
+            totalPages={inventoryTotalPages}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setInventoryPage}
+          />
+
+          <div className="grid gap-4">
+            {paginatedItems.map((item: any) => {
               const draft = requestDrafts[item.id] ?? {
                 quantity: 1,
                 reason: "",
@@ -169,52 +255,15 @@ export default function MechanicProcurementPage() {
                 </div>
               );
             })}
+
+            {paginatedItems.length === 0 && (
+              <div className="rounded border p-6 text-center text-sm text-gray-500">
+                No inventory items found.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="font-semibold">What I Have Right Now</h2>
-            <div className="mt-4 space-y-3">
-              {heldItems.length === 0 && (
-                <p className="text-sm text-gray-500">No tools or parts issued.</p>
-              )}
-              {heldItems.map((request: any) => (
-                <div key={request.id} className="rounded border p-4">
-                  <p className="font-medium">{request.item?.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Quantity {request.quantity} - {request.item?.type}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="font-semibold">My Requests</h2>
-            <div className="mt-4 space-y-3">
-              {requests.length === 0 && (
-                <p className="text-sm text-gray-500">No requests yet.</p>
-              )}
-              {requests.map((request: any) => (
-                <div key={request.id} className="rounded border p-4">
-                  <p className="font-medium">{request.item?.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Qty {request.quantity} - Status: {request.status}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {request.reason || "No reason provided"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
