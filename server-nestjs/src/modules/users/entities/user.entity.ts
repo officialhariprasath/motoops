@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -39,6 +39,9 @@ export class UserEntity {
   @Column()
   address!: string;
 
+  @Column({ nullable: true })
+  designation?: string;
+
   @Column()
   @Exclude()
   password!: string;
@@ -50,7 +53,7 @@ export class UserEntity {
   })
   role!: Role;
 
-  // 🔐 refresh token
+  // ðŸ” refresh token
   @Column({ type: 'text', nullable: true, select: false })
   refreshToken?: string;
 

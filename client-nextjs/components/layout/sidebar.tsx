@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,6 +15,7 @@ import {
   Wrench,
   Package,
   ClipboardList,
+  UserCheck,
   Settings,
   ShieldCheck,
   LogOut,
@@ -79,6 +80,11 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       icon: Package,
     },
     {
+      title: "Workforce",
+      href: "/dashboard/admin/workforce",
+      icon: UserCheck,
+    },
+    {
       title: "Reports",
       href: "/dashboard/reports",
       icon: ClipboardList,
@@ -105,6 +111,11 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       title: "Tool Requests",
       href: "/dashboard/mechanic/procurement",
       icon: Package,
+    },
+    {
+      title: "Leave Requests",
+      href: "/dashboard/mechanic/leave",
+      icon: CalendarCheck,
     }
     
   ],
@@ -309,4 +320,6 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
     </aside>
   );
 }
+
+
 

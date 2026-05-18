@@ -1,17 +1,15 @@
-// File: app/dashboard/users/UserForm.tsx
+﻿// File: app/dashboard/users/UserForm.tsx
 
 "use client";
 
-import { useEffect } from "react";
-
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-
 import { z } from "zod";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { usePasswordEditingEnabled } from "@/lib/profile-settings";
 
 import {
   Select,
@@ -21,19 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// ---------------- ZOD ----------------
 const schema = z.object({
   name: z.string().min(2, "Name required"),
-
   username: z.string().min(3, "Username required"),
-
   email: z.string().email("Valid email required"),
-
-  mobile: z.string().min(11, "Valid mobile required"),
-
+  mobile: z.string().min(6, "Valid mobile required"),
   address: z.string().min(3, "Address required"),
-
+  designation: z.string().optional(),
   role: z.enum(["admin", "mechanic", "user"]),
+  password: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -43,10 +37,10 @@ type Props = {
   onSuccess: () => void;
 };
 
-export default function UserForm({
-  editingUser,
-  onSuccess,
-}: Props) {
+export default function UserForm({ editingUser, onSuccess }: Props) {
+  const passwordEditingEnabled = usePasswordEditingEnabled();
+  const [errorMessage, setErrorMessage] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -56,173 +50,159 @@ export default function UserForm({
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-
     defaultValues: {
+      name: "",
+      username: "",
+      email: "",
+      mobile: "",
+      address: "",
+      designation: "",
       role: "user",
+      password: "",
     },
   });
 
-  // ---------------- EDIT MODE ----------------
   useEffect(() => {
     if (editingUser) {
       reset({
-        name: editingUser.name,
-        username: editingUser.username,
-        email: editingUser.email,
-        mobile: editingUser.mobile,
-        address: editingUser.address,
+        name: editingUser.name || "",
+        username: editingUser.username || "",
+        email: editingUser.email || "",
+        mobile: editingUser.mobile || "",
+        address: editingUser.address || "",
+        designation: editingUser.designation || "",
         role: editingUser.role || "user",
+        password: "",
       });
     }
   }, [editingUser, reset]);
 
-  // ---------------- SUBMIT ----------------
   async function onSubmit(data: FormData) {
-    let updateUser : any;
-    if (editingUser) {
-       updateUser = await fetch(`/api/user/${editingUser.id}`, {
-        method: "PATCH",
+    setErrorMessage("");
 
-        headers: {
-          "Content-Type": "application/json",
-        },
+    const payload: any = { ...data };
 
-        body: JSON.stringify(data),
-      });
-    } else {
-       updateUser = await fetch("/api/user", {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({ ...data,  password: "123456", }),
-      });
+    if (!passwordEditingEnabled || !payload.password?.trim()) {
+      delete payload.password;
     }
 
-    if(updateUser.ok){
-        reset();
-    }else{
-        console.log('error',updateUser);
+    const response = editingUser
+      ? await fetch(`/api/user/${editingUser.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      : await fetch("/api/user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, password: payload.password || "123456" }),
+        });
+
+    const json = await response.json();
+
+    if (!response.ok) {
+      setErrorMessage(json?.message || "Failed to save user");
+      return;
     }
-    
+
+    reset({
+      name: "",
+      username: "",
+      email: "",
+      mobile: "",
+      address: "",
+      designation: "",
+      role: "user",
+      password: "",
+    });
     onSuccess();
   }
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="grid grid-cols-3 gap-4 bg-white p-6 rounded-xl border"
+      className="grid grid-cols-1 gap-4 rounded-xl border bg-white p-6 md:grid-cols-3"
     >
-      {/* NAME */}
+      {errorMessage && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:col-span-3">
+          {errorMessage}
+        </div>
+      )}
+
       <div>
         <Input placeholder="Name" {...register("name")} />
-
         {errors.name && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.name.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
         )}
       </div>
 
-      {/* USERNAME */}
       <div>
-        <Input
-          placeholder="Username"
-          {...register("username")}
-        />
-
+        <Input placeholder="Username" {...register("username")} />
         {errors.username && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.username.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.username.message}</p>
         )}
       </div>
 
-      {/* EMAIL */}
       <div>
-        <Input
-          placeholder="Email"
-          {...register("email")}
-        />
-
+        <Input placeholder="Email" {...register("email")} />
         {errors.email && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.email.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
         )}
       </div>
 
-      {/* MOBILE */}
       <div>
-        <Input
-          placeholder="Mobile"
-          {...register("mobile")}
-        />
-
+        <Input placeholder="Mobile" {...register("mobile")} />
         {errors.mobile && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.mobile.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.mobile.message}</p>
         )}
       </div>
 
-      {/* ADDRESS */}
       <div>
-        <Input
-          placeholder="Address"
-          {...register("address")}
-        />
-
+        <Input placeholder="Address" {...register("address")} />
         {errors.address && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.address.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.address.message}</p>
         )}
       </div>
 
-      {/* ROLE */}
+      <div>
+        <Input placeholder="Designation (mechanics only)" {...register("designation")} />
+        <p className="mt-1 text-xs text-gray-500">Admin-managed field for seniority or lead role.</p>
+      </div>
+
+      {passwordEditingEnabled && (
+        <div>
+          <Input
+            type="password"
+            placeholder={editingUser ? "New Password (optional)" : "Password"}
+            {...register("password")}
+          />
+        </div>
+      )}
+
       <div className="z-100">
         <Select
           value={watch("role")}
-          onValueChange={(value) =>
-            setValue("role", value as FormData["role"])
-          }
-          
+          onValueChange={(value) => setValue("role", value as FormData["role"])}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select Role" />
           </SelectTrigger>
-
           <SelectContent className="bg-white">
-            <SelectItem value="admin">
-              Admin
-            </SelectItem>
-
-            <SelectItem value="mechanic">
-              Mechanic
-            </SelectItem>
-
-            <SelectItem value="user">
-              User
-            </SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="mechanic">Mechanic</SelectItem>
+            <SelectItem value="user">User</SelectItem>
           </SelectContent>
         </Select>
-
         {errors.role && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.role.message}
-          </p>
+          <p className="mt-1 text-sm text-red-500">{errors.role.message}</p>
         )}
       </div>
 
-      {/* BUTTON */}
-      <Button type="submit" className="col-span-3">
-        {editingUser
-          ? "Update User"
-          : "Create User"}
+      <Button type="submit" className="md:col-span-3">
+        {editingUser ? "Update User" : "Create User"}
       </Button>
     </form>
   );
 }
+
+

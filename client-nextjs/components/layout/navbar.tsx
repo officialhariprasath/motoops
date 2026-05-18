@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Menu } from "lucide-react";
@@ -75,8 +76,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end">
-  <DropdownMenuItem>
-    Profile
+  <DropdownMenuItem asChild>
+    <Link href="/dashboard/Profile">Profile</Link>
   </DropdownMenuItem>
 
   <DropdownMenuItem
@@ -95,3 +96,4 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
     </header>
   );
 }
+

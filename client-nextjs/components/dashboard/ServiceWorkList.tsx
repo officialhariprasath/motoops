@@ -228,6 +228,113 @@ export default function ServiceWorkList({
                 </div>
               </div>
 
+              {service.vehicle && (
+                <div className="rounded-md border bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Vehicle Information
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Details needed before and during workshop service
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700">
+                      {service.vehicle.registrationNumber}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Owner</p>
+                      <p className="font-medium">
+                        {service.customer?.name ||
+                          service.vehicle.owner?.name ||
+                          "Not assigned"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {service.customer?.mobile ||
+                          service.vehicle.owner?.mobile ||
+                          service.customer?.email ||
+                          service.vehicle.owner?.email ||
+                          ""}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Vehicle</p>
+                      <p className="font-medium">
+                        {service.vehicle.brand} {service.vehicle.model}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {service.vehicle.year || "Year N/A"}
+                        {service.vehicle.color
+                          ? ` - ${service.vehicle.color}`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Mileage</p>
+                      <p className="font-medium">
+                        {service.vehicle.mileage || "Not recorded"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">VIN</p>
+                      <p className="break-all font-medium">
+                        {service.vehicle.vinNumber || "Not recorded"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Engine Number
+                      </p>
+                      <p className="break-all font-medium">
+                        {service.vehicle.engineNumber || "Not recorded"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Chassis Number
+                      </p>
+                      <p className="break-all font-medium">
+                        {service.vehicle.chassisNumber || "Not recorded"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Service Date
+                      </p>
+                      <p className="font-medium">
+                        {service.serviceDate || "Not scheduled"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">
+                        Delivery Date
+                      </p>
+                      <p className="font-medium">
+                        {service.deliveryDate || "Not scheduled"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Status</p>
+                      <p className="font-medium capitalize">
+                        {service.status?.replaceAll("_", " ").toLowerCase()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {service.tasks?.map((task: any) => (
                   <div key={task.id} className="rounded-md border p-4">
@@ -428,3 +535,4 @@ export default function ServiceWorkList({
     </div>
   );
 }
+

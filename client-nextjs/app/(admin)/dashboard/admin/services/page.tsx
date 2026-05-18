@@ -1,9 +1,9 @@
-// File: admin/services/page.tsx
+﻿// File: admin/services/page.tsx
 
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   useQuery,
@@ -13,6 +13,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useDeleteActionsEnabled } from "@/lib/delete-settings";
+import { useGaragePageSize } from "@/lib/list-settings";
+import ListControls from "@/components/dashboard/ListControls";
 
 const getServices = async () => {
   const res = await fetch("/api/services");
@@ -24,15 +26,10 @@ const getServices = async () => {
   return res.json();
 };
 
-const deleteService = async (
-  id: string
-) => {
-  const res = await fetch(
-    `/api/services/${id}`,
-    {
-      method: "DELETE",
-    }
-  );
+const deleteService = async (id: string) => {
+  const res = await fetch(`/api/services/${id}`, {
+    method: "DELETE",
+  });
 
   if (!res.ok) {
     throw new Error("Delete failed");
@@ -67,7 +64,10 @@ const generateInvoice = async (serviceId: string) => {
 export default function ServicesPage() {
   const queryClient = useQueryClient();
   const deleteActionsEnabled = useDeleteActionsEnabled();
+  const pageSize = useGaragePageSize();
   const [invoiceMessage, setInvoiceMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const servicesQuery = useQuery({
     queryKey: ["services"],
@@ -76,11 +76,8 @@ export default function ServicesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteService,
-
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["services"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
@@ -95,6 +92,38 @@ export default function ServicesPage() {
       );
     },
   });
+
+  const services = servicesQuery.data?.data ?? [];
+  const filteredServices = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return services;
+
+    return services.filter((service: any) =>
+      [
+        service.status,
+        service.problemDescription,
+        service.notes,
+        service.vehicle?.registrationNumber,
+        service.vehicle?.brand,
+        service.vehicle?.model,
+        service.customer?.name,
+        service.customer?.email,
+        service.customer?.mobile,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [services, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / pageSize));
+  const paginatedServices = filteredServices.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   if (servicesQuery.isLoading) {
     return (
@@ -112,111 +141,130 @@ export default function ServicesPage() {
         </div>
       )}
 
-    <div className="overflow-hidden rounded-xl border bg-white">
-  <table className="w-full">
-    <thead className="bg-slate-50">
-      <tr className="border-b">
-        <th className="p-3 text-left">Vehicle</th>
-        <th className="p-3 text-left">Customer</th>
-        <th className="p-3 text-left">Status</th>
-        <th className="p-3 text-left">Tasks</th>
-        <th className="p-3 text-left">Total Cost</th>
-        <th className="p-3 text-left">Actions</th>
-      </tr>
-    </thead>
+      <ListControls
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search services by vehicle, customer, status, notes, or problem"
+        page={page}
+        totalPages={totalPages}
+        totalItems={filteredServices.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+      />
 
-    <tbody>
-      {servicesQuery.data?.data?.map((service: any) => (
-        <tr key={service.id} className="border-b hover:bg-slate-50">
-          <td className="p-3">
-            <div className="font-medium">
-              {service.vehicle?.registrationNumber || "No vehicle"}
-            </div>
+      <div className="overflow-hidden rounded-xl border bg-white">
+        <table className="w-full">
+          <thead className="bg-slate-50">
+            <tr className="border-b">
+              <th className="p-3 text-left">Vehicle</th>
+              <th className="p-3 text-left">Customer</th>
+              <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Tasks</th>
+              <th className="p-3 text-left">Total Cost</th>
+              <th className="p-3 text-left">Actions</th>
+            </tr>
+          </thead>
 
-            <div className="text-xs text-muted-foreground">
-              {service.vehicle?.brand} {service.vehicle?.model}
-            </div>
-          </td>
+          <tbody>
+            {paginatedServices.map((service: any) => (
+              <tr key={service.id} className="border-b hover:bg-slate-50">
+                <td className="p-3">
+                  <div className="font-medium">
+                    {service.vehicle?.registrationNumber || "No vehicle"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {service.vehicle?.brand} {service.vehicle?.model}
+                  </div>
+                </td>
 
-          <td className="p-3">
-            <div className="font-medium">
-              {service.customer?.name || "No customer"}
-            </div>
+                <td className="p-3">
+                  <div className="font-medium">
+                    {service.customer?.name || "No customer"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {service.customer?.email}
+                  </div>
+                </td>
 
-            <div className="text-xs text-muted-foreground">
-              {service.customer?.email}
-            </div>
-          </td>
+                <td className="p-3">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize">
+                    {service.status?.replaceAll("_", " ").toLowerCase()}
+                  </span>
+                </td>
 
-          <td className="p-3">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize">
-              {service.status?.replaceAll("_", " ").toLowerCase()}
-            </span>
-          </td>
+                <td className="p-3">
+                  <div className="text-sm font-medium">
+                    {service.tasks?.length ?? 0} task(s)
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {service.tasks?.reduce(
+                      (sum: number, task: any) =>
+                        sum + (task.subtasks?.length ?? 0),
+                      0
+                    ) ?? 0}{" "}
+                    subtask(s)
+                  </div>
+                </td>
 
-          <td className="p-3">
-            <div className="text-sm font-medium">
-              {service.tasks?.length ?? 0} task(s)
-            </div>
+                <td className="p-3 font-medium">
+                  {Number(service.totalCost ?? 0).toFixed(2)}
+                </td>
 
-            <div className="text-xs text-muted-foreground">
-              {service.tasks?.reduce(
-                (sum: number, task: any) =>
-                  sum + (task.subtasks?.length ?? 0),
-                0
-              ) ?? 0}{" "}
-              subtask(s)
-            </div>
-          </td>
+                <td className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/dashboard/admin/services/${service.id}`}>
+                      <Button size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
 
-          <td className="p-3 font-medium">
-            {Number(service.totalCost ?? 0).toFixed(2)}
-          </td>
+                    <Link href={`/dashboard/admin/services/${service.id}/edit`}>
+                      <Button size="sm">Edit</Button>
+                    </Link>
 
-          <td className="p-3">
-            <div className="flex flex-wrap gap-2">
-              <Link href={`/dashboard/admin/services/${service.id}`}>
-                <Button size="sm" variant="outline">
-                  View
-                </Button>
-              </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={invoiceMutation.isPending}
+                      onClick={() => invoiceMutation.mutate(service.id)}
+                    >
+                      Generate Invoice
+                    </Button>
 
-              <Link href={`/dashboard/admin/services/${service.id}/edit`}>
-                <Button size="sm">Edit</Button>
-              </Link>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!deleteActionsEnabled || deleteMutation.isPending}
+                      title={
+                        deleteActionsEnabled
+                          ? "Delete service"
+                          : "Enable delete actions in Settings first"
+                      }
+                      onClick={() => {
+                        if (!deleteActionsEnabled) return;
+                        if (confirm("Delete this service?")) {
+                          deleteMutation.mutate(service.id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
 
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={invoiceMutation.isPending}
-                onClick={() => invoiceMutation.mutate(service.id)}
-              >
-                Generate Invoice
-              </Button>
-
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={!deleteActionsEnabled || deleteMutation.isPending}
-                title={deleteActionsEnabled ? "Delete service" : "Enable delete actions in Settings first"}
-                onClick={() => {
-                  if (!deleteActionsEnabled) return;
-                  if (confirm("Delete this service?")) {
-                    deleteMutation.mutate(service.id);
-                  }
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+            {paginatedServices.length === 0 && (
+              <tr>
+                <td className="p-6 text-center text-sm text-gray-500" colSpan={6}>
+                  No services found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
-
 

@@ -1,4 +1,4 @@
-// File: app/dashboard/users/columns.tsx
+﻿// File: app/dashboard/users/columns.tsx
 
 "use client";
 
@@ -24,6 +24,12 @@ export const columns = (
   {
     accessorKey: "mobile",
     header: "Mobile",
+  },
+
+  {
+    accessorKey: "designation",
+    header: "Designation",
+    cell: ({ row }) => row.original.designation || "-",
   },
 
   {
@@ -60,3 +66,5 @@ export const columns = (
     ),
   },
 ];
+
+

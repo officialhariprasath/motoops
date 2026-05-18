@@ -1,4 +1,4 @@
-//  File: src/module/auth/auth.service.ts
+﻿//  File: src/module/auth/auth.service.ts
 
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -46,6 +46,7 @@ export class AuthService {
             email: user.email,
             name: user.name,
             mobile: user.mobile,
+            designation: user.designation,
             role: user.role,
           },
         };
@@ -115,4 +116,5 @@ export class AuthService {
   
 
 }
+
 
