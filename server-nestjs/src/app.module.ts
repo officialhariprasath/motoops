@@ -11,6 +11,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ServicesModule } from './modules/services/services.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
 
 
 // DB CONNECTED THROUGH app.module.ts VIA importing TypeOrmModule and configuring it with the database connection details.
@@ -36,6 +37,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
     AuthModule,
     ServicesModule,
     InvoicesModule, // ✅ correct
+    ProcurementModule,
   ],
   controllers: [AppController],
   providers: [AppService], // ✅ ONLY THIS

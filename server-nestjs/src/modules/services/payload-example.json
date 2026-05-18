@@ -1,0 +1,50 @@
+{
+  "vehicleId": "vehicle-uuid",
+  "customerId": "customer-uuid",
+  "createdById": "admin-uuid",
+
+  "problemDescription": "Engine overheating",
+
+  "tasks": [
+    {
+      "title": "Engine Diagnosis",
+
+      "description": "Check cooling system",
+
+      "accountableTechnicianId": "tech-1",
+
+      "mechanicIds": [
+        "tech-1",
+        "tech-2"
+      ],
+
+      "laborCost": 120,
+
+      "additionalCost": 20,
+
+      "parts": [
+        {
+          "name": "Coolant",
+          "quantity": 2,
+          "unitPrice": 15
+        },
+        {
+          "name": "Radiator Hose",
+          "quantity": 1,
+          "unitPrice": 40
+        }
+      ],
+
+      "subtasks": [
+        {
+          "title": "Pressure Test",
+          "assignedToId": "tech-2"
+        },
+        {
+          "title": "Scan ECU",
+          "assignedToId": "tech-1"
+        }
+      ]
+    }
+  ]
+}

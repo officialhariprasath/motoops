@@ -9,17 +9,18 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
+import { ServiceTaskEntity } from './service-task.entity';
 import { VehicleEntity } from '../../vehicles/entities/vehicle.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { ServiceItemEntity } from './service-item.entity';
 import { InvoiceEntity } from '../../invoices/entities/invoice.entity';
 
 export enum ServiceStatus {
-   PENDING = "pending",
-   CONFIRMED = "confirmed",
-   IN_PROGRESS = "in_progress",
-   COMPLETED = "completed",
-   CANCELLED = "cancelled",
+   PENDING = "PENDING",
+   INSPECTION = "INSPECTION",
+   CONFIRMED = "CONFIRMED",
+   IN_PROGRESS = "IN_PROGRESS",
+   COMPLETED = "COMPLETED",
+   CANCELLED = "CANCELLED",
 }
 
 @Entity('services')
@@ -58,6 +59,54 @@ export class ServiceEntity {
   })
   deliveryDate!: Date;
 
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  subtotal!: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  laborCost!: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  partsCost!: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  totalCost!: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  discount!: number;
+  
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  tax!: number;
+
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  grandTotal!: number;
+
+  
+
   // ---------------- VEHICLE ----------------
   @ManyToOne(() => VehicleEntity, (vehicle) => vehicle.services, {
     eager: true,
@@ -77,21 +126,11 @@ export class ServiceEntity {
   })
   createdBy!: UserEntity;
 
-  // ---------------- MECHANICS ----------------
-  @ManyToMany(() => UserEntity, (user) => user.assignedServices, {
-    eager: true,
-  })
-  @JoinTable({
-    name: 'service_mechanics',
-  })
-  mechanics!: UserEntity[];
-
-  // ---------------- SERVICE ITEMS ----------------
-  @OneToMany(() => ServiceItemEntity, (item) => item.service, {
+  // ---------------- SERVICE Tasks ----------------
+  @OneToMany(() => ServiceTaskEntity, (task) => task.service, {
     cascade: true,
-    eager: true,
   })
-  items!: ServiceItemEntity[];
+  tasks!: ServiceTaskEntity[];
 
   // ---------------- INVOICE ----------------
   @OneToMany(() => InvoiceEntity, (invoice) => invoice.service)

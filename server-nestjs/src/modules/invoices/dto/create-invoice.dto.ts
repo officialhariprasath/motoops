@@ -1,13 +1,16 @@
-import { IsUUID, IsOptional, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateInvoiceDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   serviceId!: string;
 
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   generatedById!: string;
 
   @IsOptional()
   @IsNumber()
-  totalAmount?: number;
+  @Min(0)
+  paidAmount?: number;
 }

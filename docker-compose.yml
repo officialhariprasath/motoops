@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: auto_garage_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auto_garage
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auto_garage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server-nestjs
+    container_name: auto_garage_server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/auto_garage
+      ENABLE_CORS: http://localhost:3000
+      JWT_SECRET: docker_demo_secret
+      JWT_ACCESS_SECRET: docker_demo_access_secret
+      JWT_REFRESH_SECRET: docker_demo_refresh_secret
+      JWT_EXPIRES_IN: 3600s
+    ports:
+      - "3001:3001"
+
+  client:
+    build:
+      context: ./client-nextjs
+      args:
+        BACKEND_SERVER_URL: http://server:3001
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    container_name: auto_garage_client
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      BACKEND_SERVER_URL: http://server:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      JWT_ACCESS_SECRET: docker_demo_access_secret
+      JWT_REFRESH_SECRET: docker_demo_refresh_secret
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

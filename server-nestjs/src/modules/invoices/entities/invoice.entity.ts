@@ -4,10 +4,13 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import { ServiceEntity } from '../../services/entities/service.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+
+export type PaymentStatus = 'unpaid' | 'paid' | 'partial';
 
 @Entity('invoices')
 export class InvoiceEntity {
@@ -17,8 +20,14 @@ export class InvoiceEntity {
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   totalAmount!: number;
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  paidAmount!: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  dueAmount!: number;
+
   @Column({ default: 'unpaid' })
-  paymentStatus!: 'unpaid' | 'paid' | 'partial';
+  paymentStatus!: PaymentStatus;
 
   @ManyToOne(() => ServiceEntity, (service) => service.invoices, {
     eager: true,
@@ -33,4 +42,7 @@ export class InvoiceEntity {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

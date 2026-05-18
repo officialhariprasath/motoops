@@ -1,7 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNumber, Min } from 'class-validator';
 
-export class UpdateInvoiceDto {
-  @IsOptional()
-  @IsString()
-  paymentStatus?: 'unpaid' | 'paid' | 'partial';
+export class UpdateInvoicePaymentDto {
+  @IsNumber()
+  @Min(0)
+  paidAmount!: number;
 }

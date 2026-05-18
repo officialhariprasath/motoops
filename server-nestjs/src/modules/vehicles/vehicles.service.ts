@@ -106,5 +106,39 @@ export class VehiclesService {
     return this.repo.remove(vehicle);
   }
 
+  async search(q: string) {
+    if (!q || q.length < 2) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+   
+    const search = `%${q}%`;
+
+    const vehicles = await this.repo
+      .createQueryBuilder("vehicle")
+      .leftJoinAndSelect("vehicle.owner", "owner")
+      .where("vehicle.registrationNumber ILIKE :q", { q: search })
+      .orWhere("vehicle.vinNumber ILIKE :q", { q: search })
+      .orWhere("vehicle.brand ILIKE :q", { q: search })
+      .orWhere("vehicle.model ILIKE :q", { q: search })
+      .orWhere("owner.name ILIKE :q", { q: search })
+      .orWhere("owner.mobile ILIKE :q", { q: search })
+      .take(20)
+      .getMany();
+
+    if (!vehicles) {
+      throw new NotFoundException(
+        'Vehicle not found',
+      );
+    }
+   
+    return {
+      success: true,
+      data: vehicles,
+    };
+}  
+
   
 }

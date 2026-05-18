@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query
 } from '@nestjs/common';
 
 import { VehiclesService } from './vehicles.service';
@@ -29,6 +30,18 @@ export class VehiclesController {
     return this.service.findAll();
   }
 
+  @Get("search")
+  search(@Query("q") q: string) {
+    return this.service.search(q);
+  }
+
+  @Get('/owner/:ownerId')
+  findByOwner(
+    @Param('ownerId') ownerId: string,
+  ) {
+    return this.service.findByOwner(ownerId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
@@ -47,10 +60,7 @@ export class VehiclesController {
     return this.service.remove(id);
   }
 
-  @Get('/owner/:ownerId')
-  findByOwner(
-    @Param('ownerId') ownerId: string,
-  ) {
-    return this.service.findByOwner(ownerId);
-  }
+
+
+  
 }

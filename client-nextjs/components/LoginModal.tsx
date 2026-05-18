@@ -1,11 +1,15 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
+
 import { useState } from "react";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 type Props = {
+  showLogin: boolean,
   onClose: () => void;
 };
 
@@ -36,7 +40,7 @@ const loginUser = async (data: { identifier: string; password: string }) => {
   return result;
 };
 
-export default function LoginModal({ onClose }: Props) {
+export default function LoginModal({ showLogin , onClose }: Props) {
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -95,45 +99,69 @@ export default function LoginModal({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-xl w-96">
-        <h2 className="text-xl font-bold mb-4">Login</h2>
+     <AnimatePresence>
+      { showLogin && (
 
-        <form onSubmit={handleLogin} className="space-y-3">
-          <input
-            name="identifier"
-            placeholder="Email | Mobile | Username"
-            className="border p-2 w-full"
-            onChange={handleChange}
-          />
-
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            className="border p-2 w-full"
-            onChange={handleChange}
-          />
-
-          {message && (
-            <p className="text-sm text-red-500">{message}</p>
-          )}
-
-          <button
-            disabled={mutation.isPending}
-            className="w-full bg-blue-600 text-white py-2 rounded"
-          >
-            {mutation.isPending ? "Logging in..." : "Login"}
-          </button>
-        </form>
-
-        <button
-          onClick={onClose}
-          className="w-full mt-2 text-sm text-gray-500"
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          Close
-        </button>
-      </div>
-    </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 60 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 60 }}
+            transition={{
+              duration: 0.8,
+              ease: "easeOut",
+            }}
+            className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <h2 className="text-xl font-bold mb-4">Login</h2>
+
+            <form onSubmit={handleLogin} className="space-y-3">
+              <input
+                name="identifier"
+                placeholder="Email | Mobile | Username"
+                className="border p-2 w-full"
+                onChange={handleChange}
+              />
+
+              <input
+                name="password"
+                type="password"
+                placeholder="Password"
+                className="border p-2 w-full"
+                onChange={handleChange}
+              />
+
+              {message && (
+                <p className="text-sm text-red-500">{message}</p>
+              )}
+
+              <button
+                disabled={mutation.isPending}
+                className="w-full bg-blue-600 text-white py-2 rounded"
+              >
+                {mutation.isPending ? "Logging in..." : "Login"}
+              </button>
+            </form>
+
+            <button
+              onClick={onClose}
+              className="w-full mt-2 text-sm text-gray-500"
+            >
+              Close
+            </button>
+
+           </motion.div>
+        </motion.div>
+
+      )}
+         
+     </AnimatePresence>
+    
   );
 }

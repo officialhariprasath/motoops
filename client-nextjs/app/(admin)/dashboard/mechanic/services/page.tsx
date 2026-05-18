@@ -1,11 +1,11 @@
+import ServiceWorkList from "@/components/dashboard/ServiceWorkList";
+
 export default function MechanicServicesPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">My Task List</h1>
-
-      <div className="bg-white p-6 rounded-xl border">
-        My Vehicle
-      </div>
-    </div>
+    <ServiceWorkList
+      mode="mechanic"
+      title="Assigned Services"
+      description="View assigned service work, task details, checklist progress, and add work comments."
+    />
   );
 }

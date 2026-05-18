@@ -1,0 +1,27 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const BACKEND_URL = process.env.BACKEND_SERVER_URL;
+
+async function parse(res: Response) {
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+export async function GET(req: NextRequest, context: any) {
+  const { taskId } = await context.params;
+  const res = await fetch(`${BACKEND_URL}/tasks/${taskId}/comments`, { cache: 'no-store' });
+  const data = await parse(res);
+  return NextResponse.json(data, { status: res.status });
+}
+
+export async function POST(req: NextRequest, context: any) {
+  const { taskId } = await context.params;
+  const body = await req.json();
+  const res = await fetch(`${BACKEND_URL}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await parse(res);
+  return NextResponse.json(data, { status: res.status });
+}

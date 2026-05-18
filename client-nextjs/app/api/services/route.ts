@@ -6,9 +6,13 @@ import {
 const BACKEND_URL =
   process.env.BACKEND_SERVER_URL;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { search } = new URL(req.url);
   const res = await fetch(
-    `${BACKEND_URL}/services`
+    `${BACKEND_URL}/services${search}`,
+    {
+      cache: "no-store",
+    }
   );
 
   const data = await res.json();
@@ -21,7 +25,7 @@ export async function POST(
 ) {
   try {
     const body = await req.json();
-
+console.log(body)
     const res = await fetch(
       `${BACKEND_URL}/services`,
       {

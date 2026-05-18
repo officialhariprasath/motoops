@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { Menu } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 import { useAuthStore } from "@/lib/store/auth.store";
 
@@ -29,7 +31,11 @@ const logoutUser = async () => {
   return data;
 };
 
-export default function Navbar() {
+type NavbarProps = {
+  onMenuClick?: () => void;
+};
+
+export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter();
 
  // const logout = useAuthStore((s) => s.logout);
@@ -45,8 +51,21 @@ export default function Navbar() {
 });
 
   return (
-    <header className="h-14 bg-white border-b flex items-center justify-between px-6">
-      <h2 className="font-semibold text-lg">Dashboard</h2>
+    <header className="h-14 bg-white border-b flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+        >
+          <Menu />
+        </Button>
+
+        <h2 className="font-semibold text-base md:text-lg">Dashboard</h2>
+      </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger>

@@ -16,8 +16,8 @@ async function bootstrap() {
   //console.log('DB URL in Nest:', process.env.DATABASE_URL);
   // Enable global validation pipe (for DTO validation)
   app.enableCors({
-    //origin: process.env.ENABLE_COR,
-    origin: 'http://localhost:3001',
+    origin: process.env.ENABLE_CORS,
+    //origin: 'http://localhost:3000',
     credentials: true,
   }); 
 

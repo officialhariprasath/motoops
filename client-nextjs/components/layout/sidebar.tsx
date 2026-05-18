@@ -13,6 +13,7 @@ import {
   Receipt,
   Users,
   Wrench,
+  Package,
   ClipboardList,
   Settings,
   ShieldCheck,
@@ -73,13 +74,18 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       icon: Receipt,
     },
     {
+      title: "Procurement",
+      href: "/dashboard/admin/procurement",
+      icon: Package,
+    },
+    {
       title: "Reports",
-      href: "/dashboard/Reports",
+      href: "/dashboard/reports",
       icon: ClipboardList,
     },
     {
       title: "Settings",
-      href: "/dashboard/Settings",
+      href: "/dashboard/settings",
       icon: Settings,
     },
   ],
@@ -94,6 +100,11 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       title: "Assigned Services",
       href: "/dashboard/mechanic/services",
       icon: Wrench,
+    },
+    {
+      title: "Tool Requests",
+      href: "/dashboard/mechanic/procurement",
+      icon: Package,
     }
     
   ],
@@ -101,26 +112,28 @@ const sidebarByRole: Record<string, MenuItem[]> = {
   customer: [
     {
       title: "Dashboard",
-      href: "/dashboard/customer",
+      href: "/dashboard/user",
       icon: LayoutDashboard,
     },
     {
       title: "My Vehicles",
-      href: "/dashboard/customer/my-vehicles",
+      href: "/dashboard/user/my-vehicles",
       icon: Car,
     },
     {
-      title: "Bookings",
-      href: "/dashboard/customer/my-bookings",
-      icon: CalendarCheck,
+      title: "My Services",
+      href: "/dashboard/user/my-services",
+      icon: Wrench,
     },
     {
-      title: "Invoices",
-      href: "/dashboard/customer/my-invoices",
+      title: "My Invoices",
+      href: "/dashboard/user/my-invoices",
       icon: Receipt,
     },
   ],
 };
+
+sidebarByRole.user = sidebarByRole.customer;
 
 const logoutUser = async () => {
   const res = await fetch("/api/logout", {
@@ -141,7 +154,12 @@ const logoutUser = async () => {
 // SIDEBAR COMPONENT
 // ======================================================
 
-export default function Sidebar() {
+type SidebarProps = {
+  mobile?: boolean;
+  onNavigate?: () => void;
+};
+
+export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
   const router = useRouter();
 
   const pathname = usePathname();
@@ -178,8 +196,12 @@ export default function Sidebar() {
   // ROLE MENUS
   const menus = sidebarByRole[role as keyof typeof sidebarByRole] || [];
 
+  const sidebarClassName = mobile
+    ? "flex h-full w-full flex-col bg-white"
+    : "hidden md:flex h-screen w-64 flex-col border-r bg-white";
+
   return (
-    <aside className="hidden md:flex h-screen w-64 flex-col border-r bg-white">
+    <aside className={sidebarClassName}>
       {/* ====================================================== */}
       {/* LOGO */}
       {/* ====================================================== */}
@@ -226,8 +248,11 @@ export default function Sidebar() {
 
           return (
             <div key={menu.href}>
-                <Link key={menu.href}  
-                      href={menu.href}>
+                <Link
+                  key={menu.href}
+                  href={menu.href}
+                  onClick={onNavigate}
+                >
                   <div 
                     className={`
                     flex items-center gap-3 rounded-xl px-4 py-3
@@ -248,6 +273,7 @@ export default function Sidebar() {
                   <Link
                     key={sub.href}
                     href={sub.href}
+                    onClick={onNavigate}
                     className="ml-10 block py-2 text-sm text-gray-600"
                   >
                     {sub.title}
@@ -264,7 +290,10 @@ export default function Sidebar() {
 
       <div className="border-t p-4">
         <button
-          onClick={() => logoutMutation.mutate()}
+          onClick={() => {
+            onNavigate?.();
+            logoutMutation.mutate();
+          }}
 
           className="
             flex w-full items-center gap-3 rounded-xl
@@ -280,3 +309,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

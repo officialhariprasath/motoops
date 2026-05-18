@@ -1,6 +1,9 @@
+// File: admin/services/page.tsx
+
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import {
   useQuery,
@@ -37,8 +40,32 @@ const deleteService = async (
   return res.json();
 };
 
+const generateInvoice = async (serviceId: string) => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const res = await fetch("/api/invoices", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      serviceId,
+      generatedById: user.id,
+    }),
+  });
+
+  const json = await res.json();
+
+  if (!res.ok) {
+    throw new Error(json?.message || "Failed to generate invoice");
+  }
+
+  return json;
+};
+
 export default function ServicesPage() {
   const queryClient = useQueryClient();
+  const [invoiceMessage, setInvoiceMessage] = useState("");
 
   const servicesQuery = useQuery({
     queryKey: ["services"],
@@ -55,6 +82,18 @@ export default function ServicesPage() {
     },
   });
 
+  const invoiceMutation = useMutation({
+    mutationFn: generateInvoice,
+    onSuccess: () => {
+      setInvoiceMessage("Invoice generated successfully.");
+    },
+    onError: (error) => {
+      setInvoiceMessage(
+        error instanceof Error ? error.message : "Failed to generate invoice."
+      );
+    },
+  });
+
   if (servicesQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -64,106 +103,114 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-bold">
-          Services
-        </h1>
+    <div className="space-y-4">
+      {invoiceMessage && (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {invoiceMessage}
+        </div>
+      )}
 
-        <Link
-          href="/dashboard/admin/services/create"
-        >
-          <Button>
-            Add Service
-          </Button>
-        </Link>
-      </div>
+    <div className="overflow-hidden rounded-xl border bg-white">
+  <table className="w-full">
+    <thead className="bg-slate-50">
+      <tr className="border-b">
+        <th className="p-3 text-left">Vehicle</th>
+        <th className="p-3 text-left">Customer</th>
+        <th className="p-3 text-left">Status</th>
+        <th className="p-3 text-left">Tasks</th>
+        <th className="p-3 text-left">Total Cost</th>
+        <th className="p-3 text-left">Actions</th>
+      </tr>
+    </thead>
 
-      <div className="rounded-xl border bg-white">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="p-3 text-left">
-                Vehicle
-              </th>
+    <tbody>
+      {servicesQuery.data?.data?.map((service: any) => (
+        <tr key={service.id} className="border-b hover:bg-slate-50">
+          <td className="p-3">
+            <div className="font-medium">
+              {service.vehicle?.registrationNumber || "No vehicle"}
+            </div>
 
-              <th className="p-3 text-left">
-                Status
-              </th>
+            <div className="text-xs text-muted-foreground">
+              {service.vehicle?.brand} {service.vehicle?.model}
+            </div>
+          </td>
 
-              <th className="p-3 text-left">
-                Customer
-              </th>
+          <td className="p-3">
+            <div className="font-medium">
+              {service.customer?.name || "No customer"}
+            </div>
 
-              <th className="p-3 text-left">
-                Actions
-              </th>
-            </tr>
-          </thead>
+            <div className="text-xs text-muted-foreground">
+              {service.customer?.email}
+            </div>
+          </td>
 
-          <tbody>
-            {servicesQuery.data?.data?.map(
-              (service: any) => (
-                <tr
-                  key={service.id}
-                  className="border-b"
-                >
-                  <td className="p-3">
-                    {
-                      service.vehicle
-                        ?.registrationNumber
-                    }
-                  </td>
+          <td className="p-3">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize">
+              {service.status?.replaceAll("_", " ").toLowerCase()}
+            </span>
+          </td>
 
-                  <td className="p-3 capitalize">
-                    {service.status}
-                  </td>
+          <td className="p-3">
+            <div className="text-sm font-medium">
+              {service.tasks?.length ?? 0} task(s)
+            </div>
 
-                  <td className="p-3">
-                    {
-                      service.customer
-                        ?.name
-                    }
-                  </td>
+            <div className="text-xs text-muted-foreground">
+              {service.tasks?.reduce(
+                (sum: number, task: any) =>
+                  sum + (task.subtasks?.length ?? 0),
+                0
+              ) ?? 0}{" "}
+              subtask(s)
+            </div>
+          </td>
 
-                  <td className="p-3 flex gap-2">
-                    <Link
-                      href={`/dashboard/admin/services/${service.id}`}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                      >
-                        View
-                      </Button>
-                    </Link>
+          <td className="p-3 font-medium">
+            {Number(service.totalCost ?? 0).toFixed(2)}
+          </td>
 
-                    <Link
-                      href={`/dashboard/admin/services/${service.id}/edit`}
-                    >
-                      <Button size="sm">
-                        Edit
-                      </Button>
-                    </Link>
+          <td className="p-3">
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/dashboard/admin/services/${service.id}`}>
+                <Button size="sm" variant="outline">
+                  View
+                </Button>
+              </Link>
 
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() =>
-                        deleteMutation.mutate(
-                          service.id
-                        )
-                      }
-                    >
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
+              <Link href={`/dashboard/admin/services/${service.id}/edit`}>
+                <Button size="sm">Edit</Button>
+              </Link>
+
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={invoiceMutation.isPending}
+                onClick={() => invoiceMutation.mutate(service.id)}
+              >
+                Generate Invoice
+              </Button>
+
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (confirm("Delete this service?")) {
+                    deleteMutation.mutate(service.id);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
     </div>
   );
 }

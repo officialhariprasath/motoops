@@ -20,16 +20,17 @@ export async function POST(
 ) {
   const body = await req.json();
 
-  const res = await fetch( `${BACKEND_URL}/vehicles`, {
-                                            method: "POST",
+  const res = await fetch( 
+            `${BACKEND_URL}/vehicles`, 
+            {
+              method: "POST",
 
-                                            headers: {
-                                            "Content-Type": "application/json",
-                                            },
+              headers: {
+              "Content-Type": "application/json",
+              },
 
-                                            body: JSON.stringify(body),
-                                        }
-                                        );
+              body: JSON.stringify(body),
+          });
 
   const data = await res.json();
 

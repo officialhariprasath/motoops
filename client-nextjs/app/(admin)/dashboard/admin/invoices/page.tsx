@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from "react";
 
+import Link from "next/link";
+
 type Invoice = {
   id: string;
   totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+
   paymentStatus: "paid" | "unpaid" | "partial";
+
   createdAt: string;
+
   service: {
     id: string;
   };
+
   generatedBy: {
     id: string;
     name: string;
@@ -19,6 +27,7 @@ type Invoice = {
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetchInvoices();
@@ -26,30 +35,50 @@ export default function InvoicesPage() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await fetch("http://localhost:3000/invoices", {
+      setErrorMessage("");
+      const res = await fetch("/api/invoices", {
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
       const data = await res.json();
-      setInvoices(data);
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load invoices");
+      }
+
+      setInvoices(data?.data ?? data ?? []);
     } catch (error) {
       console.error("Failed to load invoices", error);
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to load invoices"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await fetch(`http://localhost:3000/invoices/${id}/status`, {
+    const invoice = invoices.find((item) => item.id === id);
+    const paidAmount = status === "paid" ? Number(invoice?.totalAmount || 0) : 0;
+
+    const res = await fetch(`/api/invoices/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
-      body: JSON.stringify({ paymentStatus: status }),
+      body: JSON.stringify({ paidAmount }),
     });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setErrorMessage(data?.message || "Failed to update payment status");
+      return;
+    }
 
     fetchInvoices();
   };
@@ -62,8 +91,20 @@ export default function InvoicesPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Invoices</h1>
 
+      {errorMessage && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
+
+      {!errorMessage && invoices.length === 0 && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+          No invoices found.
+        </div>
+      )}
+
       <div className="grid gap-4">
-        {invoices.map((inv) => (
+        {invoices?.map((inv) => (
           <div
             key={inv.id}
             className="border rounded-xl p-4 shadow-sm flex justify-between items-center"
@@ -107,7 +148,19 @@ export default function InvoicesPage() {
 
               {/* ACTIONS */}
               <div className="mt-2 space-x-2">
-                <button
+                <Link
+                  href={`/dashboard/admin/invoices/${inv.id}`}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded"
+                >
+                  View
+                </Link>
+                <Link
+                  href={`/dashboard/admin/invoices/${inv.id}/payment`}
+                  className="px-2 py-1 text-xs bg-yellow-500 text-white rounded"
+                >
+                  Update Payment
+                </Link>
+                                <button
                   onClick={() => updateStatus(inv.id, "paid")}
                   className="px-2 py-1 text-xs bg-green-500 text-white rounded"
                 >

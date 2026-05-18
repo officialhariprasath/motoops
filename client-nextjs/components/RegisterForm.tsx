@@ -61,7 +61,7 @@ const registerUser = async (data: RegisterFormData) => {
 export default function RegisterForm() {
   const router = useRouter();
 
-  const [showLogin, setShowLogin] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
   const [showRegistForm, setShowRegistForm] = useState(true);
   const [form, setForm] = useState<RegisterFormData>({
     name: "",
@@ -193,6 +193,7 @@ export default function RegisterForm() {
 
       {showLogin && (
         <LoginModal
+          showLogin = {showLogin}
           onClose={() => {
             setShowLogin(false);
             setShowRegistForm(true); // restore register form

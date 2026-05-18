@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-  ManyToMany,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -63,9 +62,6 @@ export class UserEntity {
   @OneToMany(() => ServiceEntity, (service) => service.customer)
   customerServices!: ServiceEntity[];
 
-  // ---------------- SERVICES ASSIGNED TO MECHANIC ----------------
-  @ManyToMany(() => ServiceEntity, (service) => service.mechanics)
-  assignedServices!: ServiceEntity[];
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -1,30 +1,23 @@
+// File: ServiceForm.tsx
+
 "use client";
 
-import { useEffect } from "react";
-
-import { useFieldArray,  useForm, Controller  } from "react-hook-form";
-
-import { z } from "zod";
-
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Card, } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
-import { Input, } from "@/components/ui/input";
-
-import { Button, } from "@/components/ui/button";
-
-import { Textarea, } from "@/components/ui/textarea";
-
-import { Label, } from "@/components/ui/label";
+import {VehicleSearchField} from "./searchable_Vehicle_Combobox"
+import { TaskCard } from "./component/TaskCard";
+import { Field } from "./component/form-shared";
 
 import {
   Select,
@@ -34,518 +27,396 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// ======================================================
-// ZOD
-// ======================================================
-
-const itemSchema = z.object({
-  title: z.string().min(1),
-
-  cost: z.coerce.number(),
-
-  status: z.string(),
-});
-
-const schema = z.object({
-  status: z.enum([
-    "pending",
-    "confirmed",
-    "in_progress",
-    "completed",
-    "cancelled",
-  ]),
-
-  problemDescription:
-    z.string().optional(),
-
-    notes: z.string().optional(),
-
-    serviceDate: z.string(),
-
-    deliveryDate: z.string(),
-
-    vehicleId: z.string().min(1),
-
-    customerId: z.string().min(1),
-
-    items: z.array(itemSchema),
-});
-
-type FormData = z.infer<typeof schema>;
+type OptionUser = { id: string; name?: string; email?: string };
+type OptionVehicle = {
+  id: string;
+  registrationNumber?: string;
+  brand?: string;
+  model?: string;
+  owner?: { id: string; name?: string };
+};
 
 type Props = {
   editingService?: any;
-  onSuccess?: () => void;
 };
 
-// ======================================================
-// API
-// ======================================================
+const optionalId = z.string().optional().or(z.literal(""));
 
-const getVehicles = async () => {
-  const res = await fetch(
-    "/api/vehicles"
-  );
+const commentSchema = z.object({
+  id: optionalId,
+  message: z.string().min(1, "Comment is required"),
+  internal: z.coerce.boolean().default(false),
+  status: optionalId,
+});
 
-  if (!res.ok) {
-    throw new Error(
-      "Failed to fetch vehicles"
-    );
+const subTaskSchema = z.object({
+  id: optionalId,
+
+  title: z.string().min(1, "Subtask title is required"),
+
+  assignedToId: optionalId,
+
+  status: z.enum([
+    "PENDING",
+    "IN_PROGRESS",
+    "ON_HOLD",
+    "COMPLETED",
+  ]).default("PENDING"),
+
+  estimatedDuration: z.coerce.number().min(0).default(0),
+
+  progress: z.coerce.number().min(0).max(100).default(0),
+});
+
+const partSchema = z.object({
+  id: optionalId,
+  name: z.string().min(1, "Part name is required"),
+  partNumber: optionalId,
+  quantity: z.coerce.number().min(0),
+  unitPrice: z.coerce.number().min(0),
+});
+
+const taskSchema = z.object({
+  id: optionalId,
+  title: z.string().min(1, "Task title is required"),
+  description: z.string().optional(),
+  ownerId: optionalId,
+  accountableTechnicianId: optionalId,
+  mechanicIds: z.array(z.string()).default([]),
+  laborCost: z.coerce.number().min(0),
+  additionalCost: z.coerce.number().min(0),
+  parts: z.array(partSchema).default([]),
+  subtasks: z.array(subTaskSchema).default([]),
+  comments: z.array(commentSchema).default([]),
+});
+
+const schema = z.object({
+  status: z.enum(["PENDING","INSPECTION", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
+  problemDescription: z.string().optional(),
+  notes: z.string().optional(),
+  serviceDate: z.string().min(1, "Service date is required"),
+  deliveryDate: z.string().min(1, "Delivery date is required"),
+  vehicleId: z.string().min(1, "Vehicle is required"),
+  customerId: z.string().min(1, "Customer is required"),
+  discount: z.coerce.number().min(0),
+  tax: z.coerce.number().min(0),
+  tasks: z.array(taskSchema).min(1, "Add at least one task"),
+});
+
+type ServiceFormInput = z.input<typeof schema>;
+type ServiceFormData = z.output<typeof schema>;
+
+const emptyTask = (): ServiceFormData["tasks"][number] => ({
+  title: "",
+  description: "",
+  ownerId: "",
+  accountableTechnicianId: "",
+  mechanicIds: [],
+  laborCost: 0,
+  additionalCost: 0,
+  parts: [],
+  subtasks: [],
+  comments: [],
+});
+
+function getErrorMessages(errors: unknown): string[] {
+  if (!errors || typeof errors !== "object") {
+    return [];
   }
 
-  const data = await res.json();
+  if (Array.isArray(errors)) {
+    return errors.flatMap(getErrorMessages);
+  }
 
-  return data.data;
-};
+  const record = errors as Record<string, unknown>;
+  const ownMessage =
+    typeof record.message === "string" ? [record.message] : [];
 
-const saveService = async ({
+  const childMessages = Object.entries(record)
+    .filter(([key]) => key !== "ref" && key !== "message" && key !== "type")
+    .flatMap(([, value]) => getErrorMessages(value));
+
+  return [...ownMessage, ...childMessages];
+}
+
+async function apiGet<T>(url: string): Promise<T> {
+  const res = await fetch(url, { cache: "no-store" });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Request failed");
+  return json.data ?? json;
+}
+
+const getVehicles = () => apiGet<OptionVehicle[]>("/api/vehicles");
+const getMechanics = () => apiGet<OptionUser[]>("/api/user");
+
+function normalizeService(service: any): ServiceFormData {
+  return {
+    status: service?.status ?? "PENDING",
+    problemDescription: service?.problemDescription ?? "",
+    notes: service?.notes ?? "",
+    serviceDate: service?.serviceDate?.slice?.(0, 10) ?? "",
+    deliveryDate: service?.deliveryDate?.slice?.(0, 10) ?? "",
+    vehicleId: service?.vehicle?.id ?? service?.vehicleId ?? "",
+    customerId: service?.customer?.id ?? service?.customerId ?? service?.vehicle?.owner?.id ?? "",
+    discount: Number(service?.discount ?? 0),
+    tax: Number(service?.tax ?? 0),
+    tasks: (service?.tasks ?? []).map((task: any) => ({
+      id: task.id ?? "",
+      title: task.title ?? "",
+      description: task.description ?? "",
+      ownerId: task.owner?.id ?? task.ownerId ?? task.createdBy?.id ?? "",
+      accountableTechnicianId: task.accountableTechnician?.id ?? task.accountableTechnicianId ?? "",
+      mechanicIds: task.mechanics?.map((mechanic: any) => mechanic.id) ?? task.mechanicIds ?? [],
+      laborCost: Number(task.laborCost ?? 0),
+      additionalCost: Number(task.additionalCost ?? 0),
+      parts: (task.parts ?? []).map((part: any) => ({
+        id: part.id ?? "",
+        name: part.name ?? "",
+        partNumber: part.partNumber ?? "",
+        quantity: Number(part.quantity ?? 1),
+        unitPrice: Number(part.unitPrice ?? 0),
+      })),
+      subtasks: (task.subtasks ?? []).map((subtask: any) => ({
+        id: subtask.id ?? "",
+        title: subtask.title ?? "",
+        assignedToId: subtask.assignedTo?.id ?? subtask.assignedToId ?? "",
+        status: subtask.status ?? "PENDING",
+        estimatedDuration: Number(subtask.estimatedDuration ?? 0),
+        progress: Number(subtask.progress ?? 0),
+        })),
+      comments: (task.comments ?? []).map((comment: any) => ({
+        id: comment.id ?? "",
+        message: comment.message ?? "",
+        internal: Boolean(comment.internal),
+        status: comment.status ?? "",
+      })),
+    })),
+  };
+}
+
+async function saveService({
   data,
   editingService,
 }: {
-  data: FormData;
+  data: ServiceFormData;
   editingService?: any;
-}) => {
-  const user = JSON.parse(
-    localStorage.getItem("user") || "{}"
-  );
-
+}) {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
   const payload = {
     ...data,
-    serviceDate: data.serviceDate,
-    deliveryDate: data.deliveryDate,
     createdById: user.id,
+    tasks: data.tasks.map((task) => ({
+      ...task,
+      ownerId: task.ownerId || user.id,
+      accountableTechnicianId: task.accountableTechnicianId || null,
+      mechanicIds: task.mechanicIds ?? [],
+      subtasks: task.subtasks.map((subtask) => ({
+        ...subtask,
+        assignedToId: subtask.assignedToId || null,
+      })),
+    })),
   };
 
-  let res;
+  console.log("PATCH payload", payload);
+  const res = await fetch(editingService ? `/api/services/${editingService.id}` : "/api/services", {
+    method: editingService ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-  if (editingService) {
-    res = await fetch(
-      `/api/services/${editingService.id}`,
-      {
-        method: "PATCH",
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Failed to save service");
+  return json;
+}
 
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify(payload),
-      }
-    );
-  } else {
-    res = await fetch(
-      "/api/services",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify(payload),
-      }
-    );
-  }
-
-  if (!res.ok) {
-    throw new Error(
-      "Failed to save service"
-    );
-  }
-
-  return res.json();
-};
-
-const formatDate = (date: string) => {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
-export default function ServiceForm({ editingService,}: Props) {
+export default function ServiceForm({ editingService }: Props) {
+  const queryClient = useQueryClient();
   const router = useRouter();
-
-  const queryClient =
-    useQueryClient();
-
-  // ======================================================
-  // FORM
-  // ======================================================
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    reset,
-    formState: {
-      errors,
-      isSubmitting,
-    },
-  } = useForm<FormData>({
-    resolver:
-      zodResolver(schema),
-
+  const form = useForm<ServiceFormInput, unknown, ServiceFormData>({
+    resolver: zodResolver(schema),
     defaultValues: {
-      status: "pending",
-
-      items: [
-        {
-          title: "",
-          cost: 0,
-          status: "pending",
-        },
-      ],
+      status: "PENDING",
+      problemDescription: "",
+      notes: "",
+      serviceDate: "",
+      deliveryDate: "",
+      vehicleId: "",
+      customerId: "",
+      discount: 0,
+      tax: 0,
+      tasks: [emptyTask()],
     },
   });
 
-  // ======================================================
-  // FIELD ARRAY
-  // ======================================================
+  const { control, register, handleSubmit, reset, setValue, watch, formState } = form;
 
-  const {
-    fields,
-    append,
-    remove,
-  } = useFieldArray({
-    control,
+  const tasksArray = useFieldArray({ control, name: "tasks", keyName: "fieldId" });
 
-    name: "items",
-  });
+  const usersQuery = useQuery({ queryKey: ["mechanics"], queryFn: getMechanics });
 
-  // ======================================================
-  // FETCH VEHICLES
-  // ======================================================
-
-  const vehiclesQuery = useQuery({
-    queryKey: ["vehicles"],
-
-    queryFn: getVehicles,
-  });
-
-  // ======================================================
-  // EDIT MODE
-  // ======================================================
+  const mechanics = useMemo(
+    () => (usersQuery.data ?? []).filter((user: any) => !user.role || user.role === "mechanic"),
+    [usersQuery.data]
+  );
 
   useEffect(() => {
-    if (
-        editingService &&
-        vehiclesQuery.data
-    ) {
-        reset({
-        status:
-            editingService.status,
+    if (!editingService) return;
 
-        problemDescription:
-            editingService.problemDescription,
+    const normalized = normalizeService(editingService);
 
-        notes:
-            editingService.notes,
+    //console.log("editingService", editingService);
+    //console.log("normalized", normalized);
 
-        serviceDate: editingService.serviceDate ? formatDate(editingService.serviceDate)  : "",
-
-       deliveryDate: editingService.deliveryDate  ? formatDate(editingService.deliveryDate)  : "",
-
-        vehicleId: String(
-            editingService.vehicle?.id || ""
-        ),
-
-        customerId: String(
-            editingService.customer?.id || ""
-        ),
-
-        items:
-            editingService.items || [],
-        });
-    }
-    }, [
-        editingService,
-        vehiclesQuery.data,
-        reset,
-    ]);
-  // ======================================================
-  // MUTATION
-  // ======================================================
+    reset(normalized, {keepDefaultValues: false,});
+  }, [editingService, reset]);
 
   const mutation = useMutation({
-    mutationFn: saveService,
+  mutationFn: saveService,
+  onSuccess: (updatedService) => {
+    queryClient.invalidateQueries({ queryKey: ["services"] });
 
-    onSuccess: () => {
+    if (editingService?.id) {
       queryClient.invalidateQueries({
-        queryKey: ["services"],
+        queryKey: ["service", editingService.id],
       });
 
-    //   router.push(
-    //     "/dashboard/admin/services"
-    //   );
-    },
-  });
+      alert("Service updated successfully");
+      return;
+    }
 
-  // ======================================================
-  // SUBMIT
-  // ======================================================
+    const createdService = updatedService?.data ?? updatedService;
+    const createdId = createdService?.id;
 
-  const onSubmit = (
-    data: FormData
-  ) => {
-    mutation.mutate({
-      data,
-      editingService,
-    });
+    if (createdId) {
+      router.push(`/dashboard/admin/services/${createdId}/edit`);
+      return;
+    }
+
+    alert("Service created, but the edit page id was not returned.");
+  },
+});
+
+  const onSubmit = (data: ServiceFormData) => {
+    mutation.mutate({ data, editingService });
   };
 
-  // ======================================================
-  // UI
-  // ======================================================
+  const onInvalid = (errors: typeof formState.errors) => {
+    console.log("Service form validation errors", errors);
+  };
+
+  const validationMessages = Array.from(
+    new Set(getErrorMessages(formState.errors))
+  );
 
   return (
     <Card className="p-6">
-      <form
-        onSubmit={handleSubmit( onSubmit )}
-        className="space-y-6"
-      >
-        {/* STATUS */}
-        <div>
-          <Label>Status</Label>
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Field label="Status">
             <Controller
-            control={control}
-            name="status"
-            render={({ field }) => (
-                <Select
-                value={field.value}
-                onValueChange={field.onChange}
-                >
-                <SelectTrigger>
-                    <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent className="bg-white z-50">
-                    <SelectItem value="pending">
-                    Pending
-                    </SelectItem>
-
-                    <SelectItem value="confirmed">
-                    Confirmed
-                    </SelectItem>
-
-                    <SelectItem value="in_progress">
-                    In Progress
-                    </SelectItem>
-
-                    <SelectItem value="completed">
-                    Completed
-                    </SelectItem>
-
-                    <SelectItem value="cancelled">
-                    Cancelled
-                    </SelectItem>
-                </SelectContent>
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="INSPECTION">Inspection</SelectItem>
+                    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  </SelectContent>
                 </Select>
-            )}
-            />      
-        </div>
-
-        {/* VEHICLE */}
-        <div>
-          <Label>Vehicle</Label>
-            <Controller
-                    control={control}
-                    name="vehicleId"
-                    render={({ field }) => (
-                        <Select
-                        value={field.value || ""}
-                        onValueChange={(v) => {
-                            const vehicle =
-                            vehiclesQuery.data?.find(
-                                (x: any) =>
-                                String(x.id) === v
-                            );
-
-                            field.onChange(v);
-
-                            setValue(
-                            "customerId",
-                            String(
-                                vehicle?.owner?.id || ""
-                            )
-                            );
-                        }}
-                        >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select Vehicle" />
-                        </SelectTrigger>
-
-                        <SelectContent className="bg-white z-50">
-                            {vehiclesQuery.data?.map(
-                            (vehicle: any) => (
-                                <SelectItem
-                                key={vehicle.id}
-                                value={String(vehicle.id)}
-                                >
-                                {vehicle.registrationNumber}
-                                {" - "}
-                                {vehicle.brand}
-                                {" "}
-                                {vehicle.model}
-                                </SelectItem>
-                            )
-                            )}
-                        </SelectContent>
-                        </Select>
-                    )}
-                    />
-        </div>
-
-        {/* DATES */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>
-              Service Date
-            </Label>
-
-            <Input
-              type="date"
-              {...register("serviceDate")}
+              )}
             />
-          </div>
+          </Field>
 
-          <div>
-            <Label>
-              Delivery Date
-            </Label>
+          <Field label="Service Date">
+            <Input type="date" {...register("serviceDate")} />
+          </Field>
 
-            <Input
-              type="date"
-              {...register("deliveryDate")}
-            />
-          </div>
+          <Field label="Delivery Date">
+            <Input type="date" {...register("deliveryDate")} />
+          </Field>
         </div>
 
-        {/* DESCRIPTION */}
-        <div>
-          <Label>
-            Problem Description
-          </Label>
+       <VehicleSearchField control={control} setValue={setValue} />
 
-          <Textarea
-            {...register("problemDescription" )}
-          />
+        <input type="hidden" {...register("customerId")} />
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Problem Description">
+            <Textarea {...register("problemDescription")} />
+          </Field>
+          <Field label="Notes">
+            <Textarea {...register("notes")} />
+          </Field>
         </div>
 
-        <div>
-          <Label>Notes</Label>
-
-          <Textarea
-            {...register("notes")}
-          />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Discount">
+            <Input type="number" step="0.01" {...register("discount")} />
+          </Field>
+          <Field label="Tax">
+            <Input type="number" step="0.01" {...register("tax")} />
+          </Field>
         </div>
 
-        {/* ITEMS */}
-        <div className="space-y-4">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">
-              Service Items
-            </h2>
-
-            <Button
-              type="button"
-              onClick={() =>
-                append({
-                  title: "",
-                  cost: 0,
-                  status:
-                    "pending",
-                })
-              }
-            >
-              + Add Item
+            <h2 className="text-lg font-semibold">Service Tasks</h2>
+            <Button type="button" onClick={() => tasksArray.append(emptyTask())}>
+              + Add Task
             </Button>
           </div>
 
-          {fields.map(
-            (field, index) => (
-              <div
-                key={field.id}
-                className="grid grid-cols-4 gap-3"
-              >
-                <Input
-                  placeholder="Title"
-                  {...register(
-                    `items.${index}.title`
-                  )}
-                />
+          {tasksArray.fields.map((task, taskIndex) => (
+            <TaskCard
+                key={task.fieldId}
+                taskIndex={taskIndex}
+                control={control}
+                register={register}
+                setValue={setValue}
+                watch={watch}
+                removeTask={tasksArray.remove}
+                mechanics={mechanics}
+            />
+            ))}
+        </section>
 
-                <Input
-                  type="number"
-                  {...register(
-                    `items.${index}.cost`,
-                    {
-                      valueAsNumber: true,
-                    }
-                  )}
-                />
-
-                <Select
-                  value={watch(
-                    `items.${index}.status`
-                  )}
-                  onValueChange={(
-                    v
-                  ) =>
-                    setValue(
-                      `items.${index}.status`,
-                      v
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent className="bg-white z-50">
-                    <SelectItem value="pending">
-                      Pending
-                    </SelectItem>
-
-                    <SelectItem value="completed">
-                      Completed
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() =>
-                    remove(index)
-                  }
-                >
-                  Remove
-                </Button>
-              </div>
-            )
+        {mutation.error && (
+            <p className="text-sm text-red-600">
+              {(mutation.error as Error).message}
+            </p>
           )}
-        </div>
 
-        {/* SUBMIT */}
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={
-            isSubmitting ||
-            mutation.isPending
-          }
-        >
-          {editingService
-            ? "Update Service"
-            : "Create Service"}
+        {validationMessages.length > 0 && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <p className="font-medium">Please fix these fields:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {validationMessages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <Button type="submit" className="w-full" disabled={mutation.isPending}>
+          {mutation.isPending
+            ? "Saving..."
+            : editingService
+              ? "Update Service"
+              : "Create Service"}
         </Button>
       </form>
     </Card>
   );
 }
+
+
+
+
+
+
+

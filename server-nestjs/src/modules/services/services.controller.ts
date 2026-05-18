@@ -3,17 +3,18 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
-  Delete,
   Query,
 } from '@nestjs/common';
 
 import { ServicesService } from './services.service';
 
 import { CreateServiceDto } from './dto/create-service.dto';
+
 import { UpdateServiceDto } from './dto/updateService.dto';
 
 @Controller('services')
@@ -22,65 +23,97 @@ export class ServicesController {
     private readonly servicesService: ServicesService,
   ) {}
 
-  // ================= CREATE =================
+  // ======================================================
+  // CREATE SERVICE
+  // ======================================================
+
   @Post()
-  create(@Body() dto: CreateServiceDto) {
+  create(
+    @Body() dto: CreateServiceDto,
+  ) {
+
     return this.servicesService.create(dto);
   }
 
-  // ================= GET ALL =================
+  // ======================================================
+  // GET ALL SERVICES
+  // ======================================================
+
   @Get()
   findAll(
     @Query('status') status?: string,
-    @Query('customerId') customerId?: string,
-    @Query('mechanicId') mechanicId?: string,
+
+    @Query('customerId')
+    customerId?: string,
+
+    @Query('vehicleId')
+    vehicleId?: string,
+
+    @Query('technicianId')
+    technicianId?: string,
   ) {
     return this.servicesService.findAll({
       status,
       customerId,
-      mechanicId,
+      vehicleId,
+      technicianId,
     });
   }
 
-  // ================= GET ONE =================
+  // ======================================================
+  // GET SINGLE SERVICE
+  // ======================================================
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(
+    @Param('id') id: string,
+  ) {
     return this.servicesService.findOne(id);
   }
 
-  // ================= UPDATE =================
+  // ======================================================
+  // UPDATE SERVICE
+  // ======================================================
+
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() dto: UpdateServiceDto,
+
+    @Body()
+    dto: UpdateServiceDto,
   ) {
-    return this.servicesService.update(id, dto);
+    console.log('Update data: ',dto);
+    return this.servicesService.update(
+      id,
+      dto,
+    );
   }
 
-  // ================= DELETE =================
+  // ======================================================
+  // DELETE SERVICE
+  // ======================================================
+
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(
+    @Param('id') id: string,
+  ) {
     return this.servicesService.remove(id);
   }
 
-  // ================= UPDATE STATUS =================
+  // ======================================================
+  // UPDATE SERVICE STATUS
+  // ======================================================
+
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
-    @Body('status') status: string,
-  ) {
-    return this.servicesService.updateStatus(id, status);
-  }
 
-  // ================= ASSIGN MECHANICS =================
-  @Patch(':id/mechanics')
-  assignMechanics(
-    @Param('id') id: string,
-    @Body('mechanicIds') mechanicIds: string[],
+    @Body('status')
+    status: string,
   ) {
-    return this.servicesService.assignMechanics(
+    return this.servicesService.updateStatus(
       id,
-      mechanicIds,
+      status,
     );
   }
 }
