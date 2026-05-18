@@ -3,10 +3,13 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "./form-shared";
 
 export function TaskCommentsTab({ taskIndex, register, commentsArray }: any) {
+  const deleteActionsEnabled = useDeleteActionsEnabled();
+
   return (
     <div className="space-y-3 pt-4">
       <div className="flex justify-end">
@@ -55,6 +58,8 @@ export function TaskCommentsTab({ taskIndex, register, commentsArray }: any) {
             <Button
               type="button"
               variant="destructive"
+              disabled={!deleteActionsEnabled}
+              title={deleteActionsEnabled ? "Remove comment" : "Enable delete actions in Settings first"}
               onClick={() => commentsArray.remove(commentIndex)}
             >
               Remove Comment

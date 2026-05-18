@@ -4,6 +4,7 @@ import { Controller } from "react-hook-form";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
@@ -24,6 +25,8 @@ export function TaskSubtasksTab({
   mechanics,
   subtasksArray,
 }: any) {
+  const deleteActionsEnabled = useDeleteActionsEnabled();
+
   return (
     <div className="space-y-3 pt-4">
       <div className="flex justify-end">
@@ -140,6 +143,8 @@ export function TaskSubtasksTab({
             <Button
               type="button"
               variant="destructive"
+              disabled={!deleteActionsEnabled}
+              title={deleteActionsEnabled ? "Remove subtask" : "Enable delete actions in Settings first"}
               onClick={() => subtasksArray.remove(subtaskIndex)}
             >
               Remove

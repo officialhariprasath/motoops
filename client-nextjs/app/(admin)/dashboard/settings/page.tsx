@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
 
 const defaultSettings = {
   garageName: "Auto Garage",
@@ -13,6 +14,7 @@ const defaultSettings = {
   email: "",
   address: "",
   invoiceNote: "Thank you for choosing Auto Garage.",
+  deleteActionsEnabled: false,
 };
 
 export default function SettingsPage() {
@@ -26,12 +28,16 @@ export default function SettingsPage() {
     }
   }, []);
 
-  const updateField = (field: keyof typeof defaultSettings, value: string) => {
+  const updateField = (
+    field: keyof typeof defaultSettings,
+    value: string | boolean
+  ) => {
     setSettings((current) => ({ ...current, [field]: value }));
   };
 
   const saveSettings = () => {
     localStorage.setItem("garageSettings", JSON.stringify(settings));
+    window.dispatchEvent(new Event(DELETE_ACTIONS_UPDATED_EVENT));
     setMessage("Settings saved.");
   };
 
@@ -96,6 +102,28 @@ export default function SettingsPage() {
             />
           </div>
 
+          <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={settings.deleteActionsEnabled}
+                onChange={(event) =>
+                  updateField("deleteActionsEnabled", event.target.checked)
+                }
+              />
+              <span>
+                <span className="block font-medium text-red-700">
+                  Enable delete actions
+                </span>
+                <span className="mt-1 block text-red-600">
+                  Keep this off during demos to prevent accidental data removal.
+                  Turn it on only when you intentionally need delete buttons to work.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <Button type="button" onClick={saveSettings}>
             Save Settings
           </Button>
@@ -116,3 +144,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
+

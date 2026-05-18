@@ -94,8 +94,21 @@ export class VehiclesService {
     dto: UpdateVehicleDto,
   ) {
     const vehicle = await this.findOne(id);
+    const { ownerId, ...vehicleData } = dto;
 
-    Object.assign(vehicle, dto);
+    Object.assign(vehicle, vehicleData);
+
+    if (ownerId) {
+      const owner = await this.usersRepo.findOne({
+        where: { id: ownerId },
+      });
+
+      if (!owner) {
+        throw new NotFoundException('Owner not found');
+      }
+
+      vehicle.owner = owner;
+    }
 
     return this.repo.save(vehicle);
   }

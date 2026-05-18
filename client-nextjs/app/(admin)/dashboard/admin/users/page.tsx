@@ -7,6 +7,7 @@ import { useQuery,useMutation, useQueryClient, } from "@tanstack/react-query";
 
 import UserForm from "./UserForm";
 import { columns } from "./columns";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 
 import {
   flexRender,
@@ -53,6 +54,7 @@ const getUsers = async () => {
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const deleteActionsEnabled = useDeleteActionsEnabled();
   const [editingUser, setEditingUser] = useState<any>(null);
 
   const usersQuery = useQuery({
@@ -70,7 +72,7 @@ export default function UsersPage() {
   
   const table = useReactTable({
     data: usersQuery.data?.data || [],
-    columns: columns(setEditingUser, deleteMutation.mutate),
+    columns: columns(setEditingUser, deleteMutation.mutate, deleteActionsEnabled),
     getCoreRowModel: getCoreRowModel(),
   });
 

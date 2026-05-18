@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 
 export const columns = (
   setEditingUser: any,
-  deleteUser: any
+  deleteUser: any,
+  deleteActionsEnabled: boolean
 ): ColumnDef<any>[] => [
   {
     accessorKey: "name",
@@ -47,8 +48,10 @@ export const columns = (
         <Button
           size="sm"
           variant="destructive"
+          disabled={!deleteActionsEnabled}
+          title={deleteActionsEnabled ? "Delete user" : "Enable delete actions in Settings first"}
           onClick={() =>
-            deleteUser(row.original.id)
+            deleteActionsEnabled && deleteUser(row.original.id)
           }
         >
           Delete

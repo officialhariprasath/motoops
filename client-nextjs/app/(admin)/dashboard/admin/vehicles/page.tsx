@@ -11,6 +11,7 @@ import {
 import VehicleForm from "./VehicleForm";
 
 import { Button } from "@/components/ui/button";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 
 const getVehicles = async () => {
   const res = await fetch("/api/vehicles");
@@ -45,6 +46,7 @@ const deleteVehicle = async (
 
 export default function VehiclesPage() {
   const queryClient = useQueryClient();
+  const deleteActionsEnabled = useDeleteActionsEnabled();
 
   const [editingVehicle, setEditingVehicle] =
     useState<any>(null);
@@ -158,6 +160,8 @@ export default function VehiclesPage() {
                     <Button
                       size="sm"
                       variant="destructive"
+                      disabled={!deleteActionsEnabled || deleteMutation.isPending}
+                      title={deleteActionsEnabled ? "Delete vehicle" : "Enable delete actions in Settings first"}
                       onClick={() =>
                         deleteMutation.mutate(
                           vehicle.id

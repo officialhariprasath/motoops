@@ -2,8 +2,11 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 
 export function TaskPartsTab({ taskIndex, register, partsArray }: any) {
+  const deleteActionsEnabled = useDeleteActionsEnabled();
+
   return (
     <div className="space-y-3 pt-4">
       <div className="flex justify-end">
@@ -51,6 +54,8 @@ export function TaskPartsTab({ taskIndex, register, partsArray }: any) {
           <Button
             type="button"
             variant="destructive"
+            disabled={!deleteActionsEnabled}
+            title={deleteActionsEnabled ? "Remove part" : "Enable delete actions in Settings first"}
             onClick={() => partsArray.remove(partIndex)}
           >
             Remove

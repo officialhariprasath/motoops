@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 
 const getServices = async () => {
   const res = await fetch("/api/services");
@@ -65,6 +66,7 @@ const generateInvoice = async (serviceId: string) => {
 
 export default function ServicesPage() {
   const queryClient = useQueryClient();
+  const deleteActionsEnabled = useDeleteActionsEnabled();
   const [invoiceMessage, setInvoiceMessage] = useState("");
 
   const servicesQuery = useQuery({
@@ -195,8 +197,10 @@ export default function ServicesPage() {
               <Button
                 size="sm"
                 variant="destructive"
-                disabled={deleteMutation.isPending}
+                disabled={!deleteActionsEnabled || deleteMutation.isPending}
+                title={deleteActionsEnabled ? "Delete service" : "Enable delete actions in Settings first"}
                 onClick={() => {
+                  if (!deleteActionsEnabled) return;
                   if (confirm("Delete this service?")) {
                     deleteMutation.mutate(service.id);
                   }
@@ -214,3 +218,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+
