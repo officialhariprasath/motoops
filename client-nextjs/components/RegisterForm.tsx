@@ -1,4 +1,4 @@
-// RegisterForm
+﻿// RegisterForm
 "use client";
 
 import { useState } from "react";
@@ -18,7 +18,7 @@ const registerSchema = z
 
     mobile: z
       .string()
-      .min(10, "Mobile must be at least 10 digits"),
+      .regex(/^\d{10,15}$/, "Mobile must be 10 to 15 digits"),
 
     email: z
       .string()
@@ -43,7 +43,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 // ---------------- API CALL ----------------
 const registerUser = async (data: RegisterFormData) => {
-  const res = await fetch("/api/user", {
+  const res = await fetch("/api/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -203,3 +203,4 @@ export default function RegisterForm() {
     </div>
   );
 }
+

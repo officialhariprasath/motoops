@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Wrench } from "lucide-react";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 
 function money(value: unknown) {
   return Number(value ?? 0).toFixed(2);
@@ -13,6 +14,15 @@ export default function InvoiceDetailsPage() {
   const invoiceId = params.id as string;
   const [invoice, setInvoice] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [garageSettings, setGarageSettings] = useState<any>({});
+
+  useEffect(() => {
+    try {
+      setGarageSettings(JSON.parse(localStorage.getItem("garageSettings") || "{}"));
+    } catch {
+      setGarageSettings({});
+    }
+  }, []);
 
   useEffect(() => {
     fetch(`/api/invoices/${invoiceId}`, { cache: "no-store" })
@@ -109,7 +119,7 @@ export default function InvoiceDetailsPage() {
               <Wrench size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Auto Garage</h1>
+              <h1 className="text-2xl font-bold">{garageSettings.garageName || "Auto Garage"}</h1>
               <p className="text-sm text-gray-500">
                 Vehicle service and repair invoice
               </p>
@@ -232,6 +242,34 @@ export default function InvoiceDetailsPage() {
           </div>
         </section>
 
+        {((service?.damagePhotoUrls?.length ?? 0) > 0 || (service?.repairProofPhotoUrls?.length ?? 0) > 0) && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Uploaded Service Photos</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {service?.damagePhotoUrls?.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Damage Photos</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {service.damagePhotoUrls.map((photo: string, index: number) => (
+                      <img key={index} src={photo} alt={`Damage ${index + 1}`} className="h-36 w-full rounded border object-cover" />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {service?.repairProofPhotoUrls?.length > 0 && (
+                <div>
+                  <p className="mb-2 font-medium">Repair Proof Photos</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {service.repairProofPhotoUrls.map((photo: string, index: number) => (
+                      <img key={index} src={photo} alt={`Repair proof ${index + 1}`} className="h-36 w-full rounded border object-cover" />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         <section className="grid gap-6 md:grid-cols-[1fr_320px]">
           <div className="rounded border p-4">
             <p className="font-semibold">Problem / Notes</p>
@@ -280,16 +318,26 @@ export default function InvoiceDetailsPage() {
         </section>
 
         <footer className="border-t pt-4 text-center text-xs text-gray-500">
-          Thank you for choosing Auto Garage.
+          {garageSettings.invoiceNote || "Thank you for choosing Auto Garage."}
         </footer>
       </div>
 
-      <button
-        onClick={() => window.print()}
-        className="no-print mt-6 rounded bg-black px-4 py-2 text-white"
-      >
-        Print Invoice
-      </button>
+      <div className="no-print mt-6 flex flex-wrap gap-3">
+        <button
+          onClick={() => downloadInvoicePdf(invoice, totals)}
+          className="rounded bg-blue-600 px-4 py-2 text-white"
+        >
+          Download PDF
+        </button>
+        <button
+          onClick={() => window.print()}
+          className="rounded bg-black px-4 py-2 text-white"
+        >
+          Print Invoice
+        </button>
+      </div>
     </div>
   );
 }
+
+

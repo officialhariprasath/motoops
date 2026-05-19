@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -46,6 +46,12 @@ export class ServiceEntity {
     type: 'text',
   })
   notes!: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  damagePhotoUrls?: string[];
+
+  @Column({ type: 'simple-json', nullable: true })
+  repairProofPhotoUrls?: string[];
 
   @Column({
     nullable: true,

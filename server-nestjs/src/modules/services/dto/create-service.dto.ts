@@ -1,4 +1,4 @@
-import {
+﻿import {
   IsArray,
   IsDateString,
   IsEnum,
@@ -176,6 +176,16 @@ export class CreateServiceDto {
   notes?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  damagePhotoUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  repairProofPhotoUrls?: string[];
+
+  @IsOptional()
   @IsDateString()
   serviceDate?: Date;
 
@@ -222,4 +232,5 @@ export class CreateServiceDto {
 
 
 }
+
 

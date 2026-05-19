@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -43,6 +43,7 @@ export class VehiclesService {
       engineNumber: dto.engineNumber,
       chassisNumber: dto.chassisNumber,
       mileage: dto.mileage,
+      photoUrl: dto.photoUrl,
       owner,
     });
 
@@ -155,3 +156,4 @@ export class VehiclesService {
 
   
 }
+

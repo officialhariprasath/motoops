@@ -1,4 +1,4 @@
-import {
+﻿import {
   IsString,
   IsOptional,
   IsNumberString,
@@ -38,6 +38,10 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsString()
   mileage?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 
   @IsOptional()
   @IsUUID()

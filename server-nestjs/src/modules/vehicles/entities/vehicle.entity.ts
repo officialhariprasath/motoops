@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -41,6 +41,9 @@ export class VehicleEntity {
 
   @Column({ nullable: true })
   mileage!: string;
+
+  @Column({ type: 'text', nullable: true })
+  photoUrl?: string;
 
   // ---------------- OWNER ----------------
   @ManyToOne(() => UserEntity, (user) => user.vehicles)

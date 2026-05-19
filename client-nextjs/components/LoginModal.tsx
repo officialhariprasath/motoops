@@ -153,7 +153,7 @@ export default function LoginModal({ showLogin , onClose }: Props) {
               onClick={onClose}
               className="w-full mt-2 text-sm text-gray-500"
             >
-              Close
+              Register
             </button>
 
            </motion.div>

@@ -18,6 +18,7 @@ import {
   UserCheck,
   Settings,
   ShieldCheck,
+  LockKeyhole,
   LogOut,
 } from "lucide-react";
 
@@ -320,6 +321,7 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
     </aside>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-// File: src/modules/auth/auth.controller.ts
+﻿// File: src/modules/auth/auth.controller.ts
 
 import { Body, Controller, Post, Req, Res, UseGuards  } from '@nestjs/common';
 import type { Response, Request } from 'express';
@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from '../../common/decorators/user.decorator';
 import {LoginDto} from '../auth/dto/login.dto';
 import { CreateUserDto } from '../users/dto/createUser.dto';
+import { Role } from '../users/enums/role.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -35,12 +36,13 @@ export class AuthController {
  @Post('register')
   async register(@Body() dto: CreateUserDto) {
     return this.auth.register({
-                          name: dto.name,
-                          username: dto.username,
-                          email: dto.email,
-                          mobile: dto.mobile,
-                          address: dto.address,
-                          password: dto.password 
+      name: dto.name,
+      username: dto.username,
+      email: dto.email,
+      mobile: dto.mobile,
+      address: dto.address,
+      password: dto.password,
+      role: Role.USER,
     });
   }
 
@@ -56,7 +58,6 @@ export class AuthController {
       throw new Error('No refresh token');
     }
 
-    // 🔥 Decode token to get userId
     const payload = this.auth.decodeToken(refreshToken);
 
 
@@ -69,7 +70,6 @@ export class AuthController {
       refreshToken,
     );
 
-    // 🔄 rotate refresh token
     res.cookie('refresh_token', tokens.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -90,9 +90,9 @@ export class AuthController {
   ) {
     await this.auth.logout(user.sub);
 
-    // 🧹 clear cookie
     res.clearCookie('refresh_token');
 
     return { message: 'Logged out successfully' };
   }
 }
+

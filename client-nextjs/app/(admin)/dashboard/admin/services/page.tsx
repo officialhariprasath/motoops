@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteActionsEnabled } from "@/lib/delete-settings";
 import { useGaragePageSize } from "@/lib/list-settings";
 import ListControls from "@/components/dashboard/ListControls";
+import { addNotification } from "@/lib/notifications";
 
 const getServices = async () => {
   const res = await fetch("/api/services");
@@ -267,4 +268,6 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+
 

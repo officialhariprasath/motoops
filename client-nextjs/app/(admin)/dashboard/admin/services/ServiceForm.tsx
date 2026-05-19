@@ -1,4 +1,4 @@
-// File: ServiceForm.tsx
+﻿// File: ServiceForm.tsx
 
 "use client";
 
@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import {VehicleSearchField} from "./searchable_Vehicle_Combobox"
 import { TaskCard } from "./component/TaskCard";
 import { Field } from "./component/form-shared";
+import ImageUploadField from "@/components/dashboard/ImageUploadField";
+import { addNotification } from "@/lib/notifications";
 
 import {
   Select,
@@ -94,6 +96,8 @@ const schema = z.object({
   status: z.enum(["PENDING","INSPECTION", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
   problemDescription: z.string().optional(),
   notes: z.string().optional(),
+  damagePhotoUrls: z.array(z.string()).default([]),
+  repairProofPhotoUrls: z.array(z.string()).default([]),
   serviceDate: z.string().min(1, "Service date is required"),
   deliveryDate: z.string().min(1, "Delivery date is required"),
   vehicleId: z.string().min(1, "Vehicle is required"),
@@ -154,6 +158,8 @@ function normalizeService(service: any): ServiceFormData {
     status: service?.status ?? "PENDING",
     problemDescription: service?.problemDescription ?? "",
     notes: service?.notes ?? "",
+    damagePhotoUrls: service?.damagePhotoUrls ?? [],
+    repairProofPhotoUrls: service?.repairProofPhotoUrls ?? [],
     serviceDate: service?.serviceDate?.slice?.(0, 10) ?? "",
     deliveryDate: service?.deliveryDate?.slice?.(0, 10) ?? "",
     vehicleId: service?.vehicle?.id ?? service?.vehicleId ?? "",
@@ -238,6 +244,8 @@ export default function ServiceForm({ editingService }: Props) {
       status: "PENDING",
       problemDescription: "",
       notes: "",
+      damagePhotoUrls: [],
+      repairProofPhotoUrls: [],
       serviceDate: "",
       deliveryDate: "",
       vehicleId: "",
@@ -280,6 +288,10 @@ export default function ServiceForm({ editingService }: Props) {
         queryKey: ["service", editingService.id],
       });
 
+      addNotification({
+        title: "Service updated",
+        message: "A service job card was updated successfully.",
+      });
       alert("Service updated successfully");
       return;
     }
@@ -288,6 +300,10 @@ export default function ServiceForm({ editingService }: Props) {
     const createdId = createdService?.id;
 
     if (createdId) {
+      addNotification({
+        title: "Service created",
+        message: "A new service job card was created.",
+      });
       router.push(`/dashboard/admin/services/${createdId}/edit`);
       return;
     }
@@ -355,6 +371,21 @@ export default function ServiceForm({ editingService }: Props) {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ImageUploadField
+            label="Service Damage Photos"
+            multiple
+            value={watch("damagePhotoUrls")}
+            onChange={(value) => setValue("damagePhotoUrls", value as string[])}
+          />
+          <ImageUploadField
+            label="Repair Proof Photos"
+            multiple
+            value={watch("repairProofPhotoUrls")}
+            onChange={(value) => setValue("repairProofPhotoUrls", value as string[])}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Discount">
             <Input type="number" step="0.01" {...register("discount")} />
           </Field>
@@ -413,6 +444,9 @@ export default function ServiceForm({ editingService }: Props) {
     </Card>
   );
 }
+
+
+
 
 
 

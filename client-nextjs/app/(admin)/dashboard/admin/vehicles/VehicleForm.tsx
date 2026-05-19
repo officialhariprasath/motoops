@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 
@@ -13,6 +13,7 @@ import {  useQuery, } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 
 import { Button } from "@/components/ui/button";
+import ImageUploadField from "@/components/dashboard/ImageUploadField";
 
 import {
   Select,
@@ -52,6 +53,8 @@ const schema = z.object({
   chassisNumber: z.string().optional(),
 
   mileage: z.string().optional(),
+
+  photoUrl: z.string().optional(),
 
   ownerId: z
     .string()
@@ -110,6 +113,7 @@ export default function VehicleForm({
       chassisNumber: "",
       mileage: "",
       ownerId: "",
+      photoUrl: "",
     },
   });
 
@@ -159,6 +163,9 @@ export default function VehicleForm({
 
           ownerId:
             editingVehicle.owner?.id || "",
+
+          photoUrl:
+            editingVehicle.photoUrl || "",
         });
     }
   }, [editingVehicle, reset]);
@@ -316,6 +323,14 @@ export default function VehicleForm({
         />
       </div>
 
+      <div className="md:col-span-3">
+        <ImageUploadField
+          label="Vehicle Photo"
+          value={watch("photoUrl")}
+          onChange={(value) => setValue("photoUrl", value as string)}
+        />
+      </div>
+
       {/* OWNER SELECT */}
       <div>
         <Select
@@ -364,3 +379,4 @@ export default function VehicleForm({
     </form>
   );
 }
+

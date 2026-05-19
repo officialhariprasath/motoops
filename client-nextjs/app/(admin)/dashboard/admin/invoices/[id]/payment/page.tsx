@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { addNotification } from "@/lib/notifications";
 
 type Invoice = {
   id: string;
@@ -114,7 +115,7 @@ export default function UpdateInvoicePaymentPage() {
 
         <div>
           <p className="text-sm text-gray-500">Total Amount</p>
-          <p className="text-xl font-bold">৳ {invoice.totalAmount}</p>
+          <p className="text-xl font-bold">à§³ {invoice.totalAmount}</p>
         </div>
 
         <div>
@@ -166,7 +167,7 @@ export default function UpdateInvoicePaymentPage() {
 
         <div className="rounded-lg bg-gray-50 p-4">
           <p className="text-sm text-gray-500">Due Amount</p>
-          <p className="text-lg font-bold">৳ {dueAmount}</p>
+          <p className="text-lg font-bold">à§³ {dueAmount}</p>
         </div>
 
         <button
@@ -181,3 +182,4 @@ export default function UpdateInvoicePaymentPage() {
     </div>
   );
 }
+

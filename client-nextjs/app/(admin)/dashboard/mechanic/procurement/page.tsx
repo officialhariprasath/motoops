@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useGaragePageSize } from "@/lib/list-settings";
+import { addNotification } from "@/lib/notifications";
 
 async function apiGet(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -267,3 +268,4 @@ export default function MechanicProcurementPage() {
     </div>
   );
 }
+

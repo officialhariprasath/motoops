@@ -1,4 +1,4 @@
-// File: src/modules/services/services.service.ts
+﻿// File: src/modules/services/services.service.ts
 
 import {
   Injectable,
@@ -106,6 +106,8 @@ export class ServicesService {
         status:dto.status ||  ServiceStatus.PENDING,
         problemDescription:dto.problemDescription,
         notes: dto.notes,
+        damagePhotoUrls: dto.damagePhotoUrls ?? [],
+        repairProofPhotoUrls: dto.repairProofPhotoUrls ?? [],
         serviceDate:  dto.serviceDate,
         deliveryDate:  dto.deliveryDate,
         discount:  dto.discount || 0,
@@ -510,6 +512,14 @@ export class ServicesService {
       service.notes = dto.notes;
     }
 
+    if (dto.damagePhotoUrls !== undefined) {
+      service.damagePhotoUrls =  dto.damagePhotoUrls;
+    }
+
+    if (dto.repairProofPhotoUrls !== undefined) {
+      service.repairProofPhotoUrls =  dto.repairProofPhotoUrls;
+    }
+
     // ---------------- DATES ----------------
 
     if (dto.serviceDate) {
@@ -729,3 +739,4 @@ export class ServicesService {
     return this.findOne(id);
   }
 }
+

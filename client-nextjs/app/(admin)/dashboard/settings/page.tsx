@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
 import { ATTENDANCE_UPDATED_EVENT } from "@/lib/attendance-settings";
+import ImageUploadField from "@/components/dashboard/ImageUploadField";
+import { notificationCategories } from "@/lib/notifications";
 
 const weekDays = [
   { value: 0, label: "Sunday" },
@@ -25,9 +27,16 @@ const defaultSettings = {
   email: "",
   address: "",
   invoiceNote: "Thank you for choosing Auto Garage.",
+  invoiceLogoUrl: "",
   deleteActionsEnabled: false,
   listPageSize: 10,
   passwordEditingEnabled: false,
+  notificationsEnabled: true,
+  notificationService: true,
+  notificationInvoice: true,
+  notificationPayment: true,
+  notificationProcurement: true,
+  notificationAttendance: true,
   weeklyOffDays: [5],
   governmentHolidays: "",
   leaveTypes: "Sick Leave\nCasual Leave\nAnnual Leave\nEmergency Leave",
@@ -119,7 +128,17 @@ export default function SettingsPage() {
             />
           </div>
 
+          <ImageUploadField
+            label="Invoice Logo"
+            value={settings.invoiceLogoUrl}
+            onChange={(value) => updateField("invoiceLogoUrl", value)}
+          />
+
+
+
           <div>
+
+
             <label className="mb-1 block text-sm font-medium">Invoice Note</label>
             <Textarea
               value={settings.invoiceNote}
@@ -213,6 +232,48 @@ export default function SettingsPage() {
             </label>
           </div>
 
+          <div className="rounded-lg border bg-slate-50 p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={settings.notificationsEnabled}
+                onChange={(event) => updateField("notificationsEnabled", event.target.checked)}
+              />
+              <span>
+                <span className="block font-medium text-slate-800">Enable notifications</span>
+                <span className="mt-1 block text-slate-600">
+                  Turn this off to disable all in-app notification alerts.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium">Notification Preferences</h3>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {notificationCategories.map((category) => {
+                const settingKey = `notification${category.key.charAt(0).toUpperCase()}${category.key.slice(1)}` as keyof typeof defaultSettings;
+
+                return (
+                  <label key={category.key} className="flex items-start gap-3 rounded-md border p-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={Boolean(settings[settingKey])}
+                      disabled={!settings.notificationsEnabled}
+                      onChange={(event) => updateField(settingKey, event.target.checked)}
+                    />
+                    <span>
+                      <span className="block font-medium">{category.label}</span>
+                      <span className="mt-1 block text-xs text-gray-500">{category.description}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="rounded-lg border border-red-100 bg-red-50 p-4">
             <label className="flex items-start gap-3 text-sm">
               <input
@@ -250,3 +311,7 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
+
+
