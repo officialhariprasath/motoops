@@ -144,6 +144,7 @@ export default function WorkforcePage() {
   };
 
   const users = usersQuery.data ?? [];
+  const workforceUsers = users.filter((user: any) => !["user", "customer"].includes(String(user.role || "").toLowerCase()));
   const services = servicesQuery.data ?? [];
   const datePolicy = useMemo(() => getDatePolicy(date), [date, refreshKey]);
 
@@ -155,8 +156,8 @@ export default function WorkforcePage() {
   };
 
   const mechanics = useMemo(
-    () => users.filter((user: any) => user.role === "mechanic"),
-    [users]
+    () => workforceUsers.filter((user: any) => user.role === "mechanic"),
+    [workforceUsers]
   );
 
   const taskRows = useMemo(() => {
@@ -191,9 +192,9 @@ export default function WorkforcePage() {
     };
   });
 
-  const presentCount = users.filter((user: any) => getEffectiveAttendance(user) === "present").length;
-  const absentCount = users.filter((user: any) => getEffectiveAttendance(user) === "absent").length;
-  const leaveCount = users.filter((user: any) => getEffectiveAttendance(user) === "leave").length;
+  const presentCount = workforceUsers.filter((user: any) => getEffectiveAttendance(user) === "present").length;
+  const absentCount = workforceUsers.filter((user: any) => getEffectiveAttendance(user) === "absent").length;
+  const leaveCount = workforceUsers.filter((user: any) => getEffectiveAttendance(user) === "leave").length;
   const availableMechanics = mechanicSummary.filter((row: any) => row.available).length;
   const pendingLeaveRequests = leaveRequests.filter((request) => request.status === "pending");
 
@@ -271,7 +272,7 @@ export default function WorkforcePage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user: any) => {
+                {workforceUsers.map((user: any) => {
                   const effectiveStatus = getEffectiveAttendance(user);
                   const approvedLeave = getApprovedLeaveForDate(user.id, date);
                   const locked = effectiveStatus === "holiday" || effectiveStatus === "weekend" || Boolean(approvedLeave);
@@ -425,5 +426,8 @@ export default function WorkforcePage() {
     </div>
   );
 }
+
+
+
 
 
