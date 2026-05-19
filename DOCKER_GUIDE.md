@@ -415,23 +415,3 @@ docker compose build --no-cache
 docker compose up
 ```
 
-## Recommended GitHub Note
-
-Add this short Docker section to the project README if you want recruiters to run it quickly:
-
-````md
-## Run With Docker
-
-```powershell
-docker compose up --build
-```
-
-Frontend: `http://localhost:3000`
-Backend: `http://localhost:3001`
-
-The Docker setup runs PostgreSQL, NestJS, and Next.js together. See `DOCKER_GUIDE.md` for full instructions.
-````
-## For Daily use
-
-cd G:\project\auto-garage-services
-docker compose up
