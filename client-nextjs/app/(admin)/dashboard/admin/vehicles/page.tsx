@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -72,6 +73,8 @@ export default function VehiclesPage() {
         vehicle.year,
         vehicle.color,
         vehicle.mileage,
+        vehicle.engineNumber,
+        vehicle.chassisNumber,
         vehicle.owner?.name,
         vehicle.owner?.email,
         vehicle.owner?.mobile,
@@ -121,53 +124,88 @@ export default function VehiclesPage() {
       />
 
       <div className="overflow-hidden rounded-xl border bg-white p-6">
-        <table className="w-full">
-          <thead>
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
             <tr className="border-b">
-              <th className="p-2 text-left">Registration</th>
-              <th className="p-2 text-left">Brand</th>
-              <th className="p-2 text-left">Model</th>
-              <th className="p-2 text-left">Owner</th>
-              <th className="p-2 text-left">Actions</th>
+              <th className="p-3 text-left">Photo</th>
+              <th className="p-3 text-left">Vehicle</th>
+              <th className="p-3 text-left">Registration / VIN</th>
+              <th className="p-3 text-left">Owner</th>
+              <th className="p-3 text-left">Workshop Info</th>
+              <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {paginatedVehicles.map((vehicle: any) => (
-              <tr key={vehicle.id} className="border-b">
-                <td className="p-2">{vehicle.registrationNumber}</td>
-                <td className="p-2">{vehicle.brand}</td>
-                <td className="p-2">{vehicle.model}</td>
-                <td className="p-2">{vehicle.owner?.name}</td>
-                <td className="flex gap-2 p-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditingVehicle(vehicle)}
-                  >
-                    Edit
-                  </Button>
+              <tr key={vehicle.id} className="border-b align-top hover:bg-slate-50">
+                <td className="p-3">
+                  {vehicle.photoUrl ? (
+                    <img
+                      src={vehicle.photoUrl}
+                      alt={`${vehicle.registrationNumber} vehicle`}
+                      className="h-16 w-20 rounded-md border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-20 items-center justify-center rounded-md border bg-slate-100 text-xs text-gray-500">
+                      No photo
+                    </div>
+                  )}
+                </td>
+                <td className="p-3">
+                  <p className="font-semibold">{vehicle.brand} {vehicle.model}</p>
+                  <p className="text-xs text-gray-500">Year: {vehicle.year || "N/A"}</p>
+                  <p className="text-xs text-gray-500">Color: {vehicle.color || "N/A"}</p>
+                </td>
+                <td className="p-3">
+                  <p className="font-semibold">{vehicle.registrationNumber}</p>
+                  <p className="text-xs text-gray-500">VIN: {vehicle.vinNumber || "N/A"}</p>
+                </td>
+                <td className="p-3">
+                  <p className="font-semibold">{vehicle.owner?.name || "No owner"}</p>
+                  <p className="text-xs text-gray-500">{vehicle.owner?.mobile || "No mobile"}</p>
+                  <p className="text-xs text-gray-500">{vehicle.owner?.email || "No email"}</p>
+                </td>
+                <td className="p-3">
+                  <p>Mileage: {vehicle.mileage || "N/A"}</p>
+                  <p className="text-xs text-gray-500">Engine: {vehicle.engineNumber || "N/A"}</p>
+                  <p className="text-xs text-gray-500">Created: {vehicle.createdAt ? new Date(vehicle.createdAt).toLocaleDateString() : "N/A"}</p>
+                </td>
+                <td className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/dashboard/admin/vehicles/${vehicle.id}`}>
+                      <Button size="sm" variant="outline">View</Button>
+                    </Link>
 
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={!deleteActionsEnabled || deleteMutation.isPending}
-                    title={
-                      deleteActionsEnabled
-                        ? "Delete vehicle"
-                        : "Enable delete actions in Settings first"
-                    }
-                    onClick={() => deleteMutation.mutate(vehicle.id)}
-                  >
-                    Delete
-                  </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditingVehicle(vehicle)}
+                    >
+                      Edit
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!deleteActionsEnabled || deleteMutation.isPending}
+                      title={
+                        deleteActionsEnabled
+                          ? "Delete vehicle"
+                          : "Enable delete actions in Settings first"
+                      }
+                      onClick={() => deleteMutation.mutate(vehicle.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
 
             {paginatedVehicles.length === 0 && (
               <tr>
-                <td className="p-6 text-center text-sm text-gray-500" colSpan={5}>
+                <td className="p-6 text-center text-sm text-gray-500" colSpan={6}>
                   No vehicles found.
                 </td>
               </tr>
@@ -178,5 +216,8 @@ export default function VehiclesPage() {
     </div>
   );
 }
+
+
+
 
 
