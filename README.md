@@ -369,6 +369,9 @@ This project demonstrates my ability to:
 - Docker deployment setup
 - Automated test coverage for critical workflows
 
+- ## License
+MIT
+
 ## Author
 
 Built as a full-stack portfolio project to demonstrate practical SaaS-style application development using Next.js, NestJS, PostgreSQL, TypeORM, and role-based business workflows.
