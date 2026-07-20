@@ -50,7 +50,7 @@ export class UsersService {
     }
   }
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto & { isVerified?: boolean; verificationToken?: string }) {
     await this.ensureUniqueUserFields(dto);
 
     const hashed = await bcrypt.hash(dto.password, 10);
@@ -63,6 +63,8 @@ export class UsersService {
       designation: dto.designation,
       password: hashed,
       role: dto.role,
+      isVerified: dto.isVerified ?? true,
+      verificationToken: dto.verificationToken,
     });
 
     return this.repo.save(user);
@@ -88,12 +90,12 @@ export class UsersService {
     if (identifier.includes('@')) {
       user = await this.repo.findOne({
         where: { email: identifier },
-        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role'],
+        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role', 'isVerified'],
       });
     } else {
       user = await this.repo.findOne({
         where: [{ username: identifier }, { mobile: identifier }],
-        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role'],
+        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role', 'isVerified'],
       });
     }
 
@@ -110,6 +112,17 @@ export class UsersService {
 
   findByMobile(mobile: string) {
     return this.repo.findOne({ where: { mobile } });
+  }
+
+  async findByVerificationToken(token: string) {
+    return this.repo.findOne({ where: { verificationToken: token } });
+  }
+
+  async markVerified(userId: string) {
+    await this.repo.update(userId, {
+      isVerified: true,
+      verificationToken: null,
+    });
   }
 
   async update(id: string, dto: UpdateUserDto) {

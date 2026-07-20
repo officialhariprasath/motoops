@@ -1,6 +1,6 @@
 ﻿// File: src/modules/auth/auth.controller.ts
 
-import { Body, Controller, Post, Req, Res, UseGuards  } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response, Request } from 'express';
 
 import { AuthService } from './auth.service';
@@ -46,6 +46,10 @@ export class AuthController {
     });
   }
 
+  @Get('verify/:token')
+  async verifyEmail(@Param('token') token: string) {
+    return this.auth.verifyEmail(token);
+  }
 
   @Post('refresh')
   //refresh(@Body() body: any) {

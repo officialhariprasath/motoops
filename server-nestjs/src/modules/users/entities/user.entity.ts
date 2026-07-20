@@ -53,7 +53,13 @@ export class UserEntity {
   })
   role!: Role;
 
-  // ðŸ” refresh token
+  @Column({ default: true })
+  isVerified!: boolean;
+
+  @Column({ type: 'text', nullable: true, select: false })
+  verificationToken?: string | null;
+
+  // 🔐 refresh token
   @Column({ type: 'text', nullable: true, select: false })
   refreshToken?: string;
 

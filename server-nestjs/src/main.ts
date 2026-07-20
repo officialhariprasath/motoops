@@ -15,12 +15,31 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   //console.log('DB URL in Nest:', process.env.DATABASE_URL);
   // Enable global validation pipe (for DTO validation)
-  app.enableCors({
-    origin: process.env.ENABLE_CORS,
-    //origin: 'http://localhost:3000',
-    credentials: true,
-  }); 
+  const allowedOrigins = process.env.ENABLE_CORS?.split(",").map((origin) => origin.trim()) ?? [];
 
+  app.enableCors({
+    origin: (requestOrigin, callback) => {
+      if (!requestOrigin) {
+        return callback(null, true);
+      }
+
+      const isAllowedOrigin = allowedOrigins.some((allowedOrigin) => {
+        if (allowedOrigin === requestOrigin) {
+          return true;
+        }
+
+        if (allowedOrigin.startsWith("http://localhost") || allowedOrigin.startsWith("https://localhost")) {
+          const localhostPattern = new RegExp(`^${allowedOrigin.replace(/:\/\//, "\\://").replace(/:\d+$/, "(:\\d+)?")}$`);
+          return localhostPattern.test(requestOrigin);
+        }
+
+        return false;
+      });
+
+      callback(isAllowedOrigin ? null : new Error("CORS policy does not allow this origin."), isAllowedOrigin);
+    },
+    credentials: true,
+  });
 
   app.use(cookieParser());
   app.useGlobalInterceptors(new ResponseInterceptor());

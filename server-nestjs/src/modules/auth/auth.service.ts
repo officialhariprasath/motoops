@@ -1,12 +1,13 @@
 ﻿//  File: src/module/auth/auth.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 import { UsersService } from '../users/users.service';
-import {LoginDto} from '../auth/dto/login.dto';
-import {CreateUserDto} from '../users/dto/createUser.dto';
+import { LoginDto } from '../auth/dto/login.dto';
+import { CreateUserDto } from '../users/dto/createUser.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,21 +18,34 @@ export class AuthService {
 
   async register(dto: CreateUserDto) {
     console.log('Register received', dto);
-    const user = await this.usersService.create(dto);
-    return user;
+    const verificationToken = randomBytes(24).toString('hex');
+
+    const user = await this.usersService.create({
+      ...dto,
+      isVerified: false,
+      verificationToken,
+    });
+
+    return {
+      user,
+      message: 'Registration successful. Verify your email to activate your account.',
+      verificationToken: process.env.NODE_ENV !== 'production' ? verificationToken : undefined,
+    };
   }
 
   //async login(email: string, password: string) {
   async login(dto: LoginDto) {
-
-      //const user = await this.usersService.findByEmail(dto.email);
       const user = await this.usersService.fineOneByIdentifier(dto.identifier);
 
-      if (!user) throw new Error('User not found');
+      if (!user) throw new UnauthorizedException('Invalid credentials');
+
+      if (!user.isVerified) {
+        throw new UnauthorizedException('Account not verified. Activate your account before signing in.');
+      }
 
       const isMatch = await bcrypt.compare(dto.password, user.password);
       
-      if (!isMatch) throw new Error('Invalid credentials');
+      if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
       const tokens = await this.generateTokens(user);
 
@@ -110,6 +124,18 @@ export class AuthService {
     
   }
   
+  async verifyEmail(token: string) {
+    const user = await this.usersService.findByVerificationToken(token);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired verification token');
+    }
+
+    await this.usersService.markVerified(user.id);
+
+    return { message: 'Email verified. You can now sign in.' };
+  }
+
   async logout(userId: string) {
     return this.usersService.updateRefreshToken(userId, null);
   }
