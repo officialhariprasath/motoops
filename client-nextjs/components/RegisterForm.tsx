@@ -92,6 +92,7 @@ export default function RegisterForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [verificationLink, setVerificationLink] = useState<string | null>(null);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [loginMessageType, setLoginMessageType] = useState<"success" | "error">("error");
 
   const registerMutation = useMutation({
     mutationFn: registerUser,
@@ -121,10 +122,12 @@ export default function RegisterForm() {
     onSuccess: (data) => {
       localStorage.setItem("token", data.access_token);
       setLoginMessage("Login successful");
+      setLoginMessageType("success");
       router.push("/dashboard");
     },
     onError: (error: Error) => {
       setLoginMessage(error.message);
+      setLoginMessageType("error");
     },
   });
 
@@ -178,6 +181,7 @@ export default function RegisterForm() {
 
     if (!result.success) {
       setLoginMessage(result.error.issues[0].message);
+      setLoginMessageType("error");
       return;
     }
 
@@ -290,7 +294,13 @@ export default function RegisterForm() {
               </label>
 
               {loginMessage && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                <div
+                  className={
+                    loginMessageType === "success"
+                      ? "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600"
+                      : "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+                  }
+                >
                   {loginMessage}
                 </div>
               )}
