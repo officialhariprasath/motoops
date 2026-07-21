@@ -43,17 +43,20 @@ export default function LoginModal({ showLogin, onClose }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"success" | "error">("error");
 
   const mutation = useMutation({
     mutationFn: loginUser,
     onSuccess: (data) => {
       localStorage.setItem("token", data.access_token);
       setMessage("Login successful");
+      setMessageType("success");
       router.push("/dashboard");
       onClose();
     },
     onError: (error: Error) => {
       setMessage(error.message);
+      setMessageType("error");
     },
   });
 
@@ -74,6 +77,7 @@ export default function LoginModal({ showLogin, onClose }: Props) {
 
     if (!result.success) {
       setMessage(result.error.issues[0].message);
+      setMessageType("error");
       return;
     }
 
@@ -175,7 +179,13 @@ export default function LoginModal({ showLogin, onClose }: Props) {
                   </label>
 
                   {message && (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                    <div
+                      className={
+                        messageType === "success"
+                          ? "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600"
+                          : "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+                      }
+                    >
                       {message}
                     </div>
                   )}
