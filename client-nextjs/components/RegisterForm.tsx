@@ -313,6 +313,12 @@ export default function RegisterForm() {
                 {loginMutation.isPending ? "Signing in..." : "Sign in"}
                 <ArrowRight className="h-4 w-4" />
               </button>
+
+              {loginMutation.isPending && (
+                <p className="text-center text-xs text-slate-500">
+                  Our backend is hosted on a free tier that sleeps when idle. It may take 30–60 seconds to respond on your first sign in or sign up.
+                </p>
+              )}
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -410,6 +416,12 @@ export default function RegisterForm() {
                 {registerMutation.isPending ? "Creating account..." : "Create account"}
                 <ArrowRight className="h-4 w-4" />
               </button>
+
+              {registerMutation.isPending && (
+                <p className="text-center text-xs text-slate-500">
+                  Our backend is hosted on a free tier that sleeps when idle. It may take 30–60 seconds to respond on your first sign in or sign up.
+                </p>
+              )}
             </form>
           )}
         </div>

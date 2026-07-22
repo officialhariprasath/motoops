@@ -198,6 +198,12 @@ export default function LoginModal({ showLogin, onClose }: Props) {
                     {mutation.isPending ? "Signing in..." : "Sign in"}
                     <ArrowRight className="h-4 w-4" />
                   </button>
+
+                  {mutation.isPending && (
+                    <p className="text-center text-xs text-slate-500">
+                      Our backend is hosted on a free tier that sleeps when idle. It may take 30–60 seconds to respond on your first sign in or sign up.
+                    </p>
+                  )}
                 </form>
 
                 <div className="mt-6 text-center text-sm text-slate-600">
