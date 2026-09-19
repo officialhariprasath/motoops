@@ -1,4 +1,12 @@
-﻿# Auto Garage Management System
+﻿# MotoOps
+
+Auto garage billing and job-card platform (Next.js + NestJS + PostgreSQL).
+
+**Deploy:** see [DEPLOY.md](./DEPLOY.md) — same pattern as Finance Flow (Render API + Neon DB + Vercel UI).
+
+---
+
+# Auto Garage Management System
 
 A full-stack, role-based garage operations platform built with Next.js, NestJS, TypeORM, and PostgreSQL.
 
