@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -80,7 +80,7 @@ export default function UsersPage() {
           <CustomerSummaryCard key={customer.id} customer={customer} />
         ))}
         {paginatedCustomers.length === 0 && (
-          <div className="col-span-full rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
+          <div className="col-span-full rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
             No customers found.
           </div>
         )}

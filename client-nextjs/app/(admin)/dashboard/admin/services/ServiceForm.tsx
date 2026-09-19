@@ -1,4 +1,4 @@
-﻿// File: ServiceForm.tsx
+// File: ServiceForm.tsx
 
 "use client";
 
@@ -44,6 +44,7 @@ const optionalText = z.string().optional().or(z.literal(""));
 
 const statusEnum = z.enum([
   "PENDING",
+  "ASSIGNED",
   "IN_PROGRESS",
   "COMPLETED",
   "CANCELLED",
@@ -113,10 +114,10 @@ function PetrolLevelBar({
   const level = Number.isFinite(raw) ? Math.min(10, Math.max(0, raw)) : 0;
 
   return (
-    <div className="space-y-3 rounded-lg border bg-slate-50 p-4">
+    <div className="space-y-3 rounded-lg border bg-muted p-4">
       <div className="flex items-end justify-between gap-4">
-        <div className="relative h-28 w-16 overflow-hidden rounded-md border-2 border-slate-400 bg-white">
-          <div className="absolute inset-x-0 top-0 h-2 bg-slate-300" />
+        <div className="relative h-28 w-16 overflow-hidden rounded-md border-2 border-border bg-card">
+          <div className="absolute inset-x-0 top-0 h-2 bg-primary" />
           <div
             className="absolute inset-x-1 bottom-1 rounded-sm bg-amber-400 transition-all"
             style={{ height: `${(level / 10) * 100}%` }}
@@ -124,9 +125,9 @@ function PetrolLevelBar({
         </div>
         <div className="flex-1 space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-slate-700">Petrol level</span>
-            <span className="font-semibold text-slate-900">
-              {level}/10 — {petrolLabel(level)}
+            <span className="font-medium text-foreground/80">Petrol level</span>
+            <span className="font-semibold text-foreground">
+              {level}/10 - {petrolLabel(level)}
             </span>
           </div>
           <input
@@ -138,7 +139,7 @@ function PetrolLevelBar({
             onChange={(event) => onChange(Number(event.target.value))}
             className="w-full accent-amber-500"
           />
-          <div className="flex justify-between text-xs text-slate-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>Empty</span>
             <span>Full</span>
           </div>
@@ -388,12 +389,12 @@ export default function ServiceForm({ editingService }: Props) {
         {(watchedCustomerId || watchedVehicleId) && isEdit && (
           <div className="flex flex-wrap gap-2 text-xs">
             {selectedCustomerCode && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+              <span className="rounded-full bg-muted px-3 py-1 font-medium">
                 Customer ID: {selectedCustomerCode}
               </span>
             )}
             {selectedVehicleCode && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+              <span className="rounded-full bg-muted px-3 py-1 font-medium">
                 Vehicle ID: {selectedVehicleCode}
               </span>
             )}
@@ -413,7 +414,7 @@ export default function ServiceForm({ editingService }: Props) {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white">
+                  <SelectContent className="bg-card">
                     {JOB_CARD_STATUSES.map((status) => (
                       <SelectItem key={status.value} value={status.value}>
                         {status.label}
@@ -455,7 +456,7 @@ export default function ServiceForm({ editingService }: Props) {
               <Input
                 {...register("jobCardNumber")}
                 readOnly
-                className="bg-slate-50 text-slate-700"
+                className="bg-muted text-foreground/80"
               />
             </Field>
             <Field label="Job Card Date & Time">
@@ -494,7 +495,7 @@ export default function ServiceForm({ editingService }: Props) {
                     <SelectTrigger>
                       <SelectValue placeholder="Select make" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-72">
+                    <SelectContent className="bg-card max-h-72">
                       {INDIAN_BIKE_MAKERS.map((maker) => (
                         <SelectItem key={maker} value={maker}>
                           {maker}
@@ -520,7 +521,7 @@ export default function ServiceForm({ editingService }: Props) {
                     <SelectTrigger>
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-72">
+                    <SelectContent className="bg-card max-h-72">
                       {yearOptions.map((year) => (
                         <SelectItem key={year} value={year}>
                           {year}

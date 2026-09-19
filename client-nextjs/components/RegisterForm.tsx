@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, Lock, Mail, MapPin, Phone, User } from "lucide-react";
@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { z } from "zod";
+
+import { getDashboardHome } from "@/lib/dashboard-home";
 
 type AuthView = "login" | "register";
 
@@ -105,17 +107,12 @@ export default function RegisterForm() {
     mutationFn: registerUser,
     onSuccess: (data) => {
       const message =
-        data?.message ||
-        "Registration successful. Check your email to verify your account.";
+        data?.message || "Registration successful. You can sign in now.";
       setSuccess(message);
       setServerError(null);
       setForm(initialForm);
       setAuthView("login");
       setVerificationLink(null);
-
-      if (data?.verificationToken) {
-        setVerificationLink(`/verify/${data.verificationToken}`);
-      }
     },
     onError: (error: Error) => {
       setServerError(error.message);
@@ -129,7 +126,7 @@ export default function RegisterForm() {
       localStorage.setItem("token", data.access_token);
       setLoginMessage("Login successful");
       setLoginMessageType("success");
-      router.push("/dashboard");
+      router.push(getDashboardHome(data?.user?.role));
     },
     onError: (error: Error) => {
       setLoginMessage(error.message);
@@ -184,11 +181,11 @@ export default function RegisterForm() {
     `w-full rounded-2xl border px-4 py-3 text-sm shadow-sm outline-none transition ${
       errors[fieldName]
         ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-        : "border-slate-200 bg-white text-slate-700 focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+        : "border-border bg-card text-foreground focus:border-primary focus:ring-4 focus:ring-primary/15"
     }`;
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+    <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-8">
       <div className="mb-8 flex flex-col items-center text-center">
         <img
           src="/motoops-logo.png"
@@ -197,7 +194,7 @@ export default function RegisterForm() {
         />
       </div>
 
-      <div className="mb-6 flex rounded-full border border-slate-200 bg-slate-50 p-1">
+      <div className="mb-6 flex rounded-full border border-border bg-muted p-1">
         <button
           type="button"
           onClick={() => {
@@ -208,8 +205,8 @@ export default function RegisterForm() {
           }}
           className={`flex-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
             authView === "login"
-              ? "bg-slate-900 text-white"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Sign in
@@ -224,8 +221,8 @@ export default function RegisterForm() {
           }}
           className={`flex-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
             authView === "register"
-              ? "bg-slate-900 text-white"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Create account
@@ -235,34 +232,34 @@ export default function RegisterForm() {
       {authView === "login" ? (
         <form onSubmit={handleLoginSubmit} className="space-y-4">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Email, username, or mobile
             </span>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="identifier"
                 value={loginForm.identifier ?? ""}
                 placeholder="you@garage.com"
                 onChange={handleLoginChange}
-                className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                className="w-full rounded-2xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               />
             </div>
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Password
             </span>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="password"
                 type="password"
                 value={loginForm.password ?? ""}
                 placeholder="Your password"
                 onChange={handleLoginChange}
-                className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+                className="w-full rounded-2xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
               />
             </div>
           </label>
@@ -282,26 +279,26 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={loginMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loginMutation.isPending ? "Signing in..." : "Sign in"}
             <ArrowRight className="h-4 w-4" />
           </button>
 
           {loginMutation.isPending && (
-            <p className="text-center text-xs text-slate-500">
-              First sign-in may take 30–60 seconds while the API wakes up.
+            <p className="text-center text-xs text-muted-foreground">
+              First sign-in may take 30-60 seconds while the API wakes up.
             </p>
           )}
         </form>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Access key
             </span>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="accessKey"
                 type="password"
@@ -315,17 +312,17 @@ export default function RegisterForm() {
             {errors.accessKey && (
               <p className="mt-2 text-sm text-rose-500">{errors.accessKey}</p>
             )}
-            <p className="mt-1.5 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Required to open a garage account. Contact MotoOps for a key.
             </p>
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Full name
             </span>
             <div className="relative">
-              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="name"
                 value={form.name ?? ""}
@@ -340,11 +337,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Username
             </span>
             <div className="relative">
-              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="username"
                 value={form.username ?? ""}
@@ -359,11 +356,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Mobile
             </span>
             <div className="relative">
-              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="mobile"
                 value={form.mobile ?? ""}
@@ -378,11 +375,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Email
             </span>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="email"
                 type="email"
@@ -398,11 +395,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Address
             </span>
             <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="address"
                 value={form.address ?? ""}
@@ -417,11 +414,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Password
             </span>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="password"
                 type="password"
@@ -437,11 +434,11 @@ export default function RegisterForm() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">
+            <span className="mb-2 block text-sm font-medium text-foreground">
               Confirm password
             </span>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="confirmPassword"
                 type="password"
@@ -468,11 +465,11 @@ export default function RegisterForm() {
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
               <p>{success}</p>
               {verificationLink && (
-                <p className="mt-2 text-slate-800">
+                <p className="mt-2 text-foreground">
                   Verify now:{" "}
                   <Link
                     href={verificationLink}
-                    className="font-semibold text-slate-900 underline"
+                    className="font-semibold text-primary underline"
                   >
                     {verificationLink}
                   </Link>
@@ -484,7 +481,7 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={registerMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {registerMutation.isPending
               ? "Creating account..."
@@ -493,8 +490,8 @@ export default function RegisterForm() {
           </button>
 
           {registerMutation.isPending && (
-            <p className="text-center text-xs text-slate-500">
-              First sign-up may take 30–60 seconds while the API wakes up.
+            <p className="text-center text-xs text-muted-foreground">
+              First sign-up may take 30-60 seconds while the API wakes up.
             </p>
           )}
         </form>

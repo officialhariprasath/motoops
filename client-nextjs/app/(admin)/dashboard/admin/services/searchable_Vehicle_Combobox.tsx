@@ -102,7 +102,7 @@ export function VehicleSearchField({
                 </Button>
               </PopoverTrigger>
 
-              <PopoverContent className="w-[420px] p-3 bg-white">
+              <PopoverContent className="w-[420px] p-3 bg-card">
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 

@@ -2,7 +2,6 @@
 
 import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 import { UsersService } from '../users/users.service';
@@ -34,8 +33,8 @@ export class AuthService {
       username: dto.username,
       email: dto.email,
     });
-    const verificationToken = randomBytes(24).toString('hex');
 
+    // Access key already proves invitation — garage owner can log in immediately.
     const user = await this.usersService.create({
       name: dto.name,
       username: dto.username,
@@ -45,16 +44,13 @@ export class AuthService {
       password: dto.password,
       designation: dto.designation,
       role: Role.ADMIN,
-      isVerified: false,
-      verificationToken,
+      isVerified: true,
+      verificationToken: undefined,
     });
 
     return {
       user,
-      message:
-        'Registration successful. Verify your email to activate your account.',
-      verificationToken:
-        process.env.NODE_ENV !== 'production' ? verificationToken : undefined,
+      message: 'Registration successful. You can sign in now.',
     };
   }
 

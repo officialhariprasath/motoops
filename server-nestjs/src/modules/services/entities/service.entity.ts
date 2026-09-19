@@ -16,6 +16,7 @@ import { InvoiceEntity } from '../../invoices/entities/invoice.entity';
 
 export enum ServiceStatus {
    PENDING = "PENDING",
+   ASSIGNED = "ASSIGNED",
    INSPECTION = "INSPECTION",
    CONFIRMED = "CONFIRMED",
    IN_PROGRESS = "IN_PROGRESS",
@@ -46,6 +47,18 @@ export class ServiceEntity {
     type: 'text',
   })
   notes!: string;
+
+  @Column({ nullable: true, type: 'varchar' })
+  nextServiceOdometer?: string;
+
+  @Column({ type: 'date', nullable: true })
+  nextServiceAt?: Date;
+
+  @Column({ nullable: true, type: 'text' })
+  futureWorksNotes?: string;
+
+  @Column({ type: 'boolean', default: false })
+  includeNextServiceOnBill!: boolean;
 
   @Column({ unique: true, nullable: true })
   jobCardNumber?: string;

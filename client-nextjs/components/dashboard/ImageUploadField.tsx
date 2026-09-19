@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
 
@@ -65,7 +65,7 @@ export default function ImageUploadField({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs text-gray-500">Upload image files for demo and documentation.</p>
+          <p className="text-xs text-muted-foreground">Upload image files for demo and documentation.</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
           Upload
@@ -86,7 +86,7 @@ export default function ImageUploadField({
       {images.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {images.map((image, index) => (
-            <div key={`${image.slice(0, 30)}-${index}`} className="overflow-hidden rounded-md border bg-white">
+            <div key={`${image.slice(0, 30)}-${index}`} className="overflow-hidden rounded-md border border-border bg-card">
               <img src={image} alt={`${label} ${index + 1}`} className="h-32 w-full object-cover" />
               <button
                 type="button"

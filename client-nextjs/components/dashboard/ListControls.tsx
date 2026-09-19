@@ -31,7 +31,7 @@ export default function ListControls({
   const safeTotalPages = Math.max(totalPages, 1);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border bg-white p-4 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 moto-card p-4 md:flex-row md:items-center md:justify-between">
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center md:max-w-2xl">
         <Input
           value={search}
@@ -45,7 +45,7 @@ export default function ListControls({
         {filters}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <span>
           {totalItems} item{totalItems === 1 ? "" : "s"} - {pageSize} per page
         </span>

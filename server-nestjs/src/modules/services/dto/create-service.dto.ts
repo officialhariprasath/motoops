@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsArray,
   IsDateString,
   IsEnum,
@@ -14,7 +15,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 import { ServiceStatus } from '../entities/service.entity';
 
@@ -140,6 +141,34 @@ export class CreateServiceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  nextServiceOdometer?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === null || value === undefined ? undefined : value,
+  )
+  @IsDateString()
+  nextServiceAt?: string;
+
+  @IsOptional()
+  @IsString()
+  futureWorksNotes?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === 1 || value === '1') {
+      return true;
+    }
+    if (value === false || value === 'false' || value === 0 || value === '0') {
+      return false;
+    }
+    return value;
+  })
+  @IsBoolean()
+  includeNextServiceOnBill?: boolean;
 
   @IsOptional()
   @IsString()

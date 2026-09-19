@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -160,7 +160,7 @@ export default function ProfilePage() {
             <div>
               <label className="mb-1 block text-sm font-medium">Username</label>
               <Input value={user?.username || ""} disabled />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Username cannot be changed from profile.
               </p>
             </div>
@@ -168,7 +168,7 @@ export default function ProfilePage() {
             <div>
               <label className="mb-1 block text-sm font-medium">Designation</label>
               <Input value={user?.designation || "Not assigned"} disabled />
-              <p className="mt-1 text-xs text-gray-500">Only admin can update this field.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Only admin can update this field.</p>
             </div>
 
             <div>
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                 New Password
               </label>
               <Input type="password" {...register("password")} />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Leave blank to keep the current password.
               </p>
             </div>

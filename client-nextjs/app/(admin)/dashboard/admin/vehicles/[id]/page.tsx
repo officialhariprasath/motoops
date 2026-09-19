@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -54,53 +54,53 @@ export default function VehicleDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="moto-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Vehicle
             </p>
             <p className="text-xl font-semibold">
-              {vehicle.registrationNumber || "—"}
+              {vehicle.registrationNumber || "-"}
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
-            {vehicle.vehicleCode || "—"}
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+            {vehicle.vehicleCode || "-"}
           </span>
         </div>
         <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
           <p>
-            <span className="text-slate-500">Make / Model: </span>
-            {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "—"}
+            <span className="text-muted-foreground">Make / Model: </span>
+            {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "-"}
           </p>
           <p>
-            <span className="text-slate-500">Year: </span>
-            {vehicle.year || "—"}
+            <span className="text-muted-foreground">Year: </span>
+            {vehicle.year || "-"}
           </p>
           <p>
-            <span className="text-slate-500">Owner: </span>
-            {vehicle.owner?.name || "—"}
+            <span className="text-muted-foreground">Owner: </span>
+            {vehicle.owner?.name || "-"}
           </p>
           <p>
-            <span className="text-slate-500">Mobile: </span>
-            {vehicle.owner?.mobile || "—"}
+            <span className="text-muted-foreground">Mobile: </span>
+            {vehicle.owner?.mobile || "-"}
           </p>
         </div>
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium text-slate-600">
+        <p className="text-sm font-medium text-muted-foreground">
           Job cards for this vehicle
         </p>
         {jobsQuery.isLoading ? (
-          <p className="text-sm text-slate-500">Loading job cards...</p>
+          <p className="text-sm text-muted-foreground">Loading job cards...</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {jobs.map((service: any) => (
               <JobCardSummaryCard key={service.id} service={service} />
             ))}
             {jobs.length === 0 && (
-              <div className="col-span-full rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
+              <div className="col-span-full rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                 No job cards for this vehicle yet.
               </div>
             )}

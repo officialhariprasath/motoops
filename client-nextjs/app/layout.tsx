@@ -24,7 +24,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "MotoOps",
-  description: "Motorcycle garage operations — job cards, estimates, invoices, and workforce.",
+  description: "Motorcycle garage operations - job cards, estimates, invoices, and workforce.",
   icons: {
     icon: "/motoops-logo.png",
     apple: "/motoops-logo.png",

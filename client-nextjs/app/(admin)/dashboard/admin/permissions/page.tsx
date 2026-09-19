@@ -21,7 +21,7 @@ function PermissionCell({ allowed }: { allowed: boolean }) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-        allowed ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+        allowed ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
       }`}
     >
       {allowed ? "Allowed" : "No access"}
@@ -35,7 +35,7 @@ export default function PermissionMatrixPage() {
       <Card>
         <CardContent className="overflow-x-auto p-6">
           <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-muted">
               <tr className="border-b">
                 <th className="p-3 text-left">Feature</th>
                 <th className="p-3 text-left">Admin</th>

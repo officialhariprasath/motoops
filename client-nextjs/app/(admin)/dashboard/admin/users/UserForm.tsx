@@ -1,4 +1,4 @@
-﻿// File: app/dashboard/users/UserForm.tsx
+// File: app/dashboard/users/UserForm.tsx
 
 "use client";
 
@@ -121,7 +121,7 @@ export default function UserForm({ editingUser, onSuccess }: Props) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="grid grid-cols-1 gap-4 rounded-xl border bg-white p-6 md:grid-cols-3"
+      className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-card p-6 md:grid-cols-3"
     >
       {errorMessage && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:col-span-3">
@@ -166,7 +166,7 @@ export default function UserForm({ editingUser, onSuccess }: Props) {
 
       <div>
         <Input placeholder="Designation (mechanics only)" {...register("designation")} />
-        <p className="mt-1 text-xs text-gray-500">Admin-managed field for seniority or lead role.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Admin-managed field for seniority or lead role.</p>
       </div>
 
       {passwordEditingEnabled && (
@@ -187,7 +187,7 @@ export default function UserForm({ editingUser, onSuccess }: Props) {
           <SelectTrigger>
             <SelectValue placeholder="Select Role" />
           </SelectTrigger>
-          <SelectContent className="bg-white">
+          <SelectContent className="bg-card">
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="mechanic">Mechanic</SelectItem>
             <SelectItem value="user">User</SelectItem>

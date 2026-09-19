@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -68,25 +68,25 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Paid bills</p>
+            <p className="text-sm text-muted-foreground">Paid bills</p>
             <p className="mt-2 text-3xl font-bold">{report.billStats.paid}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Partial bills</p>
+            <p className="text-sm text-muted-foreground">Partial bills</p>
             <p className="mt-2 text-3xl font-bold">{report.billStats.partial}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Unpaid bills</p>
+            <p className="text-sm text-muted-foreground">Unpaid bills</p>
             <p className="mt-2 text-3xl font-bold">{report.billStats.unpaid}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Estimates</p>
+            <p className="text-sm text-muted-foreground">Estimates</p>
             <p className="mt-2 text-3xl font-bold">{report.estimates}</p>
           </CardContent>
         </Card>
@@ -95,17 +95,17 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Collected (bills)</p>
+            <p className="text-sm text-muted-foreground">Collected (bills)</p>
             <p className="mt-2 text-3xl font-bold">
-              ₹{formatMoney(report.revenue)}
+              ?{formatMoney(report.revenue)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Outstanding (bills)</p>
+            <p className="text-sm text-muted-foreground">Outstanding (bills)</p>
             <p className="mt-2 text-3xl font-bold">
-              ₹{formatMoney(report.outstanding)}
+              ?{formatMoney(report.outstanding)}
             </p>
           </CardContent>
         </Card>

@@ -190,7 +190,7 @@ export default function JobCardItemsSection({
 
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full min-w-[820px] text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-muted">
             <tr className="border-b text-left">
               <th className="p-2">S.No</th>
               <th className="p-2">Item Description</th>
@@ -239,7 +239,7 @@ export default function JobCardItemsSection({
               <tr>
                 <td
                   colSpan={readOnly ? 8 : 9}
-                  className="p-6 text-center text-slate-500"
+                  className="p-6 text-center text-muted-foreground"
                 >
                   No items added yet.
                 </td>
@@ -250,9 +250,9 @@ export default function JobCardItemsSection({
       </div>
 
       <div className="flex justify-end">
-        <div className="rounded-md border bg-slate-50 px-4 py-3 text-sm">
-          <span className="text-slate-500">Total Net Amount: </span>
-          <span className="font-semibold text-slate-900">
+        <div className="rounded-md border bg-muted px-4 py-3 text-sm">
+          <span className="text-muted-foreground">Total Net Amount: </span>
+          <span className="font-semibold text-foreground">
             {formatMoney(total)}
           </span>
         </div>
@@ -265,7 +265,7 @@ export default function JobCardItemsSection({
           if (!next) resetDialog();
         }}
       >
-        <DialogContent className="bg-white sm:max-w-lg">
+        <DialogContent className="bg-card sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add Item</DialogTitle>
           </DialogHeader>
@@ -290,17 +290,17 @@ export default function JobCardItemsSection({
                 autoComplete="off"
               />
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white shadow-md">
+                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-card shadow-md">
                   {suggestions.map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-100"
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => pickSuggestion(item)}
                     >
                       <span className="uppercase">{item.name}</span>
-                      <span className="text-slate-500">
+                      <span className="text-muted-foreground">
                         {formatMoney(Number(item.rate))}
                       </span>
                     </button>
@@ -332,8 +332,8 @@ export default function JobCardItemsSection({
               </div>
             </div>
 
-            <div className="rounded-md border bg-slate-50 px-3 py-2 text-sm">
-              <span className="text-slate-500">Amount: </span>
+            <div className="rounded-md border bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Amount: </span>
               <span className="font-medium">{formatMoney(lineAmount)}</span>
             </div>
 

@@ -228,8 +228,8 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
   const isSubActive = (href: string) => href === bestMatch;
 
   const sidebarClassName = mobile
-    ? "flex h-full w-full flex-col bg-white"
-    : "hidden md:flex h-screen w-64 flex-col border-r bg-white";
+    ? "flex h-full w-full flex-col bg-card"
+    : "hidden md:flex h-screen w-64 flex-col border-r border-border bg-card";
 
   return (
     <aside className={sidebarClassName}>
@@ -237,7 +237,7 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
       {/* LOGO */}
       {/* ====================================================== */}
 
-      <div className="flex h-16 items-center gap-2 border-b px-4">
+      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
         <img
           src="/motoops-logo.png"
           alt="MotoOps"
@@ -245,11 +245,11 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
         />
 
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold tracking-wide text-slate-900">
-            MotoOps
+          <h1 className="truncate text-lg font-bold tracking-wide text-foreground">
+            MOTO OPS
           </h1>
 
-          <p className="text-xs text-gray-500 capitalize">
+          <p className="text-xs text-muted-foreground capitalize">
             {role} panel
           </p>
         </div>
@@ -259,12 +259,12 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
       {/* USER INFO */}
       {/* ====================================================== */}
 
-      <div className="border-b p-4">
-        <p className="font-semibold text-sm">
+      <div className="border-b border-border p-4">
+        <p className="font-semibold text-sm text-foreground">
           {user?.name || "Guest"}
         </p>
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           {user?.email || ""}
         </p>
       </div>
@@ -290,8 +290,8 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
                     text-sm font-medium transition-all
                     ${
                       active
-                        ? "bg-black text-white shadow-md"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-foreground/80 hover:bg-muted"
                     }
                   `}
                   >
@@ -309,8 +309,8 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
                       onClick={onNavigate}
                       className={`ml-10 block rounded-lg px-3 py-2 text-sm ${
                         subActive
-                          ? "bg-slate-900 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
+                          ? "bg-primary/90 text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
                       {sub.title}
@@ -326,7 +326,7 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
       {/* FOOTER */}
       {/* ====================================================== */}
 
-      <div className="border-t p-4">
+      <div className="border-t border-border p-4">
         <button
           onClick={() => {
             onNavigate?.();
@@ -335,8 +335,8 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
 
           className="
             flex w-full items-center gap-3 rounded-xl
-            px-4 py-3 text-sm font-medium text-red-500
-            transition hover:bg-red-50
+            px-4 py-3 text-sm font-medium text-destructive
+            transition hover:bg-destructive/10
           "
         >
           <LogOut size={18}   />

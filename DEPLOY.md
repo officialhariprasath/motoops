@@ -125,9 +125,19 @@ Login: `admin` / `123456`
 | CORS in browser | Exact Vercel URL must be in `ENABLE_CORS` |
 | API slow first hit | Render free cold start (~30–60s) |
 | DB connection failed | Neon URI + `DATABASE_SSL=true`; use `?sslmode=require` |
-| Empty tables | First deploy needs `TYPEORM_SYNC=true`, then run `npm run seed` |
+| Empty tables | First deploy needs `TYPEORM_SYNC=true`, then run `seed` |
 | Render “monthly limit” | Keep only this one web service; DB stays on Neon; wait for quota reset |
 | Frontend can’t reach API | `BACKEND_SERVER_URL` must be the public Render URL |
+| `ASSIGNED` status / next-service fields missing | With `TYPEORM_SYNC=false`, run `server-nestjs/scripts/sql/001_assigned_and_next_service.sql` on Neon |
+
+---
+
+## Production hardening notes
+
+- **Role middleware:** Next.js middleware redirects mechanics/customers away from `/dashboard/admin/*` and sends each role to its home path after login.
+- **Schema:** Prefer `TYPEORM_SYNC=false` in production; apply SQL under `server-nestjs/scripts/sql/` for additive changes.
+- **Attendance / leave:** Leave requests use Postgres via `/leave-requests` (Nest `LeaveModule`). Restart the API after deploy so the route is registered. Attendance check-in is still browser `localStorage` in this pass.
+- **Credentials:** Rotate any Neon password that was shared in chat; keep secrets only in Render/Vercel env.
 
 ---
 

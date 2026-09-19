@@ -1,5 +1,6 @@
 export const JOB_CARD_STATUSES = [
-  { value: "PENDING", label: "Pending" },
+  { value: "PENDING", label: "Unassigned" },
+  { value: "ASSIGNED", label: "Assigned" },
   { value: "IN_PROGRESS", label: "In Progress" },
   { value: "COMPLETED", label: "Completed" },
   { value: "CANCELLED", label: "Cancelled" },
@@ -23,7 +24,8 @@ export function normalizeJobCardStatus(status?: string | null): JobCardStatus {
 
 export function formatJobCardStatus(status?: string | null) {
   const normalized = normalizeJobCardStatus(status);
-  return normalized.replace(/_/g, " ").toLowerCase();
+  const match = JOB_CARD_STATUSES.find((item) => item.value === normalized);
+  return match?.label ?? normalized.replace(/_/g, " ");
 }
 
 export function numberToWordsIndian(amount: number) {

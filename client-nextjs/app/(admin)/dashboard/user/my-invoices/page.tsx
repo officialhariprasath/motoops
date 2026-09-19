@@ -31,7 +31,7 @@ export default function MyInvoicesPage() {
   return (
     <div className="space-y-6">
       {invoices.length === 0 && (
-        <div className="rounded-md border bg-white p-6 text-sm text-gray-500">
+        <div className="moto-card p-6 text-sm text-muted-foreground">
           No invoices found.
         </div>
       )}
@@ -43,18 +43,18 @@ export default function MyInvoicesPage() {
             <Link
               key={invoice.id}
               href={`/dashboard/user/my-invoices/${invoice.id}`}
-              className="block rounded-xl border bg-white p-4 shadow-sm"
+              className="block moto-card p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">
                     {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {invoice.service?.vehicle?.registrationNumber ?? "N/A"}
                   </p>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
                   {docType === "ESTIMATE" ? "Estimate" : "Bill"}
                 </span>
               </div>
@@ -62,7 +62,7 @@ export default function MyInvoicesPage() {
                 ₹{formatMoney(invoice.totalAmount)}
               </p>
               {docType === "BILL" && (
-                <p className="text-sm capitalize text-gray-500">
+                <p className="text-sm capitalize text-muted-foreground">
                   {invoice.paymentStatus} · Due ₹
                   {formatMoney(invoice.dueAmount)}
                 </p>

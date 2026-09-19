@@ -51,41 +51,41 @@ export default function CustomerInvoiceViewPage() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white"
+          className="rounded bg-primary px-3 py-1.5 text-sm text-primary-foreground"
         >
           Print
         </button>
       </div>
 
-      <div className="rounded-xl border bg-white p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex justify-between gap-4 border-b pb-4">
           <div>
-            <p className="text-xs uppercase text-slate-500">{docType}</p>
+            <p className="text-xs uppercase text-muted-foreground">{docType}</p>
             <h1 className="text-xl font-semibold">
               {invoice.invoiceNumber || invoice.id.slice(0, 8)}
             </h1>
           </div>
           <p className="text-2xl font-bold">
-            ₹{formatMoney(invoice.totalAmount)}
+            â‚¹{formatMoney(invoice.totalAmount)}
           </p>
         </div>
 
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-          <p>Vehicle: {invoice.service?.vehicle?.registrationNumber || "—"}</p>
+          <p>Vehicle: {invoice.service?.vehicle?.registrationNumber || "-"}</p>
           <p>
             {invoice.service?.vehicle?.brand} {invoice.service?.vehicle?.model}
           </p>
           {docType === "BILL" && (
             <>
               <p className="capitalize">Status: {invoice.paymentStatus}</p>
-              <p>Due: ₹{formatMoney(invoice.dueAmount)}</p>
+              <p>Due: â‚¹{formatMoney(invoice.dueAmount)}</p>
             </>
           )}
         </div>
 
         <table className="mt-6 w-full text-left text-sm">
           <thead>
-            <tr className="border-b text-slate-500">
+            <tr className="border-b text-muted-foreground">
               <th className="py-2">Item</th>
               <th className="py-2 text-right">Qty</th>
               <th className="py-2 text-right">Net</th>
@@ -97,7 +97,7 @@ export default function CustomerInvoiceViewPage() {
                 <td className="py-2">{item.description}</td>
                 <td className="py-2 text-right">{item.quantity}</td>
                 <td className="py-2 text-right">
-                  ₹{formatMoney(calcLineAmounts(item).netAmount)}
+                  â‚¹{formatMoney(calcLineAmounts(item).netAmount)}
                 </td>
               </tr>
             ))}

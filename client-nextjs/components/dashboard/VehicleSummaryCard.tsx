@@ -14,45 +14,56 @@ export default function VehicleSummaryCard({
   return (
     <Link
       href={target}
-      className="block rounded-xl border bg-white p-4 shadow-sm transition hover:border-slate-400 hover:shadow-md"
+      className="block moto-card p-4 transition hover:border-primary/40 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Vehicle
           </p>
-          <p className="text-lg font-semibold text-slate-900">
-            {vehicle.registrationNumber || "—"}
+          <p className="text-lg font-semibold text-foreground">
+            {vehicle.registrationNumber || "-"}
           </p>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
-          {vehicle.vehicleCode || "—"}
+        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+          {vehicle.vehicleCode || "-"}
         </span>
       </div>
 
       <div className="mt-4 space-y-2 text-sm">
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">Make / Model</span>
+          <span className="text-muted-foreground">Make / Model</span>
           <span className="font-medium text-right">
-            {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "—"}
+            {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "-"}
           </span>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">Year</span>
-          <span className="font-medium text-right">{vehicle.year || "—"}</span>
+          <span className="text-muted-foreground">Year</span>
+          <span className="font-medium text-right">{vehicle.year || "-"}</span>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">Owner</span>
+          <span className="text-muted-foreground">Owner</span>
           <span className="font-medium text-right">
-            {vehicle.owner?.name || "—"}
+            {vehicle.owner?.name || "-"}
           </span>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">Mobile</span>
+          <span className="text-muted-foreground">Mobile</span>
           <span className="font-medium text-right">
-            {vehicle.owner?.mobile || "—"}
+            {vehicle.owner?.mobile || "-"}
           </span>
         </div>
+        {vehicle.nextServiceAt && (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Next service</span>
+            <span className="font-medium text-right">
+              {String(vehicle.nextServiceAt).slice(0, 10)}
+              {vehicle.nextServiceOdometer
+                ? ` Â· ${vehicle.nextServiceOdometer} km`
+                : ""}
+            </span>
+          </div>
+        )}
       </div>
     </Link>
   );

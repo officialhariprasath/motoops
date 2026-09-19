@@ -20,7 +20,7 @@ export default function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-background">
       {/* SIDEBAR */}
       <Sidebar />
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

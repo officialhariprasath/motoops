@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 
@@ -223,7 +223,7 @@ export default function VehicleForm({
       className="
         grid grid-cols-1 md:grid-cols-3
         gap-4 rounded-xl border
-        bg-white p-6
+        bg-card p-6
       "
     >
       {/* REGISTRATION */}
@@ -343,7 +343,7 @@ export default function VehicleForm({
             <SelectValue placeholder="Select Owner" />
           </SelectTrigger>
 
-          <SelectContent className="z-50 bg-white">
+          <SelectContent className="z-50 bg-card">
             {usersQuery.data?.data?.map(
               (user: any) => (
                 <SelectItem

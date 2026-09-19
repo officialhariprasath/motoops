@@ -72,7 +72,7 @@ export function TaskSubtasksTab({
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
 
-                  <SelectContent className="bg-white">
+                  <SelectContent className="bg-card">
                     <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                     <SelectItem value="ON_HOLD">On Hold</SelectItem>

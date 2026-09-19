@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ServicesModule } from './modules/services/services.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { LeaveModule } from './modules/leave/leave.module';
 
 
 // DB CONNECTED THROUGH app.module.ts VIA importing TypeOrmModule and configuring it with the database connection details.
@@ -43,6 +44,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     ServicesModule,
     InvoicesModule,
     CatalogModule,
+    LeaveModule,
   ],
   controllers: [AppController],
   providers: [AppService], // ✅ ONLY THIS

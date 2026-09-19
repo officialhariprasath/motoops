@@ -76,7 +76,7 @@ export default function CustomerVehiclesPage() {
                     {vehicle.model}
                   </h2>
 
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {
                       vehicle.registrationNumber
                     }
@@ -114,7 +114,7 @@ export default function CustomerVehiclesPage() {
       </div>
 
       {!vehiclesQuery.data?.length && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-muted-foreground">
           No vehicles found.
         </div>
       )}

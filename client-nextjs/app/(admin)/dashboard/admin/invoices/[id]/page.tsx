@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { OtherDetailsBlock } from "@/components/print/OtherDetailsBlock";
+import { NextServicePrintBlock } from "@/components/print/NextServicePrintBlock";
 import {
   calcLineAmounts,
   calcLineItemsTotal,
@@ -36,9 +38,9 @@ function readGarageSettings(): GarageSettings {
 }
 
 function formatDocDate(value?: string | Date | null) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
@@ -167,7 +169,7 @@ export default function InvoiceDetailsPage() {
           }}
         >
           <div
-            className="estimate-sheet bg-white text-[9.5px] text-slate-900 shadow-md print:shadow-none"
+            className="estimate-sheet bg-card text-[9.5px] text-foreground shadow-md print:shadow-none"
             style={{
               width: `${A4_WIDTH_MM}mm`,
               minHeight: `${A4_HEIGHT_MM}mm`,
@@ -205,11 +207,11 @@ export default function InvoiceDetailsPage() {
                   <div className="space-y-0.5">
                     <p>
                       <span className="inline-block w-14">Mr.</span>
-                      {service?.customer?.name || "—"}
+                      {service?.customer?.name || "-"}
                     </p>
                     <p>
                       <span className="inline-block w-14">Mobile</span>
-                      {service?.customer?.mobile || "—"}
+                      {service?.customer?.mobile || "-"}
                     </p>
                     {service?.customer?.address && (
                       <p className="break-words whitespace-pre-wrap pl-14">
@@ -239,7 +241,7 @@ export default function InvoiceDetailsPage() {
                       <span className="inline-block w-20 font-semibold">
                         VEHICLE NO
                       </span>
-                      {service?.vehicle?.registrationNumber || "—"}
+                      {service?.vehicle?.registrationNumber || "-"}
                     </p>
                     {!isEstimate && (
                       <p>
@@ -327,7 +329,7 @@ export default function InvoiceDetailsPage() {
                       <tr>
                         <td
                           colSpan={8}
-                          className="border border-[#1d4f91] px-2 py-5 text-center text-slate-500"
+                          className="border border-[#1d4f91] px-2 py-5 text-center text-muted-foreground"
                         >
                           No items added on this job card.
                         </td>
@@ -354,27 +356,18 @@ export default function InvoiceDetailsPage() {
               </div>
 
               <div className="mt-auto grid grid-cols-[1fr_120px] border-t border-[#1d4f91]">
-                <div className="space-y-1 border-r border-[#1d4f91] p-2.5">
-                  <p className="font-semibold">Other Details</p>
-                  <p>
-                    <span className="font-semibold">Payment Terms :</span>{" "}
-                    IMMEDIATE
-                  </p>
-                  {!isEstimate && (
-                    <p>
-                      <span className="font-semibold">Paid / Due :</span> ₹
-                      {formatMoney(invoice.paidAmount)} / ₹
-                      {formatMoney(invoice.dueAmount)}
-                    </p>
-                  )}
-                  <p>
-                    <span className="font-semibold">Notes :</span>{" "}
-                    {service?.notes || settings.invoiceNote || ""}
-                  </p>
-                  <p className="pt-1 font-medium">
-                    {numberToWordsIndian(totalNet)}
-                  </p>
-                </div>
+                <OtherDetailsBlock
+                  notes={service?.notes}
+                  invoiceNote={settings.invoiceNote}
+                  amountInWords={numberToWordsIndian(totalNet)}
+                  paidAmountLabel={
+                    !isEstimate ? formatMoney(invoice.paidAmount) : null
+                  }
+                  dueAmountLabel={
+                    !isEstimate ? formatMoney(invoice.dueAmount) : null
+                  }
+                  currentOdometer={service?.vehicle?.mileage}
+                />
                 <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
                   <span className="font-bold">GRAND TOTAL</span>
                   <span className="text-sm font-bold">
@@ -382,6 +375,27 @@ export default function InvoiceDetailsPage() {
                   </span>
                 </div>
               </div>
+
+              {!isEstimate &&
+                Boolean(
+                  invoice?.billExtras?.includeNextServiceOnBill ||
+                    service?.includeNextServiceOnBill
+                ) && (
+                  <NextServicePrintBlock
+                    nextServiceOdometer={
+                      invoice?.billExtras?.nextServiceOdometer ??
+                      service?.nextServiceOdometer
+                    }
+                    nextServiceAt={
+                      invoice?.billExtras?.nextServiceAt ??
+                      service?.nextServiceAt
+                    }
+                    futureWorksNotes={
+                      invoice?.billExtras?.futureWorksNotes ??
+                      service?.futureWorksNotes
+                    }
+                  />
+                )}
 
               <div className="grid grid-cols-3 border-t border-[#1d4f91]">
                 <div className="border-r border-[#1d4f91] p-2.5">

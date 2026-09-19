@@ -140,7 +140,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const hasUnread = notifications.some((item) => !item.read);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-white px-4 md:px-6">
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 md:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <Button
           type="button"
@@ -153,7 +153,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <Menu />
         </Button>
 
-        <h2 className="truncate text-base font-semibold md:text-lg">{pageTitle}</h2>
+        <h2 className="truncate text-base font-semibold text-foreground md:text-lg">{pageTitle}</h2>
       </div>
 
       <div className="flex items-center gap-2">
@@ -161,18 +161,18 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" className="relative" aria-label="Notifications">
               <Bell size={18} />
-              {hasUnread && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />}
+              {hasUnread && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 bg-white">
-            <div className="px-3 py-2 text-sm font-semibold">Notifications</div>
+          <DropdownMenuContent align="end" className="w-80 bg-card">
+            <div className="px-3 py-2 text-sm font-semibold text-foreground">Notifications</div>
             {notifications.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-gray-500">No notifications yet.</div>
+              <div className="px-3 py-4 text-sm text-muted-foreground">No notifications yet.</div>
             ) : (
               notifications.slice(0, 6).map((item) => (
                 <DropdownMenuItem key={item.id} className="flex flex-col items-start gap-1">
                   <span className="font-medium">{item.title}</span>
-                  <span className="text-xs text-gray-500">{item.message}</span>
+                  <span className="text-xs text-muted-foreground">{item.message}</span>
                 </DropdownMenuItem>
               ))
             )}
@@ -187,11 +187,11 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger>
             <Avatar className="cursor-pointer">
-              <AvatarFallback>{initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary/15 text-primary">{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="bg-white">
+          <DropdownMenuContent align="end" className="bg-card">
             <DropdownMenuItem asChild>
               <Link href="/dashboard/Profile">Profile</Link>
             </DropdownMenuItem>
@@ -199,6 +199,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
             <DropdownMenuItem
               disabled={logoutMutation.isPending}
               onSelect={() => logoutMutation.mutate()}
+              className="text-destructive focus:text-destructive"
             >
               {logoutMutation.isPending ? "Logging out..." : "Logout"}
             </DropdownMenuItem>

@@ -151,7 +151,7 @@ export default function ItemsPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px]">
-              <thead className="bg-slate-50">
+              <thead className="bg-muted">
                 <tr className="border-b text-left text-sm">
                   <th className="p-3">S.No</th>
                   <th className="p-3">Item Description</th>
@@ -195,7 +195,7 @@ export default function ItemsPage() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-sm text-gray-500">
+                    <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
                       {itemsQuery.isLoading ? "Loading items..." : "No items yet."}
                     </td>
                   </tr>
@@ -207,7 +207,7 @@ export default function ItemsPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-white sm:max-w-md">
+        <DialogContent className="bg-card sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Item" : "Add Item"}</DialogTitle>
           </DialogHeader>

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -85,6 +86,10 @@ async function createInvoiceDoc(body: {
   generatedById: string;
   documentType: "ESTIMATE" | "BILL";
   completeJob?: boolean;
+  nextServiceOdometer?: string;
+  nextServiceAt?: string;
+  futureWorksNotes?: string;
+  includeNextServiceOnBill?: boolean;
 }) {
   const res = await fetch("/api/invoices", {
     method: "POST",
@@ -105,32 +110,39 @@ function DetailItem({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap">
-        {value === 0 || value ? String(value) : "—"}
+      <p className="text-sm font-medium text-foreground whitespace-pre-wrap">
+        {value === 0 || value ? String(value) : "-"}
       </p>
     </div>
   );
 }
 
 function formatDateTime(value?: string | Date | null) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString();
 }
 
 export default function ServiceViewPage() {
   const params = useParams();
+  const pathname = usePathname();
   const router = useRouter();
   const id = params.id as string;
+  const isMechanicView = pathname.includes("/dashboard/mechanic");
   const queryClient = useQueryClient();
   const [saveError, setSaveError] = useState("");
   const [statusError, setStatusError] = useState("");
   const [assignError, setAssignError] = useState("");
   const [billError, setBillError] = useState("");
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [nextOdometer, setNextOdometer] = useState("");
+  const [nextServiceDate, setNextServiceDate] = useState("");
+  const [futureWorks, setFutureWorks] = useState("");
+  const [includeOnBill, setIncludeOnBill] = useState(true);
 
   const serviceQuery = useQuery({
     queryKey: ["service", id],
@@ -223,7 +235,12 @@ export default function ServiceViewPage() {
   });
 
   const billMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payload: {
+      nextServiceOdometer: string;
+      nextServiceAt?: string;
+      futureWorksNotes: string;
+      includeNextServiceOnBill: boolean;
+    }) => {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       if (!user.id) throw new Error("Please log in again");
       return createInvoiceDoc({
@@ -231,10 +248,15 @@ export default function ServiceViewPage() {
         generatedById: user.id,
         documentType: "BILL",
         completeJob: true,
+        nextServiceOdometer: payload.nextServiceOdometer || undefined,
+        nextServiceAt: payload.nextServiceAt || undefined,
+        futureWorksNotes: payload.futureWorksNotes || undefined,
+        includeNextServiceOnBill: payload.includeNextServiceOnBill,
       });
     },
     onSuccess: (invoice) => {
       setBillError("");
+      setShowBillModal(false);
       queryClient.invalidateQueries({ queryKey: ["service", id] });
       queryClient.invalidateQueries({ queryKey: ["services"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
@@ -251,6 +273,30 @@ export default function ServiceViewPage() {
       );
     },
   });
+
+  const openBillModal = () => {
+    setBillError("");
+    setNextOdometer(serviceQuery.data?.nextServiceOdometer || "");
+    const rawDate = serviceQuery.data?.nextServiceAt;
+    setNextServiceDate(
+      rawDate ? String(rawDate).slice(0, 10) : ""
+    );
+    setFutureWorks(serviceQuery.data?.futureWorksNotes || "");
+    setIncludeOnBill(
+      serviceQuery.data?.includeNextServiceOnBill !== false
+    );
+    setShowBillModal(true);
+  };
+
+  const submitBill = () => {
+    setBillError("");
+    billMutation.mutate({
+      nextServiceOdometer: nextOdometer.trim(),
+      nextServiceAt: nextServiceDate || undefined,
+      futureWorksNotes: futureWorks.trim(),
+      includeNextServiceOnBill: includeOnBill,
+    } as any);
+  };
 
   if (serviceQuery.isLoading) {
     return <p className="p-6">Loading job card...</p>;
@@ -269,41 +315,110 @@ export default function ServiceViewPage() {
   const mechanics = mechanicsQuery.data ?? [];
 
   const toggleMechanic = (mechanicId: string) => {
-    const next = assignedIds.includes(mechanicId)
-      ? assignedIds.filter((idValue) => idValue !== mechanicId)
-      : [...assignedIds, mechanicId];
-    assignMutation.mutate(next);
+    // Single assignee: click selected again to clear, otherwise replace
+    if (assignedIds.includes(mechanicId)) {
+      assignMutation.mutate([]);
+      return;
+    }
+    assignMutation.mutate([mechanicId]);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-end gap-4">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              router.push(`/dashboard/admin/services/${id}/estimate`)
-            }
-          >
-            Generate Estimate
-          </Button>
-          <Button
-            type="button"
-            disabled={items.length === 0 || billMutation.isPending}
-            onClick={() => billMutation.mutate()}
-          >
-            {billMutation.isPending ? "Generating..." : "Generate Bill"}
-          </Button>
-          <Link href={`/dashboard/admin/services/${id}/edit`}>
-            <Button variant="outline">Edit Job Card</Button>
-          </Link>
+      {!isMechanicView && (
+        <div className="flex flex-wrap items-start justify-end gap-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                router.push(`/dashboard/admin/services/${id}/estimate`)
+              }
+            >
+              Generate Estimate
+            </Button>
+            <Button
+              type="button"
+              disabled={items.length === 0 || billMutation.isPending}
+              onClick={openBillModal}
+            >
+              Generate Bill
+            </Button>
+            <Link href={`/dashboard/admin/services/${id}/edit`}>
+              <Button variant="outline">Edit Job Card</Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
-      {billError && <p className="text-sm text-red-600">{billError}</p>}
+      {!isMechanicView && showBillModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-xl bg-card p-6 shadow-xl">
+            <div>
+              <h2 className="text-lg font-semibold">Generate Bill</h2>
+              <p className="text-sm text-muted-foreground">
+                Optional next-service details are saved on the vehicle. Check
+                the box to print them on this invoice.
+              </p>
+            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">
+                Next service odometer
+              </span>
+              <Input
+                value={nextOdometer}
+                onChange={(e) => setNextOdometer(e.target.value)}
+                placeholder="e.g. 45200"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Next service date</span>
+              <Input
+                type="date"
+                value={nextServiceDate}
+                onChange={(e) => setNextServiceDate(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Future works</span>
+              <textarea
+                className="min-h-[80px] w-full rounded-lg border px-2.5 py-2 text-sm"
+                value={futureWorks}
+                onChange={(e) => setFutureWorks(e.target.value)}
+                placeholder="Recommended follow-up work..."
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeOnBill}
+                onChange={(e) => setIncludeOnBill(e.target.checked)}
+              />
+              Include these details on the bill
+            </label>
+            {billError && <p className="text-sm text-red-600">{billError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={billMutation.isPending}
+                onClick={() => setShowBillModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={billMutation.isPending}
+                onClick={submitBill}
+              >
+                {billMutation.isPending ? "Generating..." : "Create bill"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {(estimateDoc || billDoc) && (
+      {!isMechanicView && (estimateDoc || billDoc) && (
         <div className="flex flex-wrap gap-2">
           {estimateDoc && (
             <Link
@@ -318,7 +433,7 @@ export default function ServiceViewPage() {
               href={`/dashboard/admin/invoices/${billDoc.id}`}
               className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800"
             >
-              Bill {billDoc.invoiceNumber || ""} · {billDoc.paymentStatus}
+              Bill {billDoc.invoiceNumber || ""} Â· {billDoc.paymentStatus}
             </Link>
           )}
         </div>
@@ -327,76 +442,124 @@ export default function ServiceViewPage() {
       <Card className="space-y-6 p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Job Card No
             </p>
             <p className="text-xl font-semibold">
-              {service?.jobCardNumber || "—"}
+              {service?.jobCardNumber || "-"}
             </p>
           </div>
 
           <div className="w-full max-w-xs space-y-1">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Work Status
             </label>
-            <Select
-              value={normalizeJobCardStatus(service?.status)}
-              onValueChange={(value) => statusMutation.mutate(value)}
-              disabled={statusMutation.isPending}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                {JOB_CARD_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {statusMutation.isPending && (
-              <p className="text-xs text-slate-500">Updating status...</p>
+            {isMechanicView ? (
+              <div className="space-y-2">
+                <p className="rounded-md border bg-muted px-3 py-2 text-sm font-medium">
+                  {formatJobCardStatus(service?.status)}
+                </p>
+                {normalizeJobCardStatus(service?.status) === "ASSIGNED" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate("IN_PROGRESS")}
+                  >
+                    {statusMutation.isPending ? "Starting..." : "Start work"}
+                  </Button>
+                )}
+                {statusError && (
+                  <p className="text-xs text-red-600">{statusError}</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <Select
+                  value={normalizeJobCardStatus(service?.status)}
+                  onValueChange={(value) => statusMutation.mutate(value)}
+                  disabled={statusMutation.isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card">
+                    {JOB_CARD_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {statusMutation.isPending && (
+                  <p className="text-xs text-muted-foreground">Updating status...</p>
+                )}
+                {statusError && (
+                  <p className="text-xs text-red-600">{statusError}</p>
+                )}
+              </>
             )}
-            {statusError && <p className="text-xs text-red-600">{statusError}</p>}
           </div>
         </div>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold border-b pb-2">
-            Assign Workforce
-          </h2>
-          {mechanicsQuery.isLoading ? (
-            <p className="text-sm text-slate-500">Loading mechanics...</p>
-          ) : mechanics.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No mechanics found. Create users with mechanic role first.
+        {!isMechanicView && (
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold border-b pb-2">
+              Assign Workforce
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Select one mechanic for this job card.
             </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {mechanics.map((mechanic: any) => {
-                const selected = assignedIds.includes(mechanic.id);
-                return (
-                  <button
-                    key={mechanic.id}
-                    type="button"
-                    disabled={assignMutation.isPending}
-                    onClick={() => toggleMechanic(mechanic.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm ${
-                      selected
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    {mechanic.name}
-                    {mechanic.designation ? ` · ${mechanic.designation}` : ""}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {assignError && <p className="text-xs text-red-600">{assignError}</p>}
-        </section>
+            {mechanicsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading mechanics...</p>
+            ) : mechanics.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No mechanics found. Create users with mechanic role first.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {mechanics.map((mechanic: any) => {
+                  const selected = assignedIds.includes(mechanic.id);
+                  return (
+                    <button
+                      key={mechanic.id}
+                      type="button"
+                      disabled={assignMutation.isPending}
+                      onClick={() => toggleMechanic(mechanic.id)}
+                      className={`rounded-full border px-3 py-1.5 text-sm ${
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground/80"
+                      }`}
+                    >
+                      {mechanic.name}
+                      {mechanic.designation
+                        ? ` Â· ${mechanic.designation}`
+                        : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {assignError && (
+              <p className="text-xs text-red-600">{assignError}</p>
+            )}
+          </section>
+        )}
+
+        {isMechanicView && assignedIds.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-base font-semibold border-b pb-2">
+              Assigned workforce
+            </h2>
+            <p className="text-sm text-foreground/80">
+              {(service?.assignedMechanics ?? [])
+                .map((m: any) => m.name)
+                .filter(Boolean)
+                .join(", ") || "-"}
+            </p>
+          </section>
+        )}
 
         <section className="space-y-4">
           <h2 className="text-base font-semibold border-b pb-2">
@@ -467,7 +630,7 @@ export default function ServiceViewPage() {
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
         {saveMutation.isPending && (
-          <p className="text-sm text-slate-500">Saving items...</p>
+          <p className="text-sm text-muted-foreground">Saving items...</p>
         )}
       </Card>
     </div>

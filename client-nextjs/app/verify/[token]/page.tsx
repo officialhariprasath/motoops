@@ -43,18 +43,18 @@ export default function VerifyPage({ params }: VerifyPageProps) {
   }, [token]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-xl rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl sm:p-10">
-        <div className="mb-6 rounded-3xl border border-slate-100 bg-slate-50 px-6 py-5 text-slate-900 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Account verification</p>
+    <main className="min-h-screen bg-background px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-xl rounded-[32px] border border-border bg-card p-8 shadow-xl sm:p-10">
+        <div className="mb-6 rounded-3xl border border-border bg-muted px-6 py-5 text-foreground shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Account verification</p>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-100 bg-slate-100/80 p-6">
-            <h1 className="text-2xl font-semibold text-slate-900">
+          <div className="rounded-3xl border border-border bg-muted/80 p-6">
+            <h1 className="text-2xl font-semibold text-foreground">
               {verification === null ? "Verifying..." : verification.ok ? "Email verified" : "Verification failed"}
             </h1>
-            <p className={`mt-3 text-sm ${verification && !verification.ok ? "text-rose-600" : "text-slate-700"}`}>
+            <p className={`mt-3 text-sm ${verification && !verification.ok ? "text-rose-600" : "text-foreground/80"}`}>
               {verification ? verification.message : "Please wait while we verify your account."}
             </p>
           </div>
@@ -62,7 +62,7 @@ export default function VerifyPage({ params }: VerifyPageProps) {
           <div className="space-y-3">
             <Link
               href="/"
-              className="block rounded-2xl bg-slate-900 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="block rounded-2xl bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
             >
               Return to sign in
             </Link>

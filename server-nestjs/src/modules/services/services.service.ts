@@ -107,6 +107,12 @@ export class ServicesService {
       service.assignedMechanics = await this.userRepo.find({
         where: dto.assignedMechanicIds.map((id) => ({ id })),
       });
+      if (
+        !dto.status ||
+        dto.status === ServiceStatus.PENDING
+      ) {
+        service.status = ServiceStatus.ASSIGNED;
+      }
     }
 
     const savedService =  await this.serviceRepo.save(  service,  );
@@ -516,6 +522,45 @@ export class ServicesService {
       service.notes = dto.notes;
     }
 
+    if (dto.nextServiceOdometer !== undefined) {
+      service.nextServiceOdometer = dto.nextServiceOdometer;
+    }
+
+    if (dto.nextServiceAt !== undefined) {
+      service.nextServiceAt = dto.nextServiceAt
+        ? (dto.nextServiceAt as unknown as Date)
+        : undefined;
+    }
+
+    if (dto.futureWorksNotes !== undefined) {
+      service.futureWorksNotes = dto.futureWorksNotes;
+    }
+
+    if (dto.includeNextServiceOnBill !== undefined) {
+      service.includeNextServiceOnBill = Boolean(dto.includeNextServiceOnBill);
+    }
+
+    // Mirror next-service onto the vehicle for Vehicles list filters
+    if (
+      service.vehicle &&
+      (dto.nextServiceAt !== undefined ||
+        dto.nextServiceOdometer !== undefined ||
+        dto.futureWorksNotes !== undefined)
+    ) {
+      if (dto.nextServiceAt !== undefined) {
+        service.vehicle.nextServiceAt = dto.nextServiceAt
+          ? (dto.nextServiceAt as unknown as Date)
+          : undefined;
+      }
+      if (dto.nextServiceOdometer !== undefined) {
+        service.vehicle.nextServiceOdometer = dto.nextServiceOdometer || undefined;
+      }
+      if (dto.futureWorksNotes !== undefined) {
+        service.vehicle.futureWorksNotes = dto.futureWorksNotes || undefined;
+      }
+      await this.vehicleRepo.save(service.vehicle);
+    }
+
     if (dto.jobCardNumber !== undefined) {
       service.jobCardNumber = dto.jobCardNumber?.trim() || undefined;
     }
@@ -543,10 +588,19 @@ export class ServicesService {
     if (dto.assignedMechanicIds !== undefined) {
       if (!dto.assignedMechanicIds.length) {
         service.assignedMechanics = [];
+        if (service.status === ServiceStatus.ASSIGNED) {
+          service.status = ServiceStatus.PENDING;
+        }
       } else {
         service.assignedMechanics = await this.userRepo.find({
           where: dto.assignedMechanicIds.map((id) => ({ id })),
         });
+        if (
+          service.status === ServiceStatus.PENDING ||
+          !service.status
+        ) {
+          service.status = ServiceStatus.ASSIGNED;
+        }
       }
     }
 

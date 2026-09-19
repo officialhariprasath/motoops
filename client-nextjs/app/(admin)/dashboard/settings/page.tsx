@@ -122,7 +122,7 @@ export default function SettingsPage() {
       <Card>
         <CardContent className="space-y-4 p-6">
           <h2 className="font-semibold">Job Card Numbering</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Job card numbers are generated as prefix + year + month + date + daily serial.
             Example: JC202609180001
           </p>
@@ -136,9 +136,9 @@ export default function SettingsPage() {
             />
           </div>
 
-          <div className="rounded-md border bg-slate-50 px-4 py-3 text-sm">
-            <span className="text-slate-500">Next job card will be: </span>
-            <span className="font-semibold text-slate-900">{jobCardPreview}</span>
+          <div className="rounded-md border bg-muted px-4 py-3 text-sm">
+            <span className="text-muted-foreground">Next job card will be: </span>
+            <span className="font-semibold text-foreground">{jobCardPreview}</span>
           </div>
         </CardContent>
       </Card>
@@ -181,7 +181,7 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          <div className="rounded-lg border bg-slate-50 p-4">
+          <div className="rounded-lg border bg-muted p-4">
             <label className="flex items-start gap-3 text-sm">
               <input
                 type="checkbox"
@@ -192,10 +192,10 @@ export default function SettingsPage() {
                 }
               />
               <span>
-                <span className="block font-medium text-slate-800">
+                <span className="block font-medium text-foreground">
                   Enable notifications
                 </span>
-                <span className="mt-1 block text-slate-600">
+                <span className="mt-1 block text-muted-foreground">
                   Turn this off to disable all in-app notification alerts.
                 </span>
               </span>

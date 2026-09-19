@@ -38,6 +38,15 @@ export class InvoiceEntity {
   @Column({ default: 'unpaid' })
   paymentStatus!: PaymentStatus;
 
+  /** Snapshot of next-service block for A4 invoice print (BILL only). */
+  @Column({ type: 'simple-json', nullable: true })
+  billExtras?: {
+    includeNextServiceOnBill?: boolean;
+    nextServiceOdometer?: string;
+    nextServiceAt?: string | null;
+    futureWorksNotes?: string;
+  };
+
   @ManyToOne(() => ServiceEntity, (service) => service.invoices, {
     eager: true,
     onDelete: 'CASCADE',

@@ -120,7 +120,7 @@ export default function CustomerVehicleLookup({
     setPendingCustomer(null);
     setOwnerVehicles([]);
     setQuery(
-      `${vehicle.registrationNumber} — ${vehicle.owner?.name || customer?.name || ""}`
+      `${vehicle.registrationNumber} - ${vehicle.owner?.name || customer?.name || ""}`
     );
     onSelect({
       type: "vehicle",
@@ -142,7 +142,7 @@ export default function CustomerVehicleLookup({
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-sm font-semibold">Find existing customer / vehicle</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Search by name, mobile, JMC, registration, or JMV. Leave empty to create new.
           </p>
         </div>
@@ -166,24 +166,24 @@ export default function CustomerVehicleLookup({
         />
 
         {showSuggestions && query.trim().length >= 2 && (
-          <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-white shadow-lg">
+          <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
             {customerMatches.length > 0 && (
               <div className="border-b p-2">
-                <p className="mb-1 text-[11px] font-semibold uppercase text-slate-500">
+                <p className="mb-1 text-[11px] font-semibold uppercase text-muted-foreground">
                   Customers
                 </p>
                 {customerMatches.map((customer) => (
                   <button
                     key={customer.id}
                     type="button"
-                    className="block w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                    className="block w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => pickCustomer(customer)}
                   >
                     <span className="font-medium">{customer.name}</span>
-                    <span className="ml-2 text-slate-500">{customer.mobile}</span>
+                    <span className="ml-2 text-muted-foreground">{customer.mobile}</span>
                     {customer.customerCode && (
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-muted-foreground">
                         {customer.customerCode}
                       </span>
                     )}
@@ -194,30 +194,30 @@ export default function CustomerVehicleLookup({
 
             {vehicleMatches.length > 0 && (
               <div className="p-2">
-                <p className="mb-1 text-[11px] font-semibold uppercase text-slate-500">
+                <p className="mb-1 text-[11px] font-semibold uppercase text-muted-foreground">
                   Vehicles
                 </p>
                 {vehicleMatches.map((vehicle) => (
                   <button
                     key={vehicle.id}
                     type="button"
-                    className="block w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                    className="block w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => pickVehicle(vehicle)}
                   >
                     <span className="font-medium">
                       {vehicle.registrationNumber}
                     </span>
-                    <span className="ml-2 text-slate-500">
+                    <span className="ml-2 text-muted-foreground">
                       {[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}
                     </span>
                     {vehicle.vehicleCode && (
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-muted-foreground">
                         {vehicle.vehicleCode}
                       </span>
                     )}
                     {vehicle.owner?.name && (
-                      <span className="mt-0.5 block text-xs text-slate-500">
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
                         Owner: {vehicle.owner.name} ({vehicle.owner.mobile})
                       </span>
                     )}
@@ -229,7 +229,7 @@ export default function CustomerVehicleLookup({
             {customerMatches.length === 0 &&
               vehicleMatches.length === 0 &&
               !vehiclesQuery.isFetching && (
-                <p className="p-3 text-sm text-slate-500">
+                <p className="p-3 text-sm text-muted-foreground">
                   No matches. Continue typing new details below.
                 </p>
               )}
@@ -240,12 +240,12 @@ export default function CustomerVehicleLookup({
       {(selectedCustomerCode || selectedVehicleCode) && (
         <div className="flex flex-wrap gap-2 text-xs">
           {selectedCustomerCode && (
-            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+            <span className="rounded-full bg-muted px-3 py-1 font-medium">
               Customer ID: {selectedCustomerCode}
             </span>
           )}
           {selectedVehicleCode && (
-            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+            <span className="rounded-full bg-muted px-3 py-1 font-medium">
               Vehicle ID: {selectedVehicleCode}
             </span>
           )}
@@ -253,7 +253,7 @@ export default function CustomerVehicleLookup({
       )}
 
       {pendingCustomer && ownerVehicles.length > 1 && (
-        <div className="rounded-md border bg-slate-50 p-3">
+        <div className="rounded-md border bg-muted p-3">
           <p className="mb-2 text-sm font-medium">
             Select a vehicle for {pendingCustomer.name}
           </p>
@@ -262,15 +262,15 @@ export default function CustomerVehicleLookup({
               <button
                 key={vehicle.id}
                 type="button"
-                className="rounded-md border bg-white px-3 py-2 text-left text-sm hover:border-slate-400"
+                className="rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary/40"
                 onClick={() => pickVehicle(vehicle, pendingCustomer)}
               >
                 <span className="font-medium">{vehicle.registrationNumber}</span>
-                <span className="ml-2 text-slate-500">
+                <span className="ml-2 text-muted-foreground">
                   {[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}
                 </span>
                 {vehicle.vehicleCode && (
-                  <span className="ml-2 text-xs text-slate-400">
+                  <span className="ml-2 text-xs text-muted-foreground">
                     {vehicle.vehicleCode}
                   </span>
                 )}

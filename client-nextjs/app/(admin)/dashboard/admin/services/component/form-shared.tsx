@@ -53,7 +53,7 @@ export function UserSelect({
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
 
-          <SelectContent className="bg-white">
+          <SelectContent className="bg-card">
             {users.map((user) => (
               <SelectItem key={user.id} value={user.id}>
                 {user.name || user.email}

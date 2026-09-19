@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -64,7 +64,7 @@ export default function UpdateInvoicePaymentPage() {
 
     addNotification({
       title: "Payment updated",
-      message: `Paid amount set to ₹${formatMoney(paidAmount)}.`,
+      message: `Paid amount set to ?${formatMoney(paidAmount)}.`,
       category: "invoice",
     });
     setSaving(false);
@@ -88,15 +88,15 @@ export default function UpdateInvoicePaymentPage() {
     <div className="mx-auto max-w-xl p-6">
       <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border p-5">
         <div>
-          <p className="text-sm text-gray-500">Bill</p>
+          <p className="text-sm text-muted-foreground">Bill</p>
           <p className="font-semibold">
             {invoice.invoiceNumber || `#${invoice.id.slice(0, 8)}`}
           </p>
         </div>
 
         <div>
-          <p className="text-sm text-gray-500">Total Amount</p>
-          <p className="text-xl font-bold">₹{formatMoney(total)}</p>
+          <p className="text-sm text-muted-foreground">Total Amount</p>
+          <p className="text-xl font-bold">?{formatMoney(total)}</p>
         </div>
 
         <div>
@@ -112,18 +112,18 @@ export default function UpdateInvoicePaymentPage() {
             onChange={(e) => setPaidAmount(Number(e.target.value))}
             className="w-full rounded-md border px-3 py-2"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Enter the full amount paid so far. Status updates automatically.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg bg-gray-50 p-4">
-            <p className="text-sm text-gray-500">Due</p>
-            <p className="text-lg font-bold">₹{formatMoney(dueAmount)}</p>
+          <div className="rounded-lg bg-muted p-4">
+            <p className="text-sm text-muted-foreground">Due</p>
+            <p className="text-lg font-bold">?{formatMoney(dueAmount)}</p>
           </div>
-          <div className="rounded-lg bg-gray-50 p-4">
-            <p className="text-sm text-gray-500">Status</p>
+          <div className="rounded-lg bg-muted p-4">
+            <p className="text-sm text-muted-foreground">Status</p>
             <p className="text-lg font-bold capitalize">{previewStatus}</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function UpdateInvoicePaymentPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-md bg-black px-4 py-2 text-white disabled:opacity-60"
+            className="flex-1 rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save payment"}
           </button>

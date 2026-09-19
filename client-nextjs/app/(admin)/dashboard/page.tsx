@@ -47,7 +47,7 @@ function StatCard({
   const body = (
     <Card>
       <CardContent className="p-5">
-        <h2 className="text-sm font-medium text-gray-500">{label}</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">{label}</h2>
         <p className="mt-2 text-3xl font-bold">{value}</p>
       </CardContent>
     </Card>
@@ -103,6 +103,9 @@ export default function DashboardPage() {
       inProgress: services.filter(
         (s: any) => normalizeJobCardStatus(s.status) === "IN_PROGRESS"
       ).length,
+      assigned: services.filter(
+        (s: any) => normalizeJobCardStatus(s.status) === "ASSIGNED"
+      ).length,
       completed: services.filter((s: any) => s.status === "COMPLETED").length,
       pending: services.filter(
         (s: any) => normalizeJobCardStatus(s.status) === "PENDING"
@@ -137,25 +140,30 @@ export default function DashboardPage() {
         </Link>
         <Link
           href="/dashboard/admin/services/create"
-          className="rounded-md bg-black px-3 py-1.5 text-sm text-white"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
         >
           Create Job Card
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Today's job cards" value={stats.todayJobs} />
+        <StatCard
+          label="Unassigned"
+          value={stats.pending}
+          href="/dashboard/admin/services"
+        />
+        <StatCard
+          label="Assigned"
+          value={stats.assigned}
+          href="/dashboard/admin/services"
+        />
         <StatCard
           label="In progress"
           value={stats.inProgress}
           href="/dashboard/admin/services"
         />
         <StatCard label="Completed" value={stats.completed} />
-        <StatCard
-          label="Pending"
-          value={stats.pending}
-          href="/dashboard/admin/services"
-        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

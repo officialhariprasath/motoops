@@ -45,6 +45,16 @@ export class VehicleEntity {
   @Column({ nullable: true })
   mileage!: string;
 
+  /** Next due service (copied from job card when bill / next-service is saved). */
+  @Column({ type: 'date', nullable: true })
+  nextServiceAt?: Date;
+
+  @Column({ nullable: true })
+  nextServiceOdometer?: string;
+
+  @Column({ type: 'text', nullable: true })
+  futureWorksNotes?: string;
+
   @Column({ type: 'text', nullable: true })
   photoUrl?: string;
 

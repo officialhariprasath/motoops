@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OtherDetailsBlock } from "@/components/print/OtherDetailsBlock";
 import {
   calcLineAmounts,
   calcLineItemsTotal,
@@ -45,9 +46,9 @@ function readGarageSettings(): GarageSettings {
 }
 
 function formatEstimateDate(value?: string | Date | null) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
@@ -183,7 +184,7 @@ export default function EstimatePage() {
         </Button>
       </div>
       {saveMsg && (
-        <p className="text-sm text-slate-600 print:hidden">{saveMsg}</p>
+        <p className="text-sm text-muted-foreground print:hidden">{saveMsg}</p>
       )}
 
       <div
@@ -199,7 +200,7 @@ export default function EstimatePage() {
           }}
         >
           <div
-            className="estimate-sheet bg-white text-[9.5px] text-slate-900 shadow-md print:shadow-none"
+            className="estimate-sheet bg-card text-[9.5px] text-foreground shadow-md print:shadow-none"
             style={{
               width: `${A4_WIDTH_MM}mm`,
               minHeight: `${A4_HEIGHT_MM}mm`,
@@ -237,11 +238,11 @@ export default function EstimatePage() {
                   <div className="space-y-0.5">
                     <p>
                       <span className="inline-block w-14">Mr.</span>
-                      {service.customer?.name || "—"}
+                      {service.customer?.name || "-"}
                     </p>
                     <p>
                       <span className="inline-block w-14">Mobile</span>
-                      {service.customer?.mobile || "—"}
+                      {service.customer?.mobile || "-"}
                     </p>
                     {service.customer?.address && (
                       <p className="break-words whitespace-pre-wrap pl-14">
@@ -269,7 +270,7 @@ export default function EstimatePage() {
                       <span className="inline-block w-20 font-semibold">
                         VEHICLE NO
                       </span>
-                      {service.vehicle?.registrationNumber || "—"}
+                      {service.vehicle?.registrationNumber || "-"}
                     </p>
                   </div>
                 </div>
@@ -347,7 +348,7 @@ export default function EstimatePage() {
                       <tr>
                         <td
                           colSpan={8}
-                          className="border border-[#1d4f91] px-2 py-5 text-center text-slate-500"
+                          className="border border-[#1d4f91] px-2 py-5 text-center text-muted-foreground"
                         >
                           No items added on this job card.
                         </td>
@@ -374,20 +375,12 @@ export default function EstimatePage() {
               </div>
 
               <div className="mt-auto grid grid-cols-[1fr_120px] border-t border-[#1d4f91]">
-                <div className="space-y-1 border-r border-[#1d4f91] p-2.5">
-                  <p className="font-semibold">Other Details</p>
-                  <p>
-                    <span className="font-semibold">Payment Terms :</span>{" "}
-                    IMMEDIATE
-                  </p>
-                  <p>
-                    <span className="font-semibold">Notes :</span>{" "}
-                    {service.notes || settings.invoiceNote || ""}
-                  </p>
-                  <p className="pt-1 font-medium">
-                    {numberToWordsIndian(totalNet)}
-                  </p>
-                </div>
+                <OtherDetailsBlock
+                  notes={service.notes}
+                  invoiceNote={settings.invoiceNote}
+                  amountInWords={numberToWordsIndian(totalNet)}
+                  currentOdometer={service.vehicle?.mileage}
+                />
                 <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
                   <span className="font-bold">GRAND TOTAL</span>
                   <span className="text-sm font-bold">

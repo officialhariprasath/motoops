@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -158,7 +158,7 @@ export default function InvoicesPage() {
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
-              <SelectContent className="bg-white">
+              <SelectContent className="bg-card">
                 <SelectItem value="ALL">All types</SelectItem>
                 <SelectItem value="ESTIMATE">Estimate</SelectItem>
                 <SelectItem value="BILL">Bill</SelectItem>
@@ -168,7 +168,7 @@ export default function InvoicesPage() {
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Payment" />
               </SelectTrigger>
-              <SelectContent className="bg-white">
+              <SelectContent className="bg-card">
                 <SelectItem value="ALL">All payments</SelectItem>
                 <SelectItem value="unpaid">Unpaid</SelectItem>
                 <SelectItem value="partial">Partial</SelectItem>
@@ -180,7 +180,7 @@ export default function InvoicesPage() {
       />
 
       {!errorMessage && filteredInvoices.length === 0 && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+        <div className="rounded-md border border-border bg-muted px-4 py-6 text-sm text-muted-foreground">
           No invoices found.
         </div>
       )}
@@ -192,14 +192,14 @@ export default function InvoicesPage() {
             <Link
               key={inv.id}
               href={`/dashboard/admin/invoices/${inv.id}`}
-              className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300"
+              className="block rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/40"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {inv.invoiceNumber || inv.id.slice(0, 8)}
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {inv.service?.jobCardNumber || "Job card"}
                   </p>
                 </div>
@@ -207,31 +207,31 @@ export default function InvoicesPage() {
                   className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                     docType === "ESTIMATE"
                       ? "bg-sky-50 text-sky-800"
-                      : "bg-slate-900 text-white"
+                      : "bg-primary text-primary-foreground"
                   }`}
                 >
                   {docType === "ESTIMATE" ? "Estimate" : "Bill"}
                 </span>
               </div>
 
-              <div className="mt-3 space-y-1 text-sm text-slate-600">
-                <p>{inv.service?.customer?.name || "—"}</p>
+              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                <p>{inv.service?.customer?.name || "-"}</p>
                 <p>
-                  {inv.service?.vehicle?.registrationNumber || "—"}
+                  {inv.service?.vehicle?.registrationNumber || "-"}
                   {inv.service?.vehicle?.brand
-                    ? ` · ${inv.service.vehicle.brand}`
+                    ? ` Â· ${inv.service.vehicle.brand}`
                     : ""}
                 </p>
               </div>
 
               <div className="mt-4 flex items-end justify-between gap-2">
                 <div>
-                  <p className="text-lg font-semibold text-slate-900">
-                    ₹{formatMoney(inv.totalAmount)}
+                  <p className="text-lg font-semibold text-foreground">
+                    ?{formatMoney(inv.totalAmount)}
                   </p>
                   {docType === "BILL" && (
-                    <p className="text-xs text-slate-500">
-                      Paid ₹{formatMoney(inv.paidAmount)} · Due ₹
+                    <p className="text-xs text-muted-foreground">
+                      Paid ?{formatMoney(inv.paidAmount)} Â· Due ?
                       {formatMoney(inv.dueAmount)}
                     </p>
                   )}

@@ -54,43 +54,43 @@ export default function UserDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="moto-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Customer
             </p>
-            <p className="text-xl font-semibold">{customer.name || "—"}</p>
+            <p className="text-xl font-semibold">{customer.name || "-"}</p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
-            {customer.customerCode || "—"}
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+            {customer.customerCode || "-"}
           </span>
         </div>
         <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
           <p>
-            <span className="text-slate-500">Mobile: </span>
-            {customer.mobile || "—"}
+            <span className="text-muted-foreground">Mobile: </span>
+            {customer.mobile || "-"}
           </p>
           <p>
-            <span className="text-slate-500">Address: </span>
-            {customer.address || "—"}
+            <span className="text-muted-foreground">Address: </span>
+            {customer.address || "-"}
           </p>
         </div>
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium text-slate-600">
+        <p className="text-sm font-medium text-muted-foreground">
           Vehicles for this customer
         </p>
         {vehiclesQuery.isLoading ? (
-          <p className="text-sm text-slate-500">Loading vehicles...</p>
+          <p className="text-sm text-muted-foreground">Loading vehicles...</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {vehicles.map((vehicle: any) => (
               <VehicleSummaryCard key={vehicle.id} vehicle={vehicle} />
             ))}
             {vehicles.length === 0 && (
-              <div className="col-span-full rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
+              <div className="col-span-full rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                 No vehicles linked to this customer yet.
               </div>
             )}

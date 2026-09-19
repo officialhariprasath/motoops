@@ -6,6 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  formatJobCardStatus,
+  normalizeJobCardStatus,
+} from "@/lib/job-card-status";
 
 type ServiceWorkListProps = {
   mode: "mechanic" | "user";
@@ -28,6 +32,17 @@ async function getServices(mode: ServiceWorkListProps["mode"]) {
   }
 
   return json?.data ?? json ?? [];
+}
+
+async function updateJobStatus(serviceId: string, status: string) {
+  const res = await fetch(`/api/services/${serviceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Failed to update status");
+  return json?.data ?? json;
 }
 
 async function addComment({
@@ -119,6 +134,14 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
     },
   });
 
+  const startWorkMutation = useMutation({
+    mutationFn: ({ serviceId }: { serviceId: string }) =>
+      updateJobStatus(serviceId, "IN_PROGRESS"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [mode, "services"] });
+    },
+  });
+
   const services = useMemo(() => {
     const rows = query.data ?? [];
 
@@ -128,6 +151,13 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
 
     return rows
       .map((service: any) => {
+        const status = normalizeJobCardStatus(service.status);
+        const jobDone = status === "COMPLETED" || status === "CANCELLED";
+        const isActiveJob =
+          status === "ASSIGNED" ||
+          status === "IN_PROGRESS" ||
+          status === "PENDING";
+
         const taskFiltered = (service.tasks ?? []).filter((task: any) => {
           const subtasks = task.subtasks ?? [];
           const completedByStatus =
@@ -144,17 +174,14 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
           return taskFilter === "previous" ? isCompleted : !isCompleted;
         });
 
-        const jobDone = ["COMPLETED", "CANCELLED"].includes(
-          String(service.status || "").toUpperCase()
-        );
         const assignedOnly =
           taskFiltered.length === 0 &&
-          (service.assignedMechanics?.length > 0 ||
-            service.tasks?.length === 0);
+          ((service.assignedMechanics?.length ?? 0) > 0 ||
+            (service.tasks?.length ?? 0) === 0);
 
         if (assignedOnly) {
           if (taskFilter === "previous" && !jobDone) return null;
-          if (taskFilter === "active" && jobDone) return null;
+          if (taskFilter === "active" && (jobDone || !isActiveJob)) return null;
         } else if (taskFiltered.length === 0) {
           return null;
         }
@@ -178,14 +205,14 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
   return (
     <div className="space-y-6">
       {mode === "mechanic" && (
-        <div className="inline-flex rounded-md border bg-white p-1">
+        <div className="inline-flex rounded-md border border-border bg-card p-1">
           <button
             type="button"
             onClick={() => setTaskFilter("active")}
             className={`rounded px-4 py-2 text-sm font-medium ${
               taskFilter === "active"
-                ? "bg-black text-white"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-gray-100"
             }`}
           >
             Active Tasks
@@ -195,8 +222,8 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
             onClick={() => setTaskFilter("previous")}
             className={`rounded px-4 py-2 text-sm font-medium ${
               taskFilter === "previous"
-                ? "bg-black text-white"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-gray-100"
             }`}
           >
             Previous Tasks
@@ -205,7 +232,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
       )}
 
       {services.length === 0 && (
-        <div className="rounded-md border bg-white p-6 text-sm text-gray-500">
+        <div className="moto-card p-6 text-sm text-muted-foreground">
           No services found.
         </div>
       )}
@@ -219,48 +246,77 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                   <h2 className="text-lg font-semibold">
                     {service.vehicle?.registrationNumber || "No vehicle"}
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {service.vehicle?.brand} {service.vehicle?.model}
                   </p>
                   <p className="mt-2 text-sm">{service.problemDescription}</p>
                 </div>
 
-                <div className="text-right text-sm">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
-                    {service.status?.replaceAll("_", " ").toLowerCase()}
+                <div className="space-y-2 text-right text-sm">
+                  <span className="rounded-full bg-muted px-3 py-1 font-medium capitalize">
+                    {formatJobCardStatus(service.status)}
                   </span>
-                  <p className="mt-2 font-semibold">
+                  <p className="font-semibold">
                     Total: {Number(service.totalCost ?? 0).toFixed(2)}
                   </p>
+                  {mode === "mechanic" &&
+                    normalizeJobCardStatus(service.status) === "ASSIGNED" && (
+                      <div className="space-y-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={
+                            startWorkMutation.isPending &&
+                            startWorkMutation.variables?.serviceId ===
+                              service.id
+                          }
+                          onClick={() =>
+                            startWorkMutation.mutate({ serviceId: service.id })
+                          }
+                        >
+                          {startWorkMutation.isPending &&
+                          startWorkMutation.variables?.serviceId === service.id
+                            ? "Starting..."
+                            : "Start work"}
+                        </Button>
+                        {startWorkMutation.error instanceof Error &&
+                          startWorkMutation.variables?.serviceId ===
+                            service.id && (
+                            <p className="text-xs text-red-600">
+                              {startWorkMutation.error.message}
+                            </p>
+                          )}
+                      </div>
+                    )}
                 </div>
               </div>
 
               {service.vehicle && (
-                <div className="rounded-md border bg-slate-50 p-4">
+                <div className="rounded-md border bg-muted/60 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
                         Vehicle Information
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         Details needed before and during workshop service
                       </p>
                     </div>
 
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700">
+                    <span className="rounded-full bg-card px-3 py-1 text-xs font-medium text-foreground/80">
                       {service.vehicle.registrationNumber}
                     </span>
                   </div>
 
                   <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
                     <div>
-                      <p className="text-xs font-medium text-gray-500">Owner</p>
+                      <p className="text-xs font-medium text-muted-foreground">Owner</p>
                       <p className="font-medium">
                         {service.customer?.name ||
                           service.vehicle.owner?.name ||
                           "Not assigned"}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {service.customer?.mobile ||
                           service.vehicle.owner?.mobile ||
                           service.customer?.email ||
@@ -270,11 +326,11 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">Vehicle</p>
+                      <p className="text-xs font-medium text-muted-foreground">Vehicle</p>
                       <p className="font-medium">
                         {service.vehicle.brand} {service.vehicle.model}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {service.vehicle.year || "Year N/A"}
                         {service.vehicle.color
                           ? ` - ${service.vehicle.color}`
@@ -283,21 +339,21 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">Mileage</p>
+                      <p className="text-xs font-medium text-muted-foreground">Mileage</p>
                       <p className="font-medium">
                         {service.vehicle.mileage || "Not recorded"}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">VIN</p>
+                      <p className="text-xs font-medium text-muted-foreground">VIN</p>
                       <p className="break-all font-medium">
                         {service.vehicle.vinNumber || "Not recorded"}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Engine Number
                       </p>
                       <p className="break-all font-medium">
@@ -306,7 +362,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Chassis Number
                       </p>
                       <p className="break-all font-medium">
@@ -315,7 +371,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Service Date
                       </p>
                       <p className="font-medium">
@@ -324,7 +380,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Delivery Date
                       </p>
                       <p className="font-medium">
@@ -333,7 +389,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs font-medium text-gray-500">Status</p>
+                      <p className="text-xs font-medium text-muted-foreground">Status</p>
                       <p className="font-medium capitalize">
                         {service.status?.replaceAll("_", " ").toLowerCase()}
                       </p>
@@ -348,7 +404,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     <div className="flex flex-wrap justify-between gap-3">
                       <div>
                         <h3 className="font-semibold">{task.title}</h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           {task.description || "No task description"}
                         </p>
                       </div>
@@ -360,11 +416,11 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                     {task.subtasks?.length > 0 && (
                       <div className="mt-4">
                         <p className="text-sm font-medium">Work checklist</p>
-                        <div className="mt-2 space-y-3 text-sm text-gray-600">
+                        <div className="mt-2 space-y-3 text-sm text-muted-foreground">
                           {task.subtasks.map((subtask: any) => (
                             <div
                               key={subtask.id}
-                              className="rounded border bg-white p-3"
+                              className="rounded border border-border bg-card p-3"
                             >
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
@@ -376,7 +432,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                                   </p>
                                 </div>
                                 {subtask.assignedTo?.name && (
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-muted-foreground">
                                     Assigned to {subtask.assignedTo.name}
                                   </p>
                                 )}
@@ -485,10 +541,10 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                           {task.comments.map((comment: any) => (
                             <div
                               key={comment.id}
-                              className="rounded bg-slate-50 p-3 text-sm"
+                              className="rounded bg-muted/60 p-3 text-sm"
                             >
                               <p>{comment.message}</p>
-                              <p className="mt-1 text-xs text-gray-500">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {comment.createdBy?.name || "User"} -{" "}
                                 {comment.status || "comment"}
                               </p>
@@ -496,7 +552,7 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           No comments yet.
                         </p>
                       )}

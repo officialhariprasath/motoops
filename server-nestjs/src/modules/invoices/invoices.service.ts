@@ -9,6 +9,7 @@ import {
 } from './entities/invoice.entity';
 import { ServiceEntity, ServiceStatus } from '../services/entities/service.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { VehicleEntity } from '../vehicles/entities/vehicle.entity';
 import { CreateInvoiceDto, InvoiceDocumentTypeDto } from './dto/create-invoice.dto';
 
 function calcLineItemsTotal(
@@ -36,6 +37,9 @@ export class InvoicesService {
 
     @InjectRepository(UserEntity)
     private userRepo: Repository<UserEntity>,
+
+    @InjectRepository(VehicleEntity)
+    private vehicleRepo: Repository<VehicleEntity>,
   ) {}
 
   private paymentFromAmounts(total: number, paidAmount: number): {
@@ -99,6 +103,51 @@ export class InvoicesService {
     serviceRow.subtotal = total;
     serviceRow.totalCost = total;
     serviceRow.grandTotal = total;
+
+    // Prefer next-service fields from the create payload (bill modal), then DB
+    if (documentType === 'BILL') {
+      if (dto.nextServiceOdometer !== undefined) {
+        serviceRow.nextServiceOdometer = dto.nextServiceOdometer || undefined;
+      }
+      if (dto.nextServiceAt !== undefined) {
+        serviceRow.nextServiceAt = dto.nextServiceAt
+          ? (dto.nextServiceAt as unknown as Date)
+          : undefined;
+      }
+      if (dto.futureWorksNotes !== undefined) {
+        serviceRow.futureWorksNotes = dto.futureWorksNotes || undefined;
+      }
+      if (dto.includeNextServiceOnBill !== undefined) {
+        serviceRow.includeNextServiceOnBill = Boolean(
+          dto.includeNextServiceOnBill,
+        );
+      }
+
+      if (serviceRow.vehicle) {
+        if (dto.nextServiceAt !== undefined) {
+          serviceRow.vehicle.nextServiceAt = dto.nextServiceAt
+            ? (dto.nextServiceAt as unknown as Date)
+            : undefined;
+        } else if (serviceRow.nextServiceAt) {
+          serviceRow.vehicle.nextServiceAt = serviceRow.nextServiceAt;
+        }
+        if (dto.nextServiceOdometer !== undefined) {
+          serviceRow.vehicle.nextServiceOdometer =
+            dto.nextServiceOdometer || undefined;
+        } else if (serviceRow.nextServiceOdometer) {
+          serviceRow.vehicle.nextServiceOdometer =
+            serviceRow.nextServiceOdometer;
+        }
+        if (dto.futureWorksNotes !== undefined) {
+          serviceRow.vehicle.futureWorksNotes =
+            dto.futureWorksNotes || undefined;
+        } else if (serviceRow.futureWorksNotes) {
+          serviceRow.vehicle.futureWorksNotes = serviceRow.futureWorksNotes;
+        }
+        await this.vehicleRepo.save(serviceRow.vehicle);
+      }
+    }
+
     await this.serviceRepo.save(serviceRow);
 
     const existing = await this.invoiceRepo.findOne({
@@ -113,12 +162,46 @@ export class InvoicesService {
       documentType === 'ESTIMATE' ? 0 : Number(dto.paidAmount || 0);
     const amounts = this.paymentFromAmounts(total, paidForCreate);
 
+    const includeFlag =
+      dto.includeNextServiceOnBill !== undefined
+        ? Boolean(dto.includeNextServiceOnBill)
+        : Boolean(serviceRow.includeNextServiceOnBill);
+    const odometer =
+      dto.nextServiceOdometer !== undefined
+        ? dto.nextServiceOdometer || undefined
+        : serviceRow.nextServiceOdometer || undefined;
+    const nextAtRaw =
+      dto.nextServiceAt !== undefined
+        ? dto.nextServiceAt
+        : serviceRow.nextServiceAt
+          ? String(serviceRow.nextServiceAt).slice(0, 10)
+          : null;
+    const futureNotes =
+      dto.futureWorksNotes !== undefined
+        ? dto.futureWorksNotes || undefined
+        : serviceRow.futureWorksNotes || undefined;
+
+    const billExtras =
+      documentType === 'BILL'
+        ? {
+            includeNextServiceOnBill: includeFlag,
+            nextServiceOdometer: odometer,
+            nextServiceAt: nextAtRaw
+              ? String(nextAtRaw).slice(0, 10)
+              : null,
+            futureWorksNotes: futureNotes,
+          }
+        : undefined;
+
     if (existing) {
       existing.totalAmount = total;
       existing.paidAmount = amounts.paidAmount;
       existing.dueAmount = amounts.dueAmount;
       existing.paymentStatus = amounts.paymentStatus;
       existing.generatedBy = user;
+      if (billExtras) {
+        existing.billExtras = billExtras;
+      }
       if (!existing.invoiceNumber) {
         existing.invoiceNumber = await this.nextInvoiceNumber(documentType);
       }
@@ -143,6 +226,7 @@ export class InvoicesService {
       paidAmount: amounts.paidAmount,
       dueAmount: amounts.dueAmount,
       paymentStatus: amounts.paymentStatus,
+      billExtras,
     });
 
     const saved = await this.invoiceRepo.save(invoice);
