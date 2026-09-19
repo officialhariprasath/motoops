@@ -1,27 +1,60 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { Wrench } from "lucide-react";
-import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-function money(value: unknown) {
-  return Number(value ?? 0).toFixed(2);
+import { Button } from "@/components/ui/button";
+import {
+  calcLineAmounts,
+  calcLineItemsTotal,
+  formatMoney,
+  type JobCardLineItem,
+} from "@/lib/job-card-items";
+import { numberToWordsIndian } from "@/lib/job-card-status";
+
+const A4_WIDTH_MM = 210;
+const A4_HEIGHT_MM = 297;
+const MM_TO_PX = 96 / 25.4;
+
+type GarageSettings = {
+  garageName?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  gstin?: string;
+  invoiceNote?: string;
+};
+
+function readGarageSettings(): GarageSettings {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem("garageSettings") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function formatDocDate(value?: string | Date | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
 export default function InvoiceDetailsPage() {
   const params = useParams();
+  const router = useRouter();
   const invoiceId = params.id as string;
   const [invoice, setInvoice] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [garageSettings, setGarageSettings] = useState<any>({});
+  const [settings, setSettings] = useState<GarageSettings>({});
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    try {
-      setGarageSettings(JSON.parse(localStorage.getItem("garageSettings") || "{}"));
-    } catch {
-      setGarageSettings({});
-    }
+    setSettings(readGarageSettings());
   }, []);
 
   useEffect(() => {
@@ -31,13 +64,8 @@ export default function InvoiceDetailsPage() {
         if (data?.success === false) {
           throw new Error(data?.message || "Failed to load invoice");
         }
-
         const invoiceData = data?.data ?? data;
-
-        if (!invoiceData) {
-          throw new Error("Invoice not found");
-        }
-
+        if (!invoiceData) throw new Error("Invoice not found");
         setInvoice(invoiceData);
       })
       .catch((error) => {
@@ -47,29 +75,33 @@ export default function InvoiceDetailsPage() {
       });
   }, [invoiceId]);
 
-  const totals = useMemo(() => {
-    const tasks = invoice?.service?.tasks ?? [];
-    const labor = tasks.reduce(
-      (sum: number, task: any) =>
-        sum + Number(task.laborCost || 0) + Number(task.additionalCost || 0),
-      0
-    );
-    const parts = tasks.reduce(
-      (sum: number, task: any) => sum + Number(task.partsCost || 0),
-      0
-    );
+  useEffect(() => {
+    if (!invoice) return;
+    const el = wrapRef.current;
+    if (!el) return;
 
-    return {
-      labor,
-      parts,
-      subtotal: Number(invoice?.service?.subtotal ?? labor + parts),
-      discount: Number(invoice?.service?.discount ?? 0),
-      tax: Number(invoice?.service?.tax ?? 0),
-      total: Number(invoice?.totalAmount ?? 0),
-      paid: Number(invoice?.paidAmount ?? 0),
-      due: Number(invoice?.dueAmount ?? 0),
+    const updateScale = () => {
+      const available = el.clientWidth;
+      const pageWidthPx = A4_WIDTH_MM * MM_TO_PX;
+      setScale(Math.min(1, available / pageWidthPx));
     };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [invoice]);
+
+  const service = invoice?.service;
+  const items = useMemo(
+    () => (service?.lineItems ?? []) as JobCardLineItem[],
+    [service]
+  );
+  const totalNet = calcLineItemsTotal(items);
+  const totalAmount = items.reduce(
+    (sum, item) => sum + calcLineAmounts(item).amount,
+    0
+  );
 
   if (errorMessage) {
     return <p className="p-6 text-red-600">{errorMessage}</p>;
@@ -79,265 +111,364 @@ export default function InvoiceDetailsPage() {
     return <p className="p-6">Loading invoice...</p>;
   }
 
-  const service = invoice.service;
-  const tasks = service?.tasks ?? [];
+  const docType = invoice.documentType || "BILL";
+  const isEstimate = docType === "ESTIMATE";
+  const title = isEstimate ? "ESTIMATE" : "INVOICE";
+  const docNo =
+    invoice.invoiceNumber ||
+    String(service?.jobCardNumber || invoice.id || "")
+      .replace(/\D/g, "")
+      .slice(-6) ||
+    "000001";
+
+  const garageName = settings.garageName || "Auto Garage";
+  const garageAddress = settings.address || "";
+  const garagePhone = settings.phone || "";
+  const garageEmail = settings.email || "";
+
+  const pageWidthPx = A4_WIDTH_MM * MM_TO_PX;
+  const pageHeightPx = A4_HEIGHT_MM * MM_TO_PX;
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+        <Button type="button" variant="outline" onClick={() => router.back()}>
+          Back
+        </Button>
+        {service?.id && (
+          <Link href={`/dashboard/admin/services/${service.id}`}>
+            <Button type="button" variant="outline">
+              Open Job Card
+            </Button>
+          </Link>
+        )}
+        {!isEstimate && (
+          <Link href={`/dashboard/admin/invoices/${invoiceId}/payment`}>
+            <Button type="button" variant="outline">
+              Update Payment
+            </Button>
+          </Link>
+        )}
+        <Button type="button" onClick={() => window.print()}>
+          Download PDF
+        </Button>
+      </div>
+
+      <div
+        ref={wrapRef}
+        className="estimate-preview-wrap w-full print:block"
+        style={{ height: pageHeightPx * scale }}
+      >
+        <div
+          className="estimate-scale-layer mx-auto"
+          style={{
+            width: pageWidthPx * scale,
+            height: pageHeightPx * scale,
+          }}
+        >
+          <div
+            className="estimate-sheet bg-white text-[9.5px] text-slate-900 shadow-md print:shadow-none"
+            style={{
+              width: `${A4_WIDTH_MM}mm`,
+              minHeight: `${A4_HEIGHT_MM}mm`,
+              maxWidth: `${A4_WIDTH_MM}mm`,
+              boxSizing: "border-box",
+              padding: "8mm",
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            <div className="flex h-full min-h-[calc(297mm-16mm)] flex-col border border-[#1d4f91]">
+              <div className="border-b border-[#1d4f91] px-3 py-2.5 text-center">
+                <h2 className="text-[16px] font-bold tracking-wide text-[#1d4f91]">
+                  {garageName.toUpperCase()}
+                </h2>
+                {garageAddress && (
+                  <p className="mt-1 leading-snug">{garageAddress}</p>
+                )}
+                <p className="mt-0.5">
+                  {[
+                    garagePhone ? `Mobile: ${garagePhone}` : null,
+                    garageEmail ? `Email: ${garageEmail}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" | ")}
+                </p>
+                {settings.gstin && (
+                  <p className="mt-0.5 font-medium">GSTIN : {settings.gstin}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 border-b border-[#1d4f91]">
+                <div className="border-r border-[#1d4f91] p-2.5">
+                  <p className="mb-1.5 font-semibold">To</p>
+                  <div className="space-y-0.5">
+                    <p>
+                      <span className="inline-block w-14">Mr.</span>
+                      {service?.customer?.name || "—"}
+                    </p>
+                    <p>
+                      <span className="inline-block w-14">Mobile</span>
+                      {service?.customer?.mobile || "—"}
+                    </p>
+                    {service?.customer?.address && (
+                      <p className="break-words whitespace-pre-wrap pl-14">
+                        {service.customer.address}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="p-2.5">
+                  <p className="mb-2 text-center text-[12px] font-bold tracking-[0.18em]">
+                    {title}
+                  </p>
+                  <div className="space-y-0.5">
+                    <p>
+                      <span className="inline-block w-20 font-semibold">NO</span>
+                      {docNo}
+                    </p>
+                    <p>
+                      <span className="inline-block w-20 font-semibold">DATE</span>
+                      {formatDocDate(
+                        invoice.createdAt ||
+                          service?.jobCardAt ||
+                          service?.serviceDate
+                      )}
+                    </p>
+                    <p>
+                      <span className="inline-block w-20 font-semibold">
+                        VEHICLE NO
+                      </span>
+                      {service?.vehicle?.registrationNumber || "—"}
+                    </p>
+                    {!isEstimate && (
+                      <p>
+                        <span className="inline-block w-20 font-semibold">
+                          STATUS
+                        </span>
+                        <span className="capitalize">
+                          {invoice.paymentStatus || "unpaid"}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1">
+                <table className="w-full table-fixed border-collapse">
+                  <colgroup>
+                    <col style={{ width: "7%" }} />
+                    <col style={{ width: "30%" }} />
+                    <col style={{ width: "13%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr className="text-left">
+                      {[
+                        "SNo",
+                        "Item Description",
+                        "Quantity",
+                        "Rate",
+                        "Amount",
+                        "Dis%",
+                        "Dis-Amt",
+                        "Net-Amt",
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="border border-[#1d4f91] px-1 py-1 font-semibold"
+                        >
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, index) => {
+                      const { amount, discountAmount, netAmount } =
+                        calcLineAmounts(item);
+                      return (
+                        <tr key={item.id || index}>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-center">
+                            {index + 1}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 break-words uppercase">
+                            {item.description}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right whitespace-nowrap">
+                            {Number(item.quantity).toFixed(3)} NOS
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                            {formatMoney(item.rate)}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                            {formatMoney(amount)}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                            {item.discountPercent
+                              ? formatMoney(item.discountPercent)
+                              : ""}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                            {discountAmount ? formatMoney(discountAmount) : ""}
+                          </td>
+                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                            {formatMoney(netAmount)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {items.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="border border-[#1d4f91] px-2 py-5 text-center text-slate-500"
+                        >
+                          No items added on this job card.
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="font-semibold">
+                      <td
+                        className="border border-[#1d4f91] px-1 py-1 text-right"
+                        colSpan={4}
+                      >
+                        TOTAL
+                      </td>
+                      <td className="border border-[#1d4f91] px-1 py-1 text-right">
+                        {formatMoney(totalAmount)}
+                      </td>
+                      <td className="border border-[#1d4f91] px-1 py-1" />
+                      <td className="border border-[#1d4f91] px-1 py-1" />
+                      <td className="border border-[#1d4f91] px-1 py-1 text-right">
+                        {formatMoney(totalNet)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-auto grid grid-cols-[1fr_120px] border-t border-[#1d4f91]">
+                <div className="space-y-1 border-r border-[#1d4f91] p-2.5">
+                  <p className="font-semibold">Other Details</p>
+                  <p>
+                    <span className="font-semibold">Payment Terms :</span>{" "}
+                    IMMEDIATE
+                  </p>
+                  {!isEstimate && (
+                    <p>
+                      <span className="font-semibold">Paid / Due :</span> ₹
+                      {formatMoney(invoice.paidAmount)} / ₹
+                      {formatMoney(invoice.dueAmount)}
+                    </p>
+                  )}
+                  <p>
+                    <span className="font-semibold">Notes :</span>{" "}
+                    {service?.notes || settings.invoiceNote || ""}
+                  </p>
+                  <p className="pt-1 font-medium">
+                    {numberToWordsIndian(totalNet)}
+                  </p>
+                </div>
+                <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
+                  <span className="font-bold">GRAND TOTAL</span>
+                  <span className="text-sm font-bold">
+                    {formatMoney(totalNet)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 border-t border-[#1d4f91]">
+                <div className="border-r border-[#1d4f91] p-2.5">
+                  <p className="mb-1.5 font-semibold underline">
+                    Terms & Conditions
+                  </p>
+                  <ol className="list-decimal space-y-0.5 pl-3 text-[8.5px] leading-snug">
+                    <li>Subject to local jurisdiction only.</li>
+                    <li>
+                      Our responsibility ceases as soon as the goods leave our
+                      premises.
+                    </li>
+                    <li>
+                      Goods once sold will not be taken back or exchanged.
+                    </li>
+                  </ol>
+                </div>
+                <div className="border-r border-[#1d4f91] p-2.5">
+                  <p className="mb-8 font-semibold">
+                    Received the goods in good condition
+                  </p>
+                  <p>Signature Receiving Authority</p>
+                </div>
+                <div className="p-2.5 text-right">
+                  <p className="mb-8 font-semibold">
+                    For {garageName.toUpperCase()}
+                  </p>
+                  <p>Authorised Signatory</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+
+          html,
+          body {
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
           }
 
-          #invoice-print,
-          #invoice-print * {
-            visibility: visible;
+          .estimate-preview-wrap,
+          .estimate-scale-layer,
+          .estimate-sheet,
+          .estimate-sheet * {
+            visibility: visible !important;
           }
 
-          #invoice-print {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            border: 0 !important;
+          .estimate-preview-wrap,
+          .estimate-scale-layer {
+            width: 210mm !important;
+            height: auto !important;
+            margin: 0 !important;
+          }
+
+          .estimate-sheet {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            max-width: 210mm !important;
+            margin: 0 !important;
+            padding: 8mm !important;
             box-shadow: none !important;
+            transform: none !important;
           }
 
-          .no-print {
+          .print\\:hidden {
             display: none !important;
           }
         }
       `}</style>
-
-      <div
-        id="invoice-print"
-        className="space-y-8 rounded-lg border bg-white p-8 shadow-sm"
-      >
-        <header className="flex flex-wrap items-start justify-between gap-6 border-b pb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded bg-black text-white">
-              <Wrench size={28} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{garageSettings.garageName || "Auto Garage"}</h1>
-              <p className="text-sm text-gray-500">
-                Vehicle service and repair invoice
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <p className="text-3xl font-bold">INVOICE</p>
-            <p className="text-sm text-gray-500">#{invoice.id.slice(0, 8)}</p>
-            <p className="mt-2 text-sm">
-              {new Date(invoice.createdAt).toLocaleDateString()}
-            </p>
-            <span className="mt-2 inline-block rounded bg-slate-100 px-3 py-1 text-sm font-medium capitalize">
-              {invoice.paymentStatus}
-            </span>
-          </div>
-        </header>
-
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded border p-4">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Bill To
-            </p>
-            <p className="mt-2 font-semibold">{service?.customer?.name}</p>
-            <p className="text-sm text-gray-600">{service?.customer?.email}</p>
-            <p className="text-sm text-gray-600">{service?.customer?.mobile}</p>
-          </div>
-
-          <div className="rounded border p-4">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Vehicle
-            </p>
-            <p className="mt-2 font-semibold">
-              {service?.vehicle?.registrationNumber}
-            </p>
-            <p className="text-sm text-gray-600">
-              {service?.vehicle?.brand} {service?.vehicle?.model}
-            </p>
-            <p className="text-sm text-gray-600">
-              VIN: {service?.vehicle?.vinNumber || "N/A"}
-            </p>
-          </div>
-
-          <div className="rounded border p-4">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Service
-            </p>
-            <p className="mt-2 text-sm">Status: {service?.status}</p>
-            <p className="text-sm">Service Date: {service?.serviceDate}</p>
-            <p className="text-sm">Delivery Date: {service?.deliveryDate}</p>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Service Breakdown</h2>
-          <div className="overflow-hidden rounded border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="p-3">Task</th>
-                  <th className="p-3">Completed / Needed Work</th>
-                  <th className="p-3 text-right">Labour Cost</th>
-                  <th className="p-3 text-right">Parts</th>
-                  <th className="p-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task: any) => {
-                  const labourCost =
-                    Number(task.laborCost || 0) +
-                    Number(task.additionalCost || 0);
-
-                  return (
-                    <tr key={task.id} className="border-t align-top">
-                      <td className="p-3">
-                        <p className="font-medium">{task.title}</p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {task.description || "No description"}
-                        </p>
-                      </td>
-                      <td className="p-3">
-                        {task.subtasks?.length ? (
-                          <ul className="space-y-1">
-                            {task.subtasks.map((subtask: any) => (
-                              <li key={subtask.id}>
-                                {subtask.title} - {subtask.status} (
-                                {subtask.progress ?? 0}%)
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <span className="text-gray-500">No subtasks</span>
-                        )}
-
-                        {task.parts?.length > 0 && (
-                          <div className="mt-3">
-                            <p className="font-medium">Parts needed</p>
-                            <ul className="mt-1 space-y-1 text-xs text-gray-600">
-                              {task.parts.map((part: any) => (
-                                <li key={part.id}>
-                                  {part.name} x {part.quantity} @{" "}
-                                  {money(part.unitPrice)} ={" "}
-                                  {money(part.totalPrice)}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">{money(labourCost)}</td>
-                      <td className="p-3 text-right">{money(task.partsCost)}</td>
-                      <td className="p-3 text-right font-medium">
-                        {money(task.totalCost)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {((service?.damagePhotoUrls?.length ?? 0) > 0 || (service?.repairProofPhotoUrls?.length ?? 0) > 0) && (
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">Uploaded Service Photos</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {service?.damagePhotoUrls?.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Damage Photos</p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {service.damagePhotoUrls.map((photo: string, index: number) => (
-                      <img key={index} src={photo} alt={`Damage ${index + 1}`} className="h-36 w-full rounded border object-cover" />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {service?.repairProofPhotoUrls?.length > 0 && (
-                <div>
-                  <p className="mb-2 font-medium">Repair Proof Photos</p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {service.repairProofPhotoUrls.map((photo: string, index: number) => (
-                      <img key={index} src={photo} alt={`Repair proof ${index + 1}`} className="h-36 w-full rounded border object-cover" />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        <section className="grid gap-6 md:grid-cols-[1fr_320px]">
-          <div className="rounded border p-4">
-            <p className="font-semibold">Problem / Notes</p>
-            <p className="mt-2 text-sm text-gray-600">
-              {service?.problemDescription || "No problem description"}
-            </p>
-            <p className="mt-2 text-sm text-gray-600">
-              {service?.notes || "No notes"}
-            </p>
-          </div>
-
-          <div className="space-y-2 rounded border p-4 text-sm">
-            <div className="flex justify-between">
-              <span>Labour Cost</span>
-              <span>{money(totals.labor)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Parts Cost</span>
-              <span>{money(totals.parts)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span>Subtotal</span>
-              <span>{money(totals.subtotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Discount</span>
-              <span>-{money(totals.discount)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax</span>
-              <span>{money(totals.tax)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2 text-base font-bold">
-              <span>Total</span>
-              <span>{money(totals.total)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Paid</span>
-              <span>{money(totals.paid)}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold">
-              <span>Due</span>
-              <span>{money(totals.due)}</span>
-            </div>
-          </div>
-        </section>
-
-        <footer className="border-t pt-4 text-center text-xs text-gray-500">
-          {garageSettings.invoiceNote || "Thank you for choosing Auto Garage."}
-        </footer>
-      </div>
-
-      <div className="no-print mt-6 flex flex-wrap gap-3">
-        <button
-          onClick={() => downloadInvoicePdf(invoice, totals)}
-          className="rounded bg-blue-600 px-4 py-2 text-white"
-        >
-          Download PDF
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="rounded bg-black px-4 py-2 text-white"
-        >
-          Print Invoice
-        </button>
-      </div>
     </div>
   );
 }
-
-

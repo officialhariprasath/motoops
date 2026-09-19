@@ -32,6 +32,13 @@ backend/.env
 
 # frontend env
 frontend/.env
+client-nextjs/.env
+client-nextjs/.env.local
+server-nestjs/.env
+
+# generated agent docs
+client-nextjs/AGENTS.md
+client-nextjs/CLAUDE.md
 
 # =========================
 # LOG FILES

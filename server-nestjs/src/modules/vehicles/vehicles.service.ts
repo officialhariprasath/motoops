@@ -139,6 +139,8 @@ export class VehiclesService {
       .orWhere("vehicle.model ILIKE :q", { q: search })
       .orWhere("owner.name ILIKE :q", { q: search })
       .orWhere("owner.mobile ILIKE :q", { q: search })
+      .orWhere("vehicle.vehicleCode ILIKE :q", { q: search })
+      .orWhere("owner.customerCode ILIKE :q", { q: search })
       .take(20)
       .getMany();
 

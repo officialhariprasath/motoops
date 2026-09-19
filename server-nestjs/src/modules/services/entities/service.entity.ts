@@ -1,4 +1,4 @@
-﻿import {
+import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -46,6 +46,24 @@ export class ServiceEntity {
     type: 'text',
   })
   notes!: string;
+
+  @Column({ unique: true, nullable: true })
+  jobCardNumber?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  jobCardAt?: Date;
+
+  @Column({ type: 'int', default: 0 })
+  petrolLevel!: number;
+
+  @Column({ type: 'simple-json', nullable: true })
+  lineItems?: Array<{
+    id: string;
+    description: string;
+    rate: number;
+    quantity: number;
+    discountPercent: number;
+  }>;
 
   @Column({ type: 'simple-json', nullable: true })
   damagePhotoUrls?: string[];
@@ -131,6 +149,13 @@ export class ServiceEntity {
     eager: true,
   })
   createdBy!: UserEntity;
+
+  // ---------------- ASSIGNED MECHANICS ----------------
+  @ManyToMany(() => UserEntity, { eager: true })
+  @JoinTable({
+    name: 'service_assigned_mechanics',
+  })
+  assignedMechanics!: UserEntity[];
 
   // ---------------- SERVICE Tasks ----------------
   @OneToMany(() => ServiceTaskEntity, (task) => task.service, {

@@ -1,0 +1,42 @@
+# Render Blueprint — MotoOps (garage billing)
+# Same pattern as Finance Flow:
+#   - API on Render (free web service)
+#   - Postgres on Neon (external) — set DATABASE_URL in the Render dashboard
+# Frontend: deploy client-nextjs on Vercel (see DEPLOY.md)
+
+services:
+  - type: web
+    name: motoops-api
+    region: singapore
+    plan: free
+    runtime: node
+    rootDir: server-nestjs
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: "true"
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: TYPEORM_SYNC
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 3600s
+      - key: ENABLE_CORS
+        # Add your Vercel URL after frontend deploy (comma-separated, no spaces)
+        value: http://localhost:3000

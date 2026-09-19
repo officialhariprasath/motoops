@@ -5,17 +5,26 @@ import {
   ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 import { ServiceEntity } from '../../services/entities/service.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial';
+export type InvoiceDocumentType = 'ESTIMATE' | 'BILL';
 
 @Entity('invoices')
+@Index(['service', 'documentType'], { unique: true })
 export class InvoiceEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ unique: true, nullable: true })
+  invoiceNumber?: string;
+
+  @Column({ type: 'varchar', default: 'BILL' })
+  documentType!: InvoiceDocumentType;
 
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   totalAmount!: number;

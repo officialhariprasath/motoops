@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -7,39 +7,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
-import { ATTENDANCE_UPDATED_EVENT } from "@/lib/attendance-settings";
 import ImageUploadField from "@/components/dashboard/ImageUploadField";
-import { notificationCategories } from "@/lib/notifications";
-
-const weekDays = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-];
+import { previewJobCardNumber } from "@/lib/job-card-settings";
 
 const defaultSettings = {
   garageName: "Auto Garage",
   phone: "",
   email: "",
   address: "",
+  gstin: "",
   invoiceNote: "Thank you for choosing Auto Garage.",
   invoiceLogoUrl: "",
+  jobCardPrefix: "JC",
   deleteActionsEnabled: false,
   listPageSize: 10,
   passwordEditingEnabled: false,
   notificationsEnabled: true,
-  notificationService: true,
-  notificationInvoice: true,
-  notificationPayment: true,
-  notificationProcurement: true,
-  notificationAttendance: true,
-  weeklyOffDays: [5],
-  governmentHolidays: "",
-  leaveTypes: "Sick Leave\nCasual Leave\nAnnual Leave\nEmergency Leave",
 };
 
 export default function SettingsPage() {
@@ -57,33 +40,16 @@ export default function SettingsPage() {
     setSettings((current) => ({ ...current, [field]: value }));
   };
 
-  const toggleWeeklyOffDay = (day: number) => {
-    setSettings((current) => {
-      const currentDays = current.weeklyOffDays ?? [];
-      const nextDays = currentDays.includes(day)
-        ? currentDays.filter((item) => item !== day)
-        : [...currentDays, day].sort();
-
-      return { ...current, weeklyOffDays: nextDays };
-    });
-  };
-
   const saveSettings = () => {
     localStorage.setItem("garageSettings", JSON.stringify(settings));
     window.dispatchEvent(new Event(DELETE_ACTIONS_UPDATED_EVENT));
-    window.dispatchEvent(new Event(ATTENDANCE_UPDATED_EVENT));
     setMessage("Settings saved.");
   };
 
+  const jobCardPreview = previewJobCardNumber(settings.jobCardPrefix);
+
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-gray-500">
-          Manage garage profile, attendance policy, and safety controls.
-        </p>
-      </div>
-
       {message && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           {message}
@@ -128,17 +94,22 @@ export default function SettingsPage() {
             />
           </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium">GSTIN</label>
+            <Input
+              value={settings.gstin}
+              onChange={(event) => updateField("gstin", event.target.value)}
+              placeholder="e.g. 33BQSPR3178M1ZZ"
+            />
+          </div>
+
           <ImageUploadField
             label="Invoice Logo"
             value={settings.invoiceLogoUrl}
             onChange={(value) => updateField("invoiceLogoUrl", value)}
           />
 
-
-
           <div>
-
-
             <label className="mb-1 block text-sm font-medium">Invoice Note</label>
             <Textarea
               value={settings.invoiceNote}
@@ -150,52 +121,24 @@ export default function SettingsPage() {
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-semibold">Attendance Policy</h2>
+          <h2 className="font-semibold">Job Card Numbering</h2>
           <p className="text-sm text-gray-500">
-            Configure this for the country or region where the garage operates.
+            Job card numbers are generated as prefix + year + month + date + daily serial.
+            Example: JC202609180001
           </p>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">Weekly Off Days</label>
-            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
-              {weekDays.map((day) => (
-                <label key={day.value} className="flex items-center gap-2 rounded-md border p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={settings.weeklyOffDays.includes(day.value)}
-                    onChange={() => toggleWeeklyOffDay(day.value)}
-                  />
-                  {day.label}
-                </label>
-              ))}
-            </div>
+            <label className="mb-1 block text-sm font-medium">Job Card Prefix</label>
+            <Input
+              value={settings.jobCardPrefix}
+              onChange={(event) => updateField("jobCardPrefix", event.target.value)}
+              placeholder="JC"
+            />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Government Holidays
-            </label>
-            <Textarea
-              value={settings.governmentHolidays}
-              onChange={(event) => updateField("governmentHolidays", event.target.value)}
-              placeholder="2026-02-21&#10;2026-03-26&#10;2026-12-16"
-              className="min-h-28"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Enter one date per line in YYYY-MM-DD format. Commas also work.
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Leave Types</label>
-            <Textarea
-              value={settings.leaveTypes}
-              onChange={(event) => updateField("leaveTypes", event.target.value)}
-              className="min-h-28"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Mechanics will choose from these leave types when requesting future leave.
-            </p>
+          <div className="rounded-md border bg-slate-50 px-4 py-3 text-sm">
+            <span className="text-slate-500">Next job card will be: </span>
+            <span className="font-semibold text-slate-900">{jobCardPreview}</span>
           </div>
         </CardContent>
       </Card>
@@ -211,7 +154,9 @@ export default function SettingsPage() {
               min={1}
               max={100}
               value={settings.listPageSize}
-              onChange={(event) => updateField("listPageSize", Number(event.target.value))}
+              onChange={(event) =>
+                updateField("listPageSize", Number(event.target.value))
+              }
             />
           </div>
 
@@ -221,10 +166,14 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-1 h-4 w-4"
                 checked={settings.passwordEditingEnabled}
-                onChange={(event) => updateField("passwordEditingEnabled", event.target.checked)}
+                onChange={(event) =>
+                  updateField("passwordEditingEnabled", event.target.checked)
+                }
               />
               <span>
-                <span className="block font-medium text-amber-800">Enable password editing</span>
+                <span className="block font-medium text-amber-800">
+                  Enable password editing
+                </span>
                 <span className="mt-1 block text-amber-700">
                   Keep this off unless you intentionally want password updates from forms.
                 </span>
@@ -238,40 +187,19 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-1 h-4 w-4"
                 checked={settings.notificationsEnabled}
-                onChange={(event) => updateField("notificationsEnabled", event.target.checked)}
+                onChange={(event) =>
+                  updateField("notificationsEnabled", event.target.checked)
+                }
               />
               <span>
-                <span className="block font-medium text-slate-800">Enable notifications</span>
+                <span className="block font-medium text-slate-800">
+                  Enable notifications
+                </span>
                 <span className="mt-1 block text-slate-600">
                   Turn this off to disable all in-app notification alerts.
                 </span>
               </span>
             </label>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Notification Preferences</h3>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {notificationCategories.map((category) => {
-                const settingKey = `notification${category.key.charAt(0).toUpperCase()}${category.key.slice(1)}` as keyof typeof defaultSettings;
-
-                return (
-                  <label key={category.key} className="flex items-start gap-3 rounded-md border p-3 text-sm">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={Boolean(settings[settingKey])}
-                      disabled={!settings.notificationsEnabled}
-                      onChange={(event) => updateField(settingKey, event.target.checked)}
-                    />
-                    <span>
-                      <span className="block font-medium">{category.label}</span>
-                      <span className="mt-1 block text-xs text-gray-500">{category.description}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
           </div>
 
           <div className="rounded-lg border border-red-100 bg-red-50 p-4">
@@ -280,10 +208,14 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-1 h-4 w-4"
                 checked={settings.deleteActionsEnabled}
-                onChange={(event) => updateField("deleteActionsEnabled", event.target.checked)}
+                onChange={(event) =>
+                  updateField("deleteActionsEnabled", event.target.checked)
+                }
               />
               <span>
-                <span className="block font-medium text-red-700">Enable delete actions</span>
+                <span className="block font-medium text-red-700">
+                  Enable delete actions
+                </span>
                 <span className="mt-1 block text-red-600">
                   Keep this off during demos to prevent accidental data removal.
                 </span>
@@ -296,22 +228,6 @@ export default function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <h2 className="font-semibold">Suggested Future Enhancements</h2>
-          <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-600">
-            <li>Persist attendance and leave requests in PostgreSQL.</li>
-            <li>Add yearly leave balance per mechanic.</li>
-            <li>Add overtime and late arrival tracking.</li>
-            <li>Add shift templates for morning/evening workshop teams.</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
-
-
-

@@ -15,6 +15,9 @@ export class VehicleEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ unique: true, nullable: true })
+  vehicleCode?: string;
+
   @Column({ unique: true })
   registrationNumber!: string;
 

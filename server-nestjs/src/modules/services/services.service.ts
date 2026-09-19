@@ -1,25 +1,30 @@
-﻿// File: src/modules/services/services.service.ts
+// File: src/modules/services/services.service.ts
 
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 
 import {
   Repository,
+  ILike,
 } from 'typeorm';
 
 import {  ServiceEntity,  ServiceStatus,} from './entities/service.entity';
 import {  ServiceTaskEntity,} from './entities/service-task.entity';
 import {  VehicleEntity,} from '../vehicles/entities/vehicle.entity';
 import {  UserEntity,} from '../users/entities/user.entity';
+import { Role } from '../users/enums/role.enum';
 import {  CreateServiceDto, SubTaskStatus} from './dto/create-service.dto';
 import {  UpdateServiceDto,} from './dto/updateService.dto';
 import { TaskPartEntity } from './entities/task-part.entity';
 import { ServiceSubTaskEntity } from './entities/service-subtask.entity';
 import { ServiceTaskCommentEntity } from './entities/service-task-comment.entity';
+import * as bcrypt from 'bcrypt';
 
 
 @Injectable()
@@ -52,72 +57,57 @@ export class ServicesService {
   // ======================================================
 
   async create(dto: CreateServiceDto) {
-    // ---------------- VEHICLE ----------------
-
-    const vehicle =
-      await this.vehicleRepo.findOne({
-        where: {
-          id: dto.vehicleId,
-        },
-      });
-
-    if (!vehicle) {
-      throw new NotFoundException(
-        'Vehicle not found',
-      );
-    }
-
-    // ---------------- CUSTOMER ----------------
-
-    const customer =
-      await this.userRepo.findOne({
-        where: {
-          id: dto.customerId,
-        },
-      });
-
-    if (!customer) {
-      throw new NotFoundException(
-        'Customer not found',
-      );
-    }
-
-    // ---------------- CREATED BY ----------------
-
-    const createdBy =
-      await this.userRepo.findOne({
-        where: {
-          id: dto.createdById,
-        },
-      });
+    const createdBy = await this.userRepo.findOne({
+      where: { id: dto.createdById },
+    });
 
     if (!createdBy) {
-      throw new NotFoundException(
-        'Created by user not found',
-      );
+      throw new NotFoundException('Created by user not found');
     }
 
-    // ======================================================
-    // CREATE SERVICE
-    // ======================================================
+    const { vehicle, customer } = await this.resolveVehicleAndCustomer(dto);
 
-    const service =
-      this.serviceRepo.create({
-        status:dto.status ||  ServiceStatus.PENDING,
-        problemDescription:dto.problemDescription,
-        notes: dto.notes,
-        damagePhotoUrls: dto.damagePhotoUrls ?? [],
-        repairProofPhotoUrls: dto.repairProofPhotoUrls ?? [],
-        serviceDate:  dto.serviceDate,
-        deliveryDate:  dto.deliveryDate,
-        discount:  dto.discount || 0,
-        tax: dto.tax || 0,
-        subtotal: 0,
-        totalCost: 0,
-        vehicle,
-        customer,
-        createdBy,
+    if (dto.jobCardNumber?.trim()) {
+      const existing = await this.serviceRepo.findOne({
+        where: { jobCardNumber: dto.jobCardNumber.trim() },
       });
+      if (existing) {
+        throw new ConflictException('Job card number already exists');
+      }
+    }
+
+    const jobCardAt = dto.jobCardAt ? new Date(dto.jobCardAt) : new Date();
+    const serviceDate =
+      dto.serviceDate ??
+      (jobCardAt.toISOString().slice(0, 10) as unknown as Date);
+
+    const service = this.serviceRepo.create({
+      status: dto.status || ServiceStatus.PENDING,
+      problemDescription: dto.problemDescription,
+      notes: dto.notes,
+      jobCardNumber: dto.jobCardNumber?.trim() || undefined,
+      jobCardAt,
+      petrolLevel: dto.petrolLevel ?? 0,
+      lineItems: dto.lineItems ?? [],
+      damagePhotoUrls: [],
+      repairProofPhotoUrls: [],
+      serviceDate,
+      deliveryDate: dto.deliveryDate,
+      discount: 0,
+      tax: 0,
+      subtotal: 0,
+      totalCost: 0,
+      vehicle,
+      customer,
+      createdBy,
+      assignedMechanics: [],
+    });
+
+    if (dto.assignedMechanicIds?.length) {
+      service.assignedMechanics = await this.userRepo.find({
+        where: dto.assignedMechanicIds.map((id) => ({ id })),
+      });
+    }
 
     const savedService =  await this.serviceRepo.save(  service,  );
 
@@ -321,6 +311,11 @@ export class ServicesService {
     );
 
     qb.leftJoinAndSelect(
+      'service.assignedMechanics',
+      'assignedMechanics',
+    );
+
+    qb.leftJoinAndSelect(
       'service.tasks',
       'tasks',
     );
@@ -397,6 +392,7 @@ export class ServicesService {
         (
           accountableTechnician.id = :technicianId
           OR mechanics.id = :technicianId
+          OR assignedMechanics.id = :technicianId
         )
         `,
         {
@@ -429,6 +425,7 @@ export class ServicesService {
           'vehicle',
           'customer',
           'createdBy',
+          'assignedMechanics',
 
           'tasks',
           'tasks.accountableTechnician',
@@ -448,31 +445,38 @@ export class ServicesService {
       );
     }
 
-    // ======================================================
-    // RECALCULATE TOTALS
-    // ======================================================
+    const lineTotal = (service.lineItems || []).reduce((sum, item) => {
+      const amount = Number(item.rate || 0) * Number(item.quantity || 0);
+      const discountAmount =
+        amount * (Number(item.discountPercent || 0) / 100);
+      return sum + (amount - discountAmount);
+    }, 0);
 
-    let laborCost = 0;
-    let partsCost = 0;
-    let subtotal = 0;
+    if ((service.lineItems || []).length > 0) {
+      service.subtotal = lineTotal;
+      service.totalCost = lineTotal;
+      service.grandTotal = lineTotal;
+    } else {
+      let laborCost = 0;
+      let partsCost = 0;
+      let subtotal = 0;
 
-    for (const task of service.tasks) {
-      laborCost += Number(task.laborCost || 0);
-      partsCost += Number(task.partsCost || 0);
-      subtotal += Number(task.totalCost || 0);
+      for (const task of service.tasks || []) {
+        laborCost += Number(task.laborCost || 0);
+        partsCost += Number(task.partsCost || 0);
+        subtotal += Number(task.totalCost || 0);
+      }
+
+      service.laborCost = laborCost;
+      service.partsCost = partsCost;
+      service.subtotal = subtotal;
+
+      const discount = Number(service.discount || 0);
+      const tax = Number(service.tax || 0);
+
+      service.totalCost = subtotal - discount + tax;
+      service.grandTotal = service.totalCost;
     }
-
-    service.laborCost = laborCost;
-    service.partsCost = partsCost;
-    service.subtotal = subtotal;
-
-    const discount = Number(service.discount || 0);
-    const tax = Number(service.tax || 0);
-
-    service.totalCost = subtotal - discount + tax;
-    service.grandTotal = service.totalCost;
-
-    await this.serviceRepo.save(service); // saving
 
     return service;
   }
@@ -485,7 +489,7 @@ export class ServicesService {
   ) {
     const service = await this.serviceRepo.findOne({
       where: { id },
-      relations: ["createdBy"],
+      relations: ["createdBy", "customer", "vehicle", "assignedMechanics"],
     });
 
     if (!service) {
@@ -512,12 +516,69 @@ export class ServicesService {
       service.notes = dto.notes;
     }
 
+    if (dto.jobCardNumber !== undefined) {
+      service.jobCardNumber = dto.jobCardNumber?.trim() || undefined;
+    }
+
+    if (dto.jobCardAt !== undefined) {
+      service.jobCardAt = dto.jobCardAt ? new Date(dto.jobCardAt) : undefined;
+    }
+
+    if (dto.petrolLevel !== undefined) {
+      service.petrolLevel = dto.petrolLevel;
+    }
+
+    if (dto.lineItems !== undefined) {
+      service.lineItems = dto.lineItems;
+      const netTotal = (dto.lineItems || []).reduce((sum, item) => {
+        const amount = Number(item.rate || 0) * Number(item.quantity || 0);
+        const discountAmount = amount * (Number(item.discountPercent || 0) / 100);
+        return sum + (amount - discountAmount);
+      }, 0);
+      service.subtotal = netTotal;
+      service.totalCost = netTotal;
+      service.grandTotal = netTotal;
+    }
+
+    if (dto.assignedMechanicIds !== undefined) {
+      if (!dto.assignedMechanicIds.length) {
+        service.assignedMechanics = [];
+      } else {
+        service.assignedMechanics = await this.userRepo.find({
+          where: dto.assignedMechanicIds.map((id) => ({ id })),
+        });
+      }
+    }
+
+    // Job-card intake fields can also refresh customer/vehicle on edit
+    if (
+      dto.customerName ||
+      dto.customerMobile ||
+      dto.customerAddress !== undefined ||
+      dto.registrationNumber ||
+      dto.make ||
+      dto.model ||
+      dto.modelYear ||
+      dto.engineNumber !== undefined ||
+      dto.chassisNumber !== undefined ||
+      dto.odometerReading !== undefined
+    ) {
+      const resolved = await this.resolveVehicleAndCustomer({
+        ...dto,
+        customerId: dto.customerId || service.customer?.id,
+        vehicleId: dto.vehicleId || service.vehicle?.id,
+        createdById: dto.createdById || service.createdBy?.id,
+      } as CreateServiceDto);
+      service.customer = resolved.customer;
+      service.vehicle = resolved.vehicle;
+    }
+
     if (dto.damagePhotoUrls !== undefined) {
-      service.damagePhotoUrls =  dto.damagePhotoUrls;
+      service.damagePhotoUrls = dto.damagePhotoUrls;
     }
 
     if (dto.repairProofPhotoUrls !== undefined) {
-      service.repairProofPhotoUrls =  dto.repairProofPhotoUrls;
+      service.repairProofPhotoUrls = dto.repairProofPhotoUrls;
     }
 
     // ---------------- DATES ----------------
@@ -737,6 +798,213 @@ export class ServicesService {
     );
 
     return this.findOne(id);
+  }
+
+  // ======================================================
+  // JOB CARD: find-or-create vehicle + customer
+  // ======================================================
+
+  private normalizeRegistration(value: string) {
+    return value.replace(/\s+/g, '').toUpperCase();
+  }
+
+  private async nextCustomerCode() {
+    const rows = await this.userRepo
+      .createQueryBuilder('user')
+      .select('user.customerCode', 'customerCode')
+      .where('user.customerCode IS NOT NULL')
+      .getRawMany<{ customerCode: string }>();
+
+    let max = 0;
+    for (const row of rows) {
+      const match = String(row.customerCode || '').match(/^JMC(\d+)$/i);
+      if (match) max = Math.max(max, Number(match[1]));
+    }
+    return `JMC${String(max + 1).padStart(6, '0')}`;
+  }
+
+  private async nextVehicleCode() {
+    const rows = await this.vehicleRepo
+      .createQueryBuilder('vehicle')
+      .select('vehicle.vehicleCode', 'vehicleCode')
+      .where('vehicle.vehicleCode IS NOT NULL')
+      .getRawMany<{ vehicleCode: string }>();
+
+    let max = 0;
+    for (const row of rows) {
+      const match = String(row.vehicleCode || '').match(/^JMV(\d+)$/i);
+      if (match) max = Math.max(max, Number(match[1]));
+    }
+    return `JMV${String(max + 1).padStart(6, '0')}`;
+  }
+
+  private async ensureCustomerCode(customer: UserEntity) {
+    if (customer.customerCode) return customer;
+    customer.customerCode = await this.nextCustomerCode();
+    return this.userRepo.save(customer);
+  }
+
+  private async ensureVehicleCode(vehicle: VehicleEntity) {
+    if (vehicle.vehicleCode) return vehicle;
+    vehicle.vehicleCode = await this.nextVehicleCode();
+    return this.vehicleRepo.save(vehicle);
+  }
+
+  private async resolveVehicleAndCustomer(dto: CreateServiceDto) {
+    let customer: UserEntity | null = null;
+    let vehicle: VehicleEntity | null = null;
+
+    if (dto.customerId) {
+      customer = await this.userRepo.findOne({ where: { id: dto.customerId } });
+      if (!customer) throw new NotFoundException('Customer not found');
+
+      let dirty = false;
+      if (dto.customerName?.trim() && customer.name !== dto.customerName.trim()) {
+        customer.name = dto.customerName.trim();
+        dirty = true;
+      }
+      if (dto.customerMobile?.trim() && customer.mobile !== dto.customerMobile.trim()) {
+        customer.mobile = dto.customerMobile.trim();
+        dirty = true;
+      }
+      if (dto.customerAddress !== undefined) {
+        const address = (dto.customerAddress || '—').trim() || '—';
+        if (customer.address !== address) {
+          customer.address = address;
+          dirty = true;
+        }
+      }
+      if (dirty) customer = await this.userRepo.save(customer);
+      customer = await this.ensureCustomerCode(customer);
+    } else if (dto.customerMobile && dto.customerName) {
+      const mobile = dto.customerMobile.trim();
+      const address = (dto.customerAddress || '—').trim() || '—';
+      customer = await this.userRepo.findOne({ where: { mobile } });
+
+      if (!customer) {
+        const usernameBase = `cust_${mobile}`.slice(0, 40);
+        const hashed = await bcrypt.hash(`temp_${mobile}`, 10);
+        customer = await this.userRepo.save(
+          this.userRepo.create({
+            name: dto.customerName.trim(),
+            username: usernameBase,
+            email: `${mobile}@customer.local`,
+            mobile,
+            address,
+            password: hashed,
+            role: Role.USER,
+            isVerified: true,
+            customerCode: await this.nextCustomerCode(),
+          }),
+        );
+      } else {
+        let dirty = false;
+        if (dto.customerName.trim() && customer.name !== dto.customerName.trim()) {
+          customer.name = dto.customerName.trim();
+          dirty = true;
+        }
+        if (dto.customerAddress !== undefined && customer.address !== address) {
+          customer.address = address;
+          dirty = true;
+        }
+        if (dirty) customer = await this.userRepo.save(customer);
+        customer = await this.ensureCustomerCode(customer);
+      }
+    } else {
+      throw new BadRequestException(
+        'Provide customerId or customerName + customerMobile',
+      );
+    }
+
+    if (dto.vehicleId) {
+      vehicle = await this.vehicleRepo.findOne({
+        where: { id: dto.vehicleId },
+        relations: ['owner'],
+      });
+      if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+      if (dto.registrationNumber?.trim()) {
+        vehicle.registrationNumber = dto.registrationNumber.trim().toUpperCase();
+      }
+      if (dto.make?.trim()) vehicle.brand = dto.make.trim();
+      if (dto.model?.trim()) vehicle.model = dto.model.trim();
+      if (dto.modelYear?.trim()) vehicle.year = dto.modelYear.trim();
+      if (dto.engineNumber !== undefined) {
+        vehicle.engineNumber = dto.engineNumber?.trim() || vehicle.engineNumber;
+      }
+      if (dto.chassisNumber !== undefined) {
+        vehicle.chassisNumber =
+          dto.chassisNumber?.trim() || vehicle.chassisNumber;
+      }
+      if (dto.odometerReading !== undefined) {
+        vehicle.mileage = dto.odometerReading?.trim() || vehicle.mileage;
+      }
+      vehicle.owner = customer;
+      vehicle = await this.vehicleRepo.save(vehicle);
+      vehicle = await this.ensureVehicleCode(vehicle);
+    } else if (dto.registrationNumber) {
+      const registrationNumber = dto.registrationNumber.trim().toUpperCase();
+      const normalized = this.normalizeRegistration(registrationNumber);
+
+      vehicle = await this.vehicleRepo.findOne({
+        where: { registrationNumber: ILike(registrationNumber) },
+        relations: ['owner'],
+      });
+
+      if (!vehicle) {
+        const all = await this.vehicleRepo.find({ relations: ['owner'] });
+        vehicle =
+          all.find(
+            (v) => this.normalizeRegistration(v.registrationNumber) === normalized,
+          ) ?? null;
+      }
+
+      const brand = (dto.make || 'Unknown').trim() || 'Unknown';
+      const model = (dto.model || 'Unknown').trim() || 'Unknown';
+      const year =
+        (dto.modelYear || String(new Date().getFullYear())).trim() ||
+        String(new Date().getFullYear());
+
+      if (!vehicle) {
+        vehicle = await this.vehicleRepo.save(
+          this.vehicleRepo.create({
+            registrationNumber,
+            brand,
+            model,
+            year,
+            engineNumber: dto.engineNumber?.trim() || undefined,
+            chassisNumber: dto.chassisNumber?.trim() || undefined,
+            mileage: dto.odometerReading?.trim() || undefined,
+            owner: customer,
+            vehicleCode: await this.nextVehicleCode(),
+          }),
+        );
+      } else {
+        vehicle.registrationNumber = registrationNumber;
+        vehicle.brand = brand;
+        vehicle.model = model;
+        vehicle.year = year;
+        if (dto.engineNumber !== undefined) {
+          vehicle.engineNumber = dto.engineNumber?.trim() || vehicle.engineNumber;
+        }
+        if (dto.chassisNumber !== undefined) {
+          vehicle.chassisNumber =
+            dto.chassisNumber?.trim() || vehicle.chassisNumber;
+        }
+        if (dto.odometerReading !== undefined) {
+          vehicle.mileage = dto.odometerReading?.trim() || vehicle.mileage;
+        }
+        vehicle.owner = customer;
+        vehicle = await this.vehicleRepo.save(vehicle);
+        vehicle = await this.ensureVehicleCode(vehicle);
+      }
+    } else {
+      throw new BadRequestException(
+        'Provide vehicleId or registrationNumber',
+      );
+    }
+
+    return { vehicle, customer };
   }
 }
 

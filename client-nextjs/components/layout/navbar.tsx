@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Bell, Menu } from "lucide-react";
 
@@ -36,19 +36,85 @@ const logoutUser = async () => {
   return data;
 };
 
+function getPageTitle(pathname: string) {
+  if (/^\/dashboard\/admin\/services\/[^/]+\/estimate$/.test(pathname)) {
+    return "Estimate";
+  }
+  if (/^\/dashboard\/admin\/services\/[^/]+\/edit$/.test(pathname)) {
+    return "Edit Job Card";
+  }
+  if (pathname === "/dashboard/admin/services/create") {
+    return "Create Job Card";
+  }
+  if (/^\/dashboard\/admin\/services\/[^/]+$/.test(pathname)) {
+    return "Job Card Details";
+  }
+  if (
+    pathname === "/dashboard/admin/services" ||
+    pathname.startsWith("/dashboard/admin/services/")
+  ) {
+    return "Job Cards";
+  }
+  if (/^\/dashboard\/admin\/users\/[^/]+$/.test(pathname)) {
+    return "Customer Vehicles";
+  }
+  if (/^\/dashboard\/admin\/vehicles\/[^/]+$/.test(pathname)) {
+    return "Vehicle Job Cards";
+  }
+
+  const routes: Array<{ prefix: string; title: string }> = [
+    { prefix: "/dashboard/admin/items", title: "Items" },
+    { prefix: "/dashboard/admin/users", title: "Users" },
+    { prefix: "/dashboard/admin/vehicles", title: "Vehicles" },
+    { prefix: "/dashboard/admin/invoices", title: "Invoices" },
+    { prefix: "/dashboard/admin/workforce", title: "Workforce" },
+    { prefix: "/dashboard/admin/permissions", title: "Permissions" },
+    { prefix: "/dashboard/reports", title: "Reports" },
+    { prefix: "/dashboard/settings", title: "Settings" },
+    { prefix: "/dashboard/Profile", title: "Profile" },
+    { prefix: "/dashboard/mechanic/services", title: "Assigned Services" },
+    { prefix: "/dashboard/mechanic", title: "Mechanic Dashboard" },
+    { prefix: "/dashboard/user/my-vehicles", title: "My Vehicles" },
+    { prefix: "/dashboard/user/my-services", title: "My Services" },
+    { prefix: "/dashboard/user/my-invoices", title: "My Invoices" },
+    { prefix: "/dashboard/user", title: "Customer Dashboard" },
+    { prefix: "/dashboard", title: "Dashboard" },
+  ];
+
+  for (const route of routes) {
+    if (pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)) {
+      return route.title;
+    }
+  }
+
+  return "Dashboard";
+}
+
 type NavbarProps = {
   onMenuClick?: () => void;
 };
 
 export default function Navbar({ onMenuClick }: NavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const pageTitle = getPageTitle(pathname || "/dashboard");
   const [role, setRole] = useState("");
+  const [initials, setInitials] = useState("U");
   const [notifications, setNotifications] = useState<GarageNotification[]>([]);
 
   useEffect(() => {
     const sync = () => {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       setRole(user.role || "");
+      const name = String(user.name || user.username || "User");
+      setInitials(
+        name
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part: string) => part[0]?.toUpperCase())
+          .join("") || "U"
+      );
       setNotifications(getNotifications(user.role));
     };
 
@@ -75,7 +141,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-white px-4 md:px-6">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <Button
           type="button"
           variant="ghost"
@@ -87,7 +153,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <Menu />
         </Button>
 
-        <h2 className="text-base font-semibold md:text-lg">Dashboard</h2>
+        <h2 className="truncate text-base font-semibold md:text-lg">{pageTitle}</h2>
       </div>
 
       <div className="flex items-center gap-2">
@@ -121,7 +187,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger>
             <Avatar className="cursor-pointer">
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
 

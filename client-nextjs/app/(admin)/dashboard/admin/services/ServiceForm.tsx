@@ -2,24 +2,31 @@
 
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
-import {VehicleSearchField} from "./searchable_Vehicle_Combobox"
-import { TaskCard } from "./component/TaskCard";
 import { Field } from "./component/form-shared";
-import ImageUploadField from "@/components/dashboard/ImageUploadField";
+import CustomerVehicleLookup from "./component/CustomerVehicleLookup";
 import { addNotification } from "@/lib/notifications";
+import {
+  INDIAN_BIKE_MAKERS,
+  consumeNextJobCardNumber,
+  peekNextJobCardNumber,
+  toDateTimeLocalValue,
+} from "@/lib/job-card-settings";
+import {
+  JOB_CARD_STATUSES,
+  normalizeJobCardStatus,
+} from "@/lib/job-card-status";
 
 import {
   Select,
@@ -29,108 +36,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type OptionUser = { id: string; name?: string; email?: string };
-type OptionVehicle = {
-  id: string;
-  registrationNumber?: string;
-  brand?: string;
-  model?: string;
-  owner?: { id: string; name?: string };
-};
-
 type Props = {
   editingService?: any;
 };
 
-const optionalId = z.string().optional().or(z.literal(""));
+const optionalText = z.string().optional().or(z.literal(""));
 
-const commentSchema = z.object({
-  id: optionalId,
-  message: z.string().min(1, "Comment is required"),
-  internal: z.coerce.boolean().default(false),
-  status: optionalId,
+const statusEnum = z.enum([
+  "PENDING",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+const jobCardSchema = z.object({
+  status: statusEnum,
+  problemDescription: optionalText,
+  notes: optionalText,
+  jobCardNumber: z.string().min(1, "Job card number is required"),
+  jobCardAt: z.string().min(1, "Job card date and time is required"),
+  customerName: z.string().min(2, "Customer name is required"),
+  customerMobile: z.string().min(8, "Mobile number is required"),
+  customerAddress: optionalText,
+  registrationNumber: z.string().min(2, "Registration number is required"),
+  make: z.string().min(1, "Make is required"),
+  model: z.string().min(1, "Model is required"),
+  modelYear: optionalText,
+  engineNumber: optionalText,
+  chassisNumber: optionalText,
+  odometerReading: optionalText,
+  petrolLevel: z.coerce.number().min(0).max(10),
+  vehicleId: optionalText,
+  customerId: optionalText,
 });
 
-const subTaskSchema = z.object({
-  id: optionalId,
-
-  title: z.string().min(1, "Subtask title is required"),
-
-  assignedToId: optionalId,
-
-  status: z.enum([
-    "PENDING",
-    "IN_PROGRESS",
-    "ON_HOLD",
-    "COMPLETED",
-  ]).default("PENDING"),
-
-  estimatedDuration: z.coerce.number().min(0).default(0),
-
-  progress: z.coerce.number().min(0).max(100).default(0),
-});
-
-const partSchema = z.object({
-  id: optionalId,
-  name: z.string().min(1, "Part name is required"),
-  partNumber: optionalId,
-  quantity: z.coerce.number().min(0),
-  unitPrice: z.coerce.number().min(0),
-});
-
-const taskSchema = z.object({
-  id: optionalId,
-  title: z.string().min(1, "Task title is required"),
-  description: z.string().optional(),
-  ownerId: optionalId,
-  accountableTechnicianId: optionalId,
-  mechanicIds: z.array(z.string()).default([]),
-  laborCost: z.coerce.number().min(0),
-  additionalCost: z.coerce.number().min(0),
-  parts: z.array(partSchema).default([]),
-  subtasks: z.array(subTaskSchema).default([]),
-  comments: z.array(commentSchema).default([]),
-});
-
-const schema = z.object({
-  status: z.enum(["PENDING","INSPECTION", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
-  problemDescription: z.string().optional(),
-  notes: z.string().optional(),
-  damagePhotoUrls: z.array(z.string()).default([]),
-  repairProofPhotoUrls: z.array(z.string()).default([]),
-  serviceDate: z.string().min(1, "Service date is required"),
-  deliveryDate: z.string().min(1, "Delivery date is required"),
-  vehicleId: z.string().min(1, "Vehicle is required"),
-  customerId: z.string().min(1, "Customer is required"),
-  discount: z.coerce.number().min(0),
-  tax: z.coerce.number().min(0),
-  tasks: z.array(taskSchema).min(1, "Add at least one task"),
-});
-
-type ServiceFormInput = z.input<typeof schema>;
-type ServiceFormData = z.output<typeof schema>;
-
-const emptyTask = (): ServiceFormData["tasks"][number] => ({
-  title: "",
-  description: "",
-  ownerId: "",
-  accountableTechnicianId: "",
-  mechanicIds: [],
-  laborCost: 0,
-  additionalCost: 0,
-  parts: [],
-  subtasks: [],
-  comments: [],
-});
+type JobCardFormData = z.output<typeof jobCardSchema>;
 
 function getErrorMessages(errors: unknown): string[] {
-  if (!errors || typeof errors !== "object") {
-    return [];
-  }
-
-  if (Array.isArray(errors)) {
-    return errors.flatMap(getErrorMessages);
-  }
+  if (!errors || typeof errors !== "object") return [];
+  if (Array.isArray(errors)) return errors.flatMap(getErrorMessages);
 
   const record = errors as Record<string, unknown>;
   const ownMessage =
@@ -143,60 +87,87 @@ function getErrorMessages(errors: unknown): string[] {
   return [...ownMessage, ...childMessages];
 }
 
-async function apiGet<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Request failed");
-  return json.data ?? json;
+function toJobCardAtLocal(value?: string | Date | null) {
+  if (!value) return toDateTimeLocalValue();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return toDateTimeLocalValue();
+  return toDateTimeLocalValue(date);
 }
 
-const getVehicles = () => apiGet<OptionVehicle[]>("/api/vehicles");
-const getMechanics = () => apiGet<OptionUser[]>("/api/user");
+function petrolLabel(level: number) {
+  if (level <= 0) return "Empty";
+  if (level <= 3) return "Low";
+  if (level <= 6) return "Half";
+  if (level < 10) return "High";
+  return "Full";
+}
 
-function normalizeService(service: any): ServiceFormData {
+function PetrolLevelBar({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const raw = Number(value);
+  const level = Number.isFinite(raw) ? Math.min(10, Math.max(0, raw)) : 0;
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-slate-50 p-4">
+      <div className="flex items-end justify-between gap-4">
+        <div className="relative h-28 w-16 overflow-hidden rounded-md border-2 border-slate-400 bg-white">
+          <div className="absolute inset-x-0 top-0 h-2 bg-slate-300" />
+          <div
+            className="absolute inset-x-1 bottom-1 rounded-sm bg-amber-400 transition-all"
+            style={{ height: `${(level / 10) * 100}%` }}
+          />
+        </div>
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-slate-700">Petrol level</span>
+            <span className="font-semibold text-slate-900">
+              {level}/10 — {petrolLabel(level)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={10}
+            step={1}
+            value={level}
+            onChange={(event) => onChange(Number(event.target.value))}
+            className="w-full accent-amber-500"
+          />
+          <div className="flex justify-between text-xs text-slate-500">
+            <span>Empty</span>
+            <span>Full</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function normalizeService(service: any): JobCardFormData {
   return {
-    status: service?.status ?? "PENDING",
+    status: normalizeJobCardStatus(service?.status),
     problemDescription: service?.problemDescription ?? "",
     notes: service?.notes ?? "",
-    damagePhotoUrls: service?.damagePhotoUrls ?? [],
-    repairProofPhotoUrls: service?.repairProofPhotoUrls ?? [],
-    serviceDate: service?.serviceDate?.slice?.(0, 10) ?? "",
-    deliveryDate: service?.deliveryDate?.slice?.(0, 10) ?? "",
+    jobCardNumber: service?.jobCardNumber ?? "",
+    jobCardAt: toJobCardAtLocal(service?.jobCardAt ?? service?.serviceDate),
+    customerName: service?.customer?.name ?? "",
+    customerMobile: service?.customer?.mobile ?? "",
+    customerAddress: service?.customer?.address ?? "",
+    registrationNumber: service?.vehicle?.registrationNumber ?? "",
+    make: service?.vehicle?.brand ?? "",
+    model: service?.vehicle?.model ?? "",
+    modelYear: service?.vehicle?.year ?? String(new Date().getFullYear()),
+    engineNumber: service?.vehicle?.engineNumber ?? "",
+    chassisNumber: service?.vehicle?.chassisNumber ?? "",
+    odometerReading: service?.vehicle?.mileage ?? "",
+    petrolLevel: Number(service?.petrolLevel ?? 0),
     vehicleId: service?.vehicle?.id ?? service?.vehicleId ?? "",
-    customerId: service?.customer?.id ?? service?.customerId ?? service?.vehicle?.owner?.id ?? "",
-    discount: Number(service?.discount ?? 0),
-    tax: Number(service?.tax ?? 0),
-    tasks: (service?.tasks ?? []).map((task: any) => ({
-      id: task.id ?? "",
-      title: task.title ?? "",
-      description: task.description ?? "",
-      ownerId: task.owner?.id ?? task.ownerId ?? task.createdBy?.id ?? "",
-      accountableTechnicianId: task.accountableTechnician?.id ?? task.accountableTechnicianId ?? "",
-      mechanicIds: task.mechanics?.map((mechanic: any) => mechanic.id) ?? task.mechanicIds ?? [],
-      laborCost: Number(task.laborCost ?? 0),
-      additionalCost: Number(task.additionalCost ?? 0),
-      parts: (task.parts ?? []).map((part: any) => ({
-        id: part.id ?? "",
-        name: part.name ?? "",
-        partNumber: part.partNumber ?? "",
-        quantity: Number(part.quantity ?? 1),
-        unitPrice: Number(part.unitPrice ?? 0),
-      })),
-      subtasks: (task.subtasks ?? []).map((subtask: any) => ({
-        id: subtask.id ?? "",
-        title: subtask.title ?? "",
-        assignedToId: subtask.assignedTo?.id ?? subtask.assignedToId ?? "",
-        status: subtask.status ?? "PENDING",
-        estimatedDuration: Number(subtask.estimatedDuration ?? 0),
-        progress: Number(subtask.progress ?? 0),
-        })),
-      comments: (task.comments ?? []).map((comment: any) => ({
-        id: comment.id ?? "",
-        message: comment.message ?? "",
-        internal: Boolean(comment.internal),
-        status: comment.status ?? "",
-      })),
-    })),
+    customerId: service?.customer?.id ?? service?.customerId ?? "",
   };
 }
 
@@ -204,223 +175,411 @@ async function saveService({
   data,
   editingService,
 }: {
-  data: ServiceFormData;
+  data: JobCardFormData;
   editingService?: any;
 }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const jobCardDate = data.jobCardAt.slice(0, 10);
+
   const payload = {
-    ...data,
+    status: data.status,
+    problemDescription: data.problemDescription,
+    notes: data.notes,
+    jobCardNumber: data.jobCardNumber,
+    jobCardAt: new Date(data.jobCardAt).toISOString(),
+    petrolLevel: data.petrolLevel,
+    serviceDate: jobCardDate,
+    deliveryDate: jobCardDate,
+    customerName: data.customerName,
+    customerMobile: data.customerMobile,
+    customerAddress: data.customerAddress,
+    registrationNumber: data.registrationNumber.toUpperCase(),
+    make: data.make,
+    model: data.model,
+    modelYear: data.modelYear,
+    engineNumber: data.engineNumber,
+    chassisNumber: data.chassisNumber,
+    odometerReading: data.odometerReading,
+    // Keep existing items when editing job-card fields (items managed on details page)
+    lineItems: editingService?.lineItems ?? [],
+    vehicleId: data.vehicleId || undefined,
+    customerId: data.customerId || undefined,
     createdById: user.id,
-    tasks: data.tasks.map((task) => ({
-      ...task,
-      ownerId: task.ownerId || user.id,
-      accountableTechnicianId: task.accountableTechnicianId || null,
-      mechanicIds: task.mechanicIds ?? [],
-      subtasks: task.subtasks.map((subtask) => ({
-        ...subtask,
-        assignedToId: subtask.assignedToId || null,
-      })),
-    })),
+    discount: 0,
+    tax: 0,
+    damagePhotoUrls: [],
+    repairProofPhotoUrls: [],
+    tasks: [],
   };
 
-  console.log("PATCH payload", payload);
-  const res = await fetch(editingService ? `/api/services/${editingService.id}` : "/api/services", {
-    method: editingService ? "PATCH" : "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await fetch(
+    editingService ? `/api/services/${editingService.id}` : "/api/services",
+    {
+      method: editingService ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
 
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to save service");
+  if (!res.ok) throw new Error(json?.message || "Failed to save job card");
   return json;
 }
 
 export default function ServiceForm({ editingService }: Props) {
+  const isEdit = Boolean(editingService);
   const queryClient = useQueryClient();
   const router = useRouter();
-  const form = useForm<ServiceFormInput, unknown, ServiceFormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      status: "PENDING",
-      problemDescription: "",
-      notes: "",
-      damagePhotoUrls: [],
-      repairProofPhotoUrls: [],
-      serviceDate: "",
-      deliveryDate: "",
-      vehicleId: "",
-      customerId: "",
-      discount: 0,
-      tax: 0,
-      tasks: [emptyTask()],
+  const [selectedCustomerCode, setSelectedCustomerCode] = useState(
+    editingService?.customer?.customerCode || ""
+  );
+  const [selectedVehicleCode, setSelectedVehicleCode] = useState(
+    editingService?.vehicle?.vehicleCode || ""
+  );
+
+  const form = useForm<any>({
+    resolver: zodResolver(jobCardSchema),
+    defaultValues: isEdit
+      ? normalizeService(editingService)
+      : {
+          status: "PENDING",
+          problemDescription: "",
+          notes: "",
+          jobCardNumber: peekNextJobCardNumber(),
+          jobCardAt: toDateTimeLocalValue(),
+          customerName: "",
+          customerMobile: "",
+          customerAddress: "",
+          registrationNumber: "",
+          make: "",
+          model: "",
+          modelYear: String(new Date().getFullYear()),
+          engineNumber: "",
+          chassisNumber: "",
+          odometerReading: "",
+          petrolLevel: 0,
+          vehicleId: "",
+          customerId: "",
+        },
+  });
+
+  const { control, register, handleSubmit, reset, setValue, formState } = form;
+  const watchedCustomerId = useWatch({ control, name: "customerId" });
+  const watchedVehicleId = useWatch({ control, name: "vehicleId" });
+
+  useEffect(() => {
+    if (!editingService) {
+      setValue("jobCardNumber", peekNextJobCardNumber());
+      setValue("jobCardAt", toDateTimeLocalValue());
+      return;
+    }
+    reset(normalizeService(editingService), { keepDefaultValues: false });
+    setSelectedCustomerCode(editingService?.customer?.customerCode || "");
+    setSelectedVehicleCode(editingService?.vehicle?.vehicleCode || "");
+  }, [editingService, reset, setValue]);
+
+  const applyCustomer = (customer: any) => {
+    if (!customer) return;
+    setValue("customerId", customer.id || "");
+    setValue("customerName", customer.name || "");
+    setValue("customerMobile", customer.mobile || "");
+    setValue("customerAddress", customer.address || "");
+    setSelectedCustomerCode(customer.customerCode || "");
+  };
+
+  const applyVehicle = (vehicle: any) => {
+    if (!vehicle) return;
+    setValue("vehicleId", vehicle.id || "");
+    setValue(
+      "registrationNumber",
+      String(vehicle.registrationNumber || "").toUpperCase()
+    );
+    setValue("make", vehicle.brand || "");
+    setValue("model", vehicle.model || "");
+    setValue("modelYear", vehicle.year || String(new Date().getFullYear()));
+    setValue("engineNumber", vehicle.engineNumber || "");
+    setValue("chassisNumber", vehicle.chassisNumber || "");
+    setValue("odometerReading", vehicle.mileage || "");
+    setSelectedVehicleCode(vehicle.vehicleCode || "");
+  };
+
+  const clearLookup = () => {
+    setValue("customerId", "");
+    setValue("vehicleId", "");
+    setSelectedCustomerCode("");
+    setSelectedVehicleCode("");
+  };
+
+  const mutation = useMutation({
+    mutationFn: saveService,
+    onSuccess: (updatedService, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["usersList"] });
+      queryClient.invalidateQueries({ queryKey: ["users-for-lookup"] });
+
+      if (editingService?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ["service", editingService.id],
+        });
+        addNotification({
+          title: "Job card updated",
+          message: "Job card saved successfully.",
+          category: "service",
+        });
+        router.push(`/dashboard/admin/services/${editingService.id}`);
+        return;
+      }
+
+      consumeNextJobCardNumber(variables.data.jobCardNumber);
+
+      const createdService = updatedService?.data ?? updatedService;
+      const createdId = createdService?.id;
+
+      if (createdId) {
+        addNotification({
+          title: "Job card created",
+          message: `Job card ${variables.data.jobCardNumber} was created.`,
+          category: "service",
+        });
+        router.push(`/dashboard/admin/services/${createdId}`);
+        return;
+      }
+
+      alert("Job card created, but the detail page id was not returned.");
     },
   });
 
-  const { control, register, handleSubmit, reset, setValue, watch, formState } = form;
-
-  const tasksArray = useFieldArray({ control, name: "tasks", keyName: "fieldId" });
-
-  const usersQuery = useQuery({ queryKey: ["mechanics"], queryFn: getMechanics });
-
-  const mechanics = useMemo(
-    () => (usersQuery.data ?? []).filter((user: any) => !user.role || user.role === "mechanic"),
-    [usersQuery.data]
-  );
-
-  useEffect(() => {
-    if (!editingService) return;
-
-    const normalized = normalizeService(editingService);
-
-    //console.log("editingService", editingService);
-    //console.log("normalized", normalized);
-
-    reset(normalized, {keepDefaultValues: false,});
-  }, [editingService, reset]);
-
-  const mutation = useMutation({
-  mutationFn: saveService,
-  onSuccess: (updatedService) => {
-    queryClient.invalidateQueries({ queryKey: ["services"] });
-
-    if (editingService?.id) {
-      queryClient.invalidateQueries({
-        queryKey: ["service", editingService.id],
-      });
-
-      addNotification({
-        title: "Service updated",
-        message: "A service job card was updated successfully.",
-      });
-      alert("Service updated successfully");
-      return;
-    }
-
-    const createdService = updatedService?.data ?? updatedService;
-    const createdId = createdService?.id;
-
-    if (createdId) {
-      addNotification({
-        title: "Service created",
-        message: "A new service job card was created.",
-      });
-      router.push(`/dashboard/admin/services/${createdId}/edit`);
-      return;
-    }
-
-    alert("Service created, but the edit page id was not returned.");
-  },
-});
-
-  const onSubmit = (data: ServiceFormData) => {
+  const onSubmit = (data: any) => {
     mutation.mutate({ data, editingService });
-  };
-
-  const onInvalid = (errors: typeof formState.errors) => {
-    console.log("Service form validation errors", errors);
   };
 
   const validationMessages = Array.from(
     new Set(getErrorMessages(formState.errors))
   );
 
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(
+    () => Array.from({ length: 40 }, (_, i) => String(currentYear - i)),
+    [currentYear]
+  );
+
   return (
     <Card className="p-6">
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        {!isEdit && (
+          <CustomerVehicleLookup
+            selectedCustomerCode={selectedCustomerCode}
+            selectedVehicleCode={selectedVehicleCode}
+            onClear={clearLookup}
+            onSelect={(result) => {
+              if (result.type === "customer") {
+                applyCustomer(result.customer);
+                setValue("vehicleId", "");
+                setSelectedVehicleCode("");
+                return;
+              }
+              applyCustomer(result.customer);
+              applyVehicle(result.vehicle);
+            }}
+          />
+        )}
+
+        {(watchedCustomerId || watchedVehicleId) && isEdit && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {selectedCustomerCode && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+                Customer ID: {selectedCustomerCode}
+              </span>
+            )}
+            {selectedVehicleCode && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium">
+                Vehicle ID: {selectedVehicleCode}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label="Status">
             <Controller
               control={control}
               name="status"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={normalizeJobCardStatus(field.value)}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="INSPECTION">Inspection</SelectItem>
-                    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    {JOB_CARD_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
             />
           </Field>
-
-          <Field label="Service Date">
-            <Input type="date" {...register("serviceDate")} />
-          </Field>
-
-          <Field label="Delivery Date">
-            <Input type="date" {...register("deliveryDate")} />
-          </Field>
         </div>
 
-       <VehicleSearchField control={control} setValue={setValue} />
+        <section className="space-y-4 rounded-lg border p-4">
+          <h3 className="text-base font-semibold">Customer Details</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Customer Name">
+              <Input placeholder="Customer name" {...register("customerName")} />
+            </Field>
+            <Field label="Mobile Number">
+              <Input
+                placeholder="10-digit mobile"
+                {...register("customerMobile")}
+              />
+            </Field>
+          </div>
+          <Field label="Address">
+            <Textarea
+              placeholder="Customer address / location notes"
+              {...register("customerAddress")}
+            />
+          </Field>
+        </section>
 
-        <input type="hidden" {...register("customerId")} />
+        <section className="space-y-4 rounded-lg border p-4">
+          <h3 className="text-base font-semibold">Vehicle Details</h3>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Field label="Job Card No">
+              <Input
+                {...register("jobCardNumber")}
+                readOnly
+                className="bg-slate-50 text-slate-700"
+              />
+            </Field>
+            <Field label="Job Card Date & Time">
+              <Input type="datetime-local" {...register("jobCardAt")} />
+            </Field>
+            <Field label="Registration Number">
+              <Controller
+                control={control}
+                name="registrationNumber"
+                render={({ field }) => (
+                  <Input
+                    placeholder="TN 38 AB 1234"
+                    value={field.value || ""}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    style={{ textTransform: "uppercase" }}
+                    onChange={(event) =>
+                      field.onChange(event.target.value.toUpperCase())
+                    }
+                  />
+                )}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Field label="Make">
+              <Controller
+                control={control}
+                name="make"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select make" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-72">
+                      {INDIAN_BIKE_MAKERS.map((maker) => (
+                        <SelectItem key={maker} value={maker}>
+                          {maker}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+            <Field label="Model">
+              <Input placeholder="e.g. Splendor Plus" {...register("model")} />
+            </Field>
+            <Field label="Model Year">
+              <Controller
+                control={control}
+                name="modelYear"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-72">
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Field label="Engine No">
+              <Input {...register("engineNumber")} />
+            </Field>
+            <Field label="Chassis No">
+              <Input {...register("chassisNumber")} />
+            </Field>
+            <Field label="Odometer Reading">
+              <Input
+                placeholder="e.g. 24500"
+                {...register("odometerReading")}
+              />
+            </Field>
+          </div>
+
+          <Controller
+            control={control}
+            name="petrolLevel"
+            render={({ field }) => (
+              <PetrolLevelBar
+                value={field.value}
+                onChange={(next) => field.onChange(next)}
+              />
+            )}
+          />
+        </section>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Problem Description">
-            <Textarea {...register("problemDescription")} />
+            <Textarea
+              placeholder="What is the customer reporting?"
+              {...register("problemDescription")}
+            />
           </Field>
           <Field label="Notes">
-            <Textarea {...register("notes")} />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ImageUploadField
-            label="Service Damage Photos"
-            multiple
-            value={watch("damagePhotoUrls")}
-            onChange={(value) => setValue("damagePhotoUrls", value as string[])}
-          />
-          <ImageUploadField
-            label="Repair Proof Photos"
-            multiple
-            value={watch("repairProofPhotoUrls")}
-            onChange={(value) => setValue("repairProofPhotoUrls", value as string[])}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Discount">
-            <Input type="number" step="0.01" {...register("discount")} />
-          </Field>
-          <Field label="Tax">
-            <Input type="number" step="0.01" {...register("tax")} />
-          </Field>
-        </div>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Service Tasks</h2>
-            <Button type="button" onClick={() => tasksArray.append(emptyTask())}>
-              + Add Task
-            </Button>
-          </div>
-
-          {tasksArray.fields.map((task, taskIndex) => (
-            <TaskCard
-                key={task.fieldId}
-                taskIndex={taskIndex}
-                control={control}
-                register={register}
-                setValue={setValue}
-                watch={watch}
-                removeTask={tasksArray.remove}
-                mechanics={mechanics}
+            <Textarea
+              placeholder="Internal notes for the workshop"
+              {...register("notes")}
             />
-            ))}
-        </section>
+          </Field>
+        </div>
 
         {mutation.error && (
-            <p className="text-sm text-red-600">
-              {(mutation.error as Error).message}
-            </p>
-          )}
+          <p className="text-sm text-red-600">
+            {(mutation.error as Error).message}
+          </p>
+        )}
 
         {validationMessages.length > 0 && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -436,21 +595,11 @@ export default function ServiceForm({ editingService }: Props) {
         <Button type="submit" className="w-full" disabled={mutation.isPending}>
           {mutation.isPending
             ? "Saving..."
-            : editingService
-              ? "Update Service"
-              : "Create Service"}
+            : isEdit
+              ? "Save Job Card"
+              : "Create Job Card"}
         </Button>
       </form>
     </Card>
   );
 }
-
-
-
-
-
-
-
-
-
-

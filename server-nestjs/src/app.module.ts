@@ -11,7 +11,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ServicesModule } from './modules/services/services.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
-import { ProcurementModule } from './modules/procurement/procurement.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 
 
 // DB CONNECTED THROUGH app.module.ts VIA importing TypeOrmModule and configuring it with the database connection details.
@@ -25,9 +25,14 @@ import { ProcurementModule } from './modules/procurement/procurement.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV !== 'production',
+      // Neon/prod: set TYPEORM_SYNC=true on first deploy to create tables, then set false.
+      synchronize:
+        process.env.TYPEORM_SYNC === 'true' ||
+        process.env.NODE_ENV !== 'production',
       ssl:
-        process.env.NODE_ENV === 'production'
+        process.env.DATABASE_SSL === 'true' ||
+        process.env.NODE_ENV === 'production' ||
+        Boolean(process.env.DATABASE_URL?.includes('neon.tech'))
           ? { rejectUnauthorized: false }
           : false,
     }),
@@ -36,8 +41,8 @@ import { ProcurementModule } from './modules/procurement/procurement.module';
     VehiclesModule,
     AuthModule,
     ServicesModule,
-    InvoicesModule, // ✅ correct
-    ProcurementModule,
+    InvoicesModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService], // ✅ ONLY THIS

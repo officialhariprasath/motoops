@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { addNotification } from "@/lib/notifications";
+import { formatMoney } from "@/lib/job-card-items";
 
 type Invoice = {
   id: string;
+  invoiceNumber?: string;
+  documentType?: string;
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;
@@ -15,12 +18,10 @@ type Invoice = {
 export default function UpdateInvoicePaymentPage() {
   const params = useParams();
   const router = useRouter();
-
   const invoiceId = params.id as string;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [status, setStatus] = useState<"paid" | "unpaid" | "partial">("unpaid");
-  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [paidAmount, setPaidAmount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -29,13 +30,11 @@ export default function UpdateInvoicePaymentPage() {
       .then((res) => res.json())
       .then((data) => {
         const invoiceData = data?.data ?? data;
-
-        if (!invoiceData) {
-          throw new Error("Invoice not found");
+        if (!invoiceData) throw new Error("Invoice not found");
+        if (invoiceData.documentType === "ESTIMATE") {
+          throw new Error("Estimates do not accept payments. Generate a bill first.");
         }
-
         setInvoice(invoiceData);
-        setStatus(invoiceData.paymentStatus);
         setPaidAmount(Number(invoiceData.paidAmount || 0));
       })
       .catch((error) => {
@@ -45,39 +44,16 @@ export default function UpdateInvoicePaymentPage() {
       });
   }, [invoiceId]);
 
-  const handleStatusChange = (value: "paid" | "unpaid" | "partial") => {
-    setStatus(value);
-
-    if (!invoice) return;
-
-    if (value === "paid") {
-      setPaidAmount(Number(invoice.totalAmount || 0));
-    }
-
-    if (value === "unpaid") {
-      setPaidAmount(0);
-    }
-
-    if (value === "partial") {
-      setPaidAmount(Number(invoice.paidAmount || 0));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setSaving(true);
+    setErrorMessage("");
 
     const res = await fetch(`/api/invoices/${invoiceId}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        paidAmount: Number(paidAmount || 0),
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paidAmount: Number(paidAmount || 0) }),
     });
-
     const data = await res.json();
 
     if (!res.ok) {
@@ -86,11 +62,16 @@ export default function UpdateInvoicePaymentPage() {
       return;
     }
 
+    addNotification({
+      title: "Payment updated",
+      message: `Paid amount set to ₹${formatMoney(paidAmount)}.`,
+      category: "invoice",
+    });
     setSaving(false);
     router.push(`/dashboard/admin/invoices/${invoiceId}`);
   };
 
-  if (errorMessage) {
+  if (errorMessage && !invoice) {
     return <p className="p-6 text-red-600">{errorMessage}</p>;
   }
 
@@ -98,88 +79,76 @@ export default function UpdateInvoicePaymentPage() {
     return <p className="p-6">Loading invoice...</p>;
   }
 
-  const dueAmount = Math.max(
-    Number(invoice.totalAmount || 0) - Number(paidAmount || 0),
-    0
-  );
+  const total = Number(invoice.totalAmount || 0);
+  const dueAmount = Math.max(total - Number(paidAmount || 0), 0);
+  const previewStatus =
+    paidAmount <= 0 ? "unpaid" : paidAmount >= total ? "paid" : "partial";
 
   return (
-    <div className="max-w-xl p-6 mx-auto">
-      <h1 className="mb-6 text-2xl font-bold">Update Payment</h1>
-
+    <div className="mx-auto max-w-xl p-6">
       <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border p-5">
         <div>
-          <p className="text-sm text-gray-500">Invoice</p>
-          <p className="font-semibold">#{invoice.id.slice(0, 8)}</p>
+          <p className="text-sm text-gray-500">Bill</p>
+          <p className="font-semibold">
+            {invoice.invoiceNumber || `#${invoice.id.slice(0, 8)}`}
+          </p>
         </div>
 
         <div>
           <p className="text-sm text-gray-500">Total Amount</p>
-          <p className="text-xl font-bold">à§³ {invoice.totalAmount}</p>
+          <p className="text-xl font-bold">₹{formatMoney(total)}</p>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Payment Status</label>
-
-          <select
-            value={status}
-            onChange={(e) =>
-              handleStatusChange(e.target.value as "paid" | "unpaid" | "partial")
-            }
+          <label className="mb-1 block text-sm font-medium">
+            Total amount paid (cumulative)
+          </label>
+          <input
+            type="number"
+            min="0"
+            max={total}
+            step="0.01"
+            value={paidAmount}
+            onChange={(e) => setPaidAmount(Number(e.target.value))}
             className="w-full rounded-md border px-3 py-2"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Enter the full amount paid so far. Status updates automatically.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-gray-50 p-4">
+            <p className="text-sm text-gray-500">Due</p>
+            <p className="text-lg font-bold">₹{formatMoney(dueAmount)}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-4">
+            <p className="text-sm text-gray-500">Status</p>
+            <p className="text-lg font-bold capitalize">{previewStatus}</p>
+          </div>
+        </div>
+
+        {errorMessage && (
+          <p className="text-sm text-red-600">{errorMessage}</p>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPaidAmount(total)}
+            className="flex-1 rounded-md border px-4 py-2"
           >
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Partial</option>
-            <option value="paid">Paid</option>
-          </select>
+            Mark fully paid
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex-1 rounded-md bg-black px-4 py-2 text-white disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save payment"}
+          </button>
         </div>
-
-        {status === "partial" && (
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Partial Paid Amount
-            </label>
-
-            <input
-              type="number"
-              min="0"
-              max={invoice.totalAmount}
-              step="0.01"
-              value={paidAmount}
-              onChange={(e) => setPaidAmount(Number(e.target.value))}
-              className="w-full rounded-md border px-3 py-2"
-            />
-          </div>
-        )}
-
-        {status !== "partial" && (
-          <div>
-            <label className="mb-1 block text-sm font-medium">Paid Amount</label>
-
-            <input
-              type="number"
-              value={paidAmount}
-              disabled
-              className="w-full rounded-md border bg-gray-100 px-3 py-2"
-            />
-          </div>
-        )}
-
-        <div className="rounded-lg bg-gray-50 p-4">
-          <p className="text-sm text-gray-500">Due Amount</p>
-          <p className="text-lg font-bold">à§³ {dueAmount}</p>
-        </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full rounded-md bg-black px-4 py-2 text-white disabled:opacity-60"
-        >
-          {saving ? "Saving..." : "Update Payment"}
-        </button>
-        
       </form>
     </div>
   );
 }
-

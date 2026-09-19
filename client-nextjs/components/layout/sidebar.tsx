@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,16 +9,14 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Car,
-  CalendarCheck,
   Receipt,
   Users,
   Wrench,
-  Package,
   ClipboardList,
   UserCheck,
   Settings,
   ShieldCheck,
-  LockKeyhole,
+  Package,
   LogOut,
 } from "lucide-react";
 
@@ -56,16 +54,21 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       icon: Car,
     },
     {
+      title: "Items",
+      href: "/dashboard/admin/items",
+      icon: Package,
+    },
+    {
       title: "Services",
-      href: "/dashboard/admin/services/list",
+      href: "/dashboard/admin/services",
       icon: Wrench,
       children: [
             {
-              title: "List Services",
+              title: "List Job Cards",
               href: "/dashboard/admin/services",
             },
             {
-              title: "Create Service",
+              title: "Create Job Card",
               href: "/dashboard/admin/services/create",
             },
           ],
@@ -74,11 +77,6 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       title: "Invoices",
       href: "/dashboard/admin/invoices",
       icon: Receipt,
-    },
-    {
-      title: "Procurement",
-      href: "/dashboard/admin/procurement",
-      icon: Package,
     },
     {
       title: "Workforce",
@@ -109,16 +107,10 @@ const sidebarByRole: Record<string, MenuItem[]> = {
       icon: Wrench,
     },
     {
-      title: "Tool Requests",
-      href: "/dashboard/mechanic/procurement",
-      icon: Package,
-    },
-    {
-      title: "Leave Requests",
+      title: "Leave",
       href: "/dashboard/mechanic/leave",
-      icon: CalendarCheck,
-    }
-    
+      icon: ClipboardList,
+    },
   ],
 
   customer: [
@@ -208,6 +200,34 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
   // ROLE MENUS
   const menus = sidebarByRole[role as keyof typeof sidebarByRole] || [];
 
+  const allHrefs = menus.flatMap((menu) => [
+    menu.href,
+    ...(menu.children?.map((child) => child.href) ?? []),
+  ]);
+
+  const isExactDashboardHref = (href: string) =>
+    href === "/dashboard" ||
+    href === "/dashboard/mechanic" ||
+    href === "/dashboard/user";
+
+  const getBestMatch = (candidates: string[]) =>
+    candidates
+      .filter((href) => {
+        if (isExactDashboardHref(href)) return pathname === href;
+        return pathname === href || pathname.startsWith(`${href}/`);
+      })
+      .sort((a, b) => b.length - a.length)[0];
+
+  const bestMatch = getBestMatch(allHrefs);
+
+  const isItemActive = (menu: MenuItem) => {
+    const childHrefs = menu.children?.map((child) => child.href) ?? [];
+    if (childHrefs.some((href) => href === bestMatch)) return true;
+    return menu.href === bestMatch;
+  };
+
+  const isSubActive = (href: string) => href === bestMatch;
+
   const sidebarClassName = mobile
     ? "flex h-full w-full flex-col bg-white"
     : "hidden md:flex h-screen w-64 flex-col border-r bg-white";
@@ -253,15 +273,11 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
       <nav className="flex-1 space-y-1 p-4">
         {menus.map((menu) => {
           const Icon = menu.icon;
-
-          const active =
-            pathname === menu.href ||
-            pathname.startsWith(menu.href + "/");
+          const active = isItemActive(menu);
 
           return (
             <div key={menu.href}>
                 <Link
-                  key={menu.href}
                   href={menu.href}
                   onClick={onNavigate}
                 >
@@ -281,16 +297,23 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
                   </div>
                 </Link>
 
-                {menu.children?.map((sub) => (
-                  <Link
-                    key={sub.href}
-                    href={sub.href}
-                    onClick={onNavigate}
-                    className="ml-10 block py-2 text-sm text-gray-600"
-                  >
-                    {sub.title}
-                  </Link>
-                ))}
+                {menu.children?.map((sub) => {
+                  const subActive = isSubActive(sub.href);
+                  return (
+                    <Link
+                      key={sub.href}
+                      href={sub.href}
+                      onClick={onNavigate}
+                      className={`ml-10 block rounded-lg px-3 py-2 text-sm ${
+                        subActive
+                          ? "bg-slate-900 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {sub.title}
+                    </Link>
+                  );
+                })}
               </div>
           );
         })}

@@ -6,6 +6,20 @@ import {
 const BACKEND_URL =
   process.env.BACKEND_SERVER_URL;
 
+export async function GET(
+  _req: NextRequest,
+  context: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const { id } = await context.params;
+  const res = await fetch(`${BACKEND_URL}/vehicles/${id}`, {
+    cache: "no-store",
+  });
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
+}
+
 export async function PATCH(
   req: NextRequest,
   context: {

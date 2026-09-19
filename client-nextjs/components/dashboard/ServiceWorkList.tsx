@@ -9,8 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 type ServiceWorkListProps = {
   mode: "mechanic" | "user";
-  title: string;
-  description: string;
 };
 
 async function getServices(mode: ServiceWorkListProps["mode"]) {
@@ -91,11 +89,7 @@ async function updateSubtask({
   return json;
 }
 
-export default function ServiceWorkList({
-  mode,
-  title,
-  description,
-}: ServiceWorkListProps) {
+export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [taskFilter, setTaskFilter] = useState<"active" | "previous">(
@@ -133,9 +127,8 @@ export default function ServiceWorkList({
     }
 
     return rows
-      .map((service: any) => ({
-        ...service,
-        tasks: (service.tasks ?? []).filter((task: any) => {
+      .map((service: any) => {
+        const taskFiltered = (service.tasks ?? []).filter((task: any) => {
           const subtasks = task.subtasks ?? [];
           const completedByStatus =
             task.status === "completed" || task.status === "COMPLETED";
@@ -148,11 +141,30 @@ export default function ServiceWorkList({
                 Number(subtask.progress ?? 0) >= 100
             );
           const isCompleted = completedByStatus || completedBySubtasks;
-
           return taskFilter === "previous" ? isCompleted : !isCompleted;
-        }),
-      }))
-      .filter((service: any) => service.tasks.length > 0);
+        });
+
+        const jobDone = ["COMPLETED", "CANCELLED"].includes(
+          String(service.status || "").toUpperCase()
+        );
+        const assignedOnly =
+          taskFiltered.length === 0 &&
+          (service.assignedMechanics?.length > 0 ||
+            service.tasks?.length === 0);
+
+        if (assignedOnly) {
+          if (taskFilter === "previous" && !jobDone) return null;
+          if (taskFilter === "active" && jobDone) return null;
+        } else if (taskFiltered.length === 0) {
+          return null;
+        }
+
+        return {
+          ...service,
+          tasks: taskFiltered,
+        };
+      })
+      .filter(Boolean);
   }, [mode, query.data, taskFilter]);
 
   if (query.isLoading) {
@@ -165,11 +177,6 @@ export default function ServiceWorkList({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
-        <p className="text-sm text-gray-500">{description}</p>
-      </div>
-
       {mode === "mechanic" && (
         <div className="inline-flex rounded-md border bg-white p-1">
           <button

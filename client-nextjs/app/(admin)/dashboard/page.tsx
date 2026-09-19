@@ -1,18 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { normalizeJobCardStatus } from "@/lib/job-card-status";
+import { formatMoney } from "@/lib/job-card-items";
 
 async function apiGet(url: string) {
   const res = await fetch(url, { cache: "no-store" });
   const json = await res.json();
-
-  if (!res.ok) {
-    throw new Error(json?.message || "Request failed");
-  }
-
+  if (!res.ok) throw new Error(json?.message || "Request failed");
   return json?.data ?? json ?? [];
 }
 
@@ -24,10 +23,8 @@ function isSameWeek(date: Date, now: Date) {
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay());
   start.setHours(0, 0, 0, 0);
-
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
-
   return date >= start && date < end;
 }
 
@@ -38,15 +35,32 @@ function isSameMonth(date: Date, now: Date) {
   );
 }
 
+function StatCard({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  href?: string;
+}) {
+  const body = (
+    <Card>
+      <CardContent className="p-5">
+        <h2 className="text-sm font-medium text-gray-500">{label}</h2>
+        <p className="mt-2 text-3xl font-bold">{value}</p>
+      </CardContent>
+    </Card>
+  );
+  if (!href) return body;
+  return (
+    <Link href={href} className="block transition hover:opacity-90">
+      {body}
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
-  const usersQuery = useQuery({
-    queryKey: ["dashboard", "users"],
-    queryFn: () => apiGet("/api/user"),
-  });
-  const vehiclesQuery = useQuery({
-    queryKey: ["dashboard", "vehicles"],
-    queryFn: () => apiGet("/api/vehicles"),
-  });
   const servicesQuery = useQuery({
     queryKey: ["dashboard", "services"],
     queryFn: () => apiGet("/api/services"),
@@ -56,112 +70,122 @@ export default function DashboardPage() {
     queryFn: () => apiGet("/api/invoices"),
   });
 
-  const revenue = useMemo(() => {
+  const stats = useMemo(() => {
     const now = new Date();
+    const services = servicesQuery.data ?? [];
     const invoices = invoicesQuery.data ?? [];
+    const bills = invoices.filter(
+      (inv: any) => (inv.documentType || "BILL") === "BILL"
+    );
+    const estimates = invoices.filter(
+      (inv: any) => inv.documentType === "ESTIMATE"
+    );
 
-    return invoices.reduce(
+    const todayJobs = services.filter((s: any) => {
+      const d = new Date(s.jobCardAt || s.createdAt || s.serviceDate);
+      return !Number.isNaN(d.getTime()) && isSameDay(d, now);
+    }).length;
+
+    const revenue = bills.reduce(
       (acc: any, invoice: any) => {
-        const date = new Date(invoice.createdAt);
-        const amount = Number(invoice.paidAmount || invoice.totalAmount || 0);
-
+        const date = new Date(invoice.updatedAt || invoice.createdAt);
+        const amount = Number(invoice.paidAmount || 0);
         if (isSameDay(date, now)) acc.daily += amount;
         if (isSameWeek(date, now)) acc.weekly += amount;
         if (isSameMonth(date, now)) acc.monthly += amount;
-
         return acc;
       },
       { daily: 0, weekly: 0, monthly: 0 }
     );
-  }, [invoicesQuery.data]);
 
-  const serviceStats = useMemo(() => {
-    const services = servicesQuery.data ?? [];
     return {
-      total: services.length,
-      inProgress: services.filter((service: any) =>
-        ["INSPECTION", "CONFIRMED", "IN_PROGRESS"].includes(service.status)
+      todayJobs,
+      inProgress: services.filter(
+        (s: any) => normalizeJobCardStatus(s.status) === "IN_PROGRESS"
       ).length,
-      completed: services.filter((service: any) => service.status === "COMPLETED")
+      completed: services.filter((s: any) => s.status === "COMPLETED").length,
+      pending: services.filter(
+        (s: any) => normalizeJobCardStatus(s.status) === "PENDING"
+      ).length,
+      openEstimates: estimates.length,
+      unpaidBills: bills.filter((b: any) => b.paymentStatus === "unpaid").length,
+      partialBills: bills.filter((b: any) => b.paymentStatus === "partial")
         .length,
+      paidBills: bills.filter((b: any) => b.paymentStatus === "paid").length,
+      revenue,
     };
-  }, [servicesQuery.data]);
+  }, [servicesQuery.data, invoicesQuery.data]);
 
-  if (
-    usersQuery.isLoading ||
-    vehiclesQuery.isLoading ||
-    servicesQuery.isLoading ||
-    invoicesQuery.isLoading
-  ) {
+  if (servicesQuery.isLoading || invoicesQuery.isLoading) {
     return <p>Loading dashboard...</p>;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500">
-          Live overview of users, vehicles, services, invoices, and revenue.
-        </p>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/dashboard/admin/services?status=PENDING"
+          className="rounded-md border px-3 py-1.5 text-sm"
+        >
+          Pending jobs
+        </Link>
+        <Link
+          href="/dashboard/admin/invoices"
+          className="rounded-md border px-3 py-1.5 text-sm"
+        >
+          Unpaid invoices
+        </Link>
+        <Link
+          href="/dashboard/admin/services/create"
+          className="rounded-md bg-black px-3 py-1.5 text-sm text-white"
+        >
+          Create Job Card
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Total Users</h2>
-            <p className="mt-2 text-3xl font-bold">
-              {(usersQuery.data ?? []).length}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Vehicles</h2>
-            <p className="mt-2 text-3xl font-bold">
-              {(vehiclesQuery.data ?? []).length}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Active Services</h2>
-            <p className="mt-2 text-3xl font-bold">{serviceStats.inProgress}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Completed</h2>
-            <p className="mt-2 text-3xl font-bold">{serviceStats.completed}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Today's job cards" value={stats.todayJobs} />
+        <StatCard
+          label="In progress"
+          value={stats.inProgress}
+          href="/dashboard/admin/services"
+        />
+        <StatCard label="Completed" value={stats.completed} />
+        <StatCard
+          label="Pending"
+          value={stats.pending}
+          href="/dashboard/admin/services"
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Daily Revenue</h2>
-            <p className="mt-2 text-3xl font-bold">{revenue.daily.toFixed(2)}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Open estimates"
+          value={stats.openEstimates}
+          href="/dashboard/admin/invoices"
+        />
+        <StatCard
+          label="Unpaid bills"
+          value={stats.unpaidBills}
+          href="/dashboard/admin/invoices"
+        />
+        <StatCard label="Partial bills" value={stats.partialBills} />
+        <StatCard label="Paid bills" value={stats.paidBills} />
+      </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Weekly Revenue</h2>
-            <p className="mt-2 text-3xl font-bold">{revenue.weekly.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-sm font-medium text-gray-500">Monthly Revenue</h2>
-            <p className="mt-2 text-3xl font-bold">
-              {revenue.monthly.toFixed(2)}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          label="Collected today"
+          value={`₹${formatMoney(stats.revenue.daily)}`}
+        />
+        <StatCard
+          label="Collected this week"
+          value={`₹${formatMoney(stats.revenue.weekly)}`}
+        />
+        <StatCard
+          label="Collected this month"
+          value={`₹${formatMoney(stats.revenue.monthly)}`}
+        />
       </div>
     </div>
   );

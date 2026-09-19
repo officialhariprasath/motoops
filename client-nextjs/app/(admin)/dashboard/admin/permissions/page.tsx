@@ -1,4 +1,4 @@
-﻿import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 const permissions = [
   { feature: "Dashboard analytics", admin: true, mechanic: false, user: false },
@@ -12,8 +12,6 @@ const permissions = [
   { feature: "Add service comments", admin: true, mechanic: true, user: true },
   { feature: "Generate and update invoices", admin: true, mechanic: false, user: false },
   { feature: "View own invoices", admin: true, mechanic: false, user: true },
-  { feature: "Manage procurement inventory", admin: true, mechanic: false, user: false },
-  { feature: "Request tools or parts", admin: true, mechanic: true, user: false },
   { feature: "Approve leave and attendance", admin: true, mechanic: false, user: false },
   { feature: "Request future leave", admin: false, mechanic: true, user: false },
   { feature: "Configure app settings", admin: true, mechanic: false, user: false },
@@ -34,13 +32,6 @@ function PermissionCell({ allowed }: { allowed: boolean }) {
 export default function PermissionMatrixPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Role Permission Matrix</h1>
-        <p className="text-sm text-gray-500">
-          Quick access map for admin, mechanic, and customer workflows.
-        </p>
-      </div>
-
       <Card>
         <CardContent className="overflow-x-auto p-6">
           <table className="w-full min-w-[720px] text-sm">

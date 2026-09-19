@@ -65,16 +65,6 @@ export default function CustomerVehiclesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">
-          My Vehicles
-        </h1>
-
-        <p className="text-sm text-gray-500">
-          View your registered vehicles
-        </p>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {vehiclesQuery.data?.map(
           (vehicle: any) => (

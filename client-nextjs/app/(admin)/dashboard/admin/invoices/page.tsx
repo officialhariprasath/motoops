@@ -5,9 +5,19 @@ import Link from "next/link";
 
 import ListControls from "@/components/dashboard/ListControls";
 import { useGaragePageSize } from "@/lib/list-settings";
+import { formatMoney } from "@/lib/job-card-items";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Invoice = {
   id: string;
+  invoiceNumber?: string;
+  documentType?: "ESTIMATE" | "BILL";
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;
@@ -15,6 +25,7 @@ type Invoice = {
   createdAt: string;
   service: {
     id: string;
+    jobCardNumber?: string;
     vehicle?: {
       registrationNumber?: string;
       brand?: string;
@@ -26,17 +37,25 @@ type Invoice = {
       mobile?: string;
     };
   };
-  generatedBy: {
+  generatedBy?: {
     id: string;
     name: string;
   };
 };
+
+function statusTone(status: string) {
+  if (status === "paid") return "bg-emerald-50 text-emerald-800";
+  if (status === "partial") return "bg-amber-50 text-amber-800";
+  return "bg-rose-50 text-rose-800";
+}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const pageSize = useGaragePageSize();
 
@@ -47,22 +66,11 @@ export default function InvoicesPage() {
   const fetchInvoices = async () => {
     try {
       setErrorMessage("");
-      const res = await fetch("/api/invoices", {
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
+      const res = await fetch("/api/invoices", { cache: "no-store" });
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to load invoices");
-      }
-
+      if (!res.ok) throw new Error(data?.message || "Failed to load invoices");
       setInvoices(data?.data ?? data ?? []);
     } catch (error) {
-      console.error("Failed to load invoices", error);
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to load invoices"
       );
@@ -71,59 +79,53 @@ export default function InvoicesPage() {
     }
   };
 
-  const updateStatus = async (id: string, status: string) => {
-    const invoice = invoices.find((item) => item.id === id);
-    const paidAmount = status === "paid" ? Number(invoice?.totalAmount || 0) : 0;
-
-    const res = await fetch(`/api/invoices/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({ paidAmount }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setErrorMessage(data?.message || "Failed to update payment status");
-      return;
-    }
-
-    fetchInvoices();
-  };
-
   const filteredInvoices = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return invoices;
 
-    return invoices.filter((invoice) =>
-      [
+    return invoices.filter((invoice) => {
+      const docType = invoice.documentType || "BILL";
+      if (typeFilter !== "ALL" && docType !== typeFilter) return false;
+      if (
+        paymentFilter !== "ALL" &&
+        invoice.paymentStatus !== paymentFilter
+      ) {
+        return false;
+      }
+      if (typeFilter === "ESTIMATE" && paymentFilter !== "ALL") {
+        // estimates stay unpaid; still allow filter
+      }
+      if (!query) return true;
+
+      return [
+        invoice.invoiceNumber,
         invoice.id,
+        invoice.documentType,
         invoice.paymentStatus,
         invoice.totalAmount,
         invoice.paidAmount,
         invoice.dueAmount,
         invoice.generatedBy?.name,
-        invoice.service?.id,
+        invoice.service?.jobCardNumber,
         invoice.service?.vehicle?.registrationNumber,
         invoice.service?.vehicle?.brand,
         invoice.service?.vehicle?.model,
         invoice.service?.customer?.name,
-        invoice.service?.customer?.email,
         invoice.service?.customer?.mobile,
       ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query))
-    );
-  }, [invoices, search]);
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [invoices, search, typeFilter, paymentFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
   const paginatedInvoices = filteredInvoices.slice(
     (page - 1) * pageSize,
     page * pageSize
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter, paymentFilter]);
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -134,9 +136,7 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold">Invoices</h1>
-
+    <div className="space-y-6">
       {errorMessage && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
@@ -146,12 +146,37 @@ export default function InvoicesPage() {
       <ListControls
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search invoices by customer, vehicle, status, amount, or invoice id"
+        searchPlaceholder="Search by number, customer, vehicle, or status"
         page={page}
         totalPages={totalPages}
         totalItems={filteredInvoices.length}
         pageSize={pageSize}
         onPageChange={setPage}
+        filters={
+          <div className="flex flex-wrap gap-2">
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="ALL">All types</SelectItem>
+                <SelectItem value="ESTIMATE">Estimate</SelectItem>
+                <SelectItem value="BILL">Bill</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="ALL">All payments</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        }
       />
 
       {!errorMessage && filteredInvoices.length === 0 && (
@@ -160,76 +185,71 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      <div className="grid gap-4">
-        {paginatedInvoices.map((inv) => (
-          <div
-            key={inv.id}
-            className="flex items-center justify-between rounded-xl border p-4 shadow-sm"
-          >
-            <div>
-              <p className="font-semibold">Invoice #{inv.id.slice(0, 6)}</p>
-              <p className="text-sm text-gray-500">Service ID: {inv.service?.id}</p>
-              <p className="text-sm text-gray-500">
-                Vehicle: {inv.service?.vehicle?.registrationNumber || "N/A"}
-              </p>
-              <p className="text-sm text-gray-500">
-                Customer: {inv.service?.customer?.name || "N/A"}
-              </p>
-              <p className="text-sm text-gray-500">
-                Created By: {inv.generatedBy?.name}
-              </p>
-              <p className="text-sm text-gray-500">
-                Date: {new Date(inv.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-lg font-bold">? {inv.totalAmount}</p>
-
-              <span
-                className={`rounded px-2 py-1 text-sm ${
-                  inv.paymentStatus === "paid"
-                    ? "bg-green-100 text-green-700"
-                    : inv.paymentStatus === "unpaid"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
-              >
-                {inv.paymentStatus}
-              </span>
-
-              <div className="mt-2 space-x-2">
-                <Link
-                  href={`/dashboard/admin/invoices/${inv.id}`}
-                  className="rounded bg-blue-500 px-2 py-1 text-xs text-white"
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {paginatedInvoices.map((inv) => {
+          const docType = inv.documentType || "BILL";
+          return (
+            <Link
+              key={inv.id}
+              href={`/dashboard/admin/invoices/${inv.id}`}
+              className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {inv.invoiceNumber || inv.id.slice(0, 8)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {inv.service?.jobCardNumber || "Job card"}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    docType === "ESTIMATE"
+                      ? "bg-sky-50 text-sky-800"
+                      : "bg-slate-900 text-white"
+                  }`}
                 >
-                  View
-                </Link>
-                <Link
-                  href={`/dashboard/admin/invoices/${inv.id}/payment`}
-                  className="rounded bg-yellow-500 px-2 py-1 text-xs text-white"
-                >
-                  Update Payment
-                </Link>
-                <button
-                  onClick={() => updateStatus(inv.id, "paid")}
-                  className="rounded bg-green-500 px-2 py-1 text-xs text-white"
-                >
-                  Mark Paid
-                </button>
-
-                <button
-                  onClick={() => updateStatus(inv.id, "unpaid")}
-                  className="rounded bg-red-500 px-2 py-1 text-xs text-white"
-                >
-                  Unpaid
-                </button>
+                  {docType === "ESTIMATE" ? "Estimate" : "Bill"}
+                </span>
               </div>
-            </div>
-          </div>
-        ))}
+
+              <div className="mt-3 space-y-1 text-sm text-slate-600">
+                <p>{inv.service?.customer?.name || "—"}</p>
+                <p>
+                  {inv.service?.vehicle?.registrationNumber || "—"}
+                  {inv.service?.vehicle?.brand
+                    ? ` · ${inv.service.vehicle.brand}`
+                    : ""}
+                </p>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between gap-2">
+                <div>
+                  <p className="text-lg font-semibold text-slate-900">
+                    ₹{formatMoney(inv.totalAmount)}
+                  </p>
+                  {docType === "BILL" && (
+                    <p className="text-xs text-slate-500">
+                      Paid ₹{formatMoney(inv.paidAmount)} · Due ₹
+                      {formatMoney(inv.dueAmount)}
+                    </p>
+                  )}
+                </div>
+                {docType === "BILL" && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusTone(
+                      inv.paymentStatus
+                    )}`}
+                  >
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
 }
-

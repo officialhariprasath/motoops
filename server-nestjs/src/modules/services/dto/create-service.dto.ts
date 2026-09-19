@@ -1,23 +1,22 @@
-﻿import {
+import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   ValidateNested,
   Min,
-  Max
+  Max,
+  ValidateIf,
+  MinLength,
 } from 'class-validator';
 
 import { Type } from 'class-transformer';
 
 import { ServiceStatus } from '../entities/service.entity';
-
-// ======================================================
-// CREATE TASK PART DTO
-// ======================================================
 
 export class CreateTaskPartDto {
   @IsString()
@@ -35,10 +34,6 @@ export class CreateTaskPartDto {
   @Min(0)
   unitPrice!: number;
 }
-
-// ======================================================
-// CREATE SUBTASK DTO
-// ======================================================
 
 export enum SubTaskStatus {
   PENDING = 'PENDING',
@@ -77,9 +72,6 @@ export class CreateServiceSubTaskDto {
   progress?: number = 0;
 }
 
-// ======================================================
-// CREATE Comment DTO
-// ======================================================
 export class CreateTaskCommentDto {
   @IsString()
   message!: string;
@@ -91,10 +83,6 @@ export class CreateTaskCommentDto {
   @IsString()
   status?: string;
 }
-
-// ======================================================
-// CREATE TASK DTO
-// ======================================================
 
 export class CreateServiceTaskDto {
   @IsString()
@@ -110,14 +98,8 @@ export class CreateServiceTaskDto {
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', {
-    each: true,
-  })
+  @IsUUID('4', { each: true })
   mechanicIds?: string[];
-
-  // =====================================
-  // COSTING
-  // =====================================
 
   @IsOptional()
   @IsNumber()
@@ -127,27 +109,15 @@ export class CreateServiceTaskDto {
   @IsNumber()
   additionalCost?: number;
 
-  // =====================================
-  // PARTS
-  // =====================================
-
   @IsOptional()
   @IsArray()
-  @ValidateNested({
-    each: true,
-  })
+  @ValidateNested({ each: true })
   @Type(() => CreateTaskPartDto)
   parts?: CreateTaskPartDto[];
 
-  // =====================================
-  // SUBTASKS
-  // =====================================
-
   @IsOptional()
   @IsArray()
-  @ValidateNested({
-    each: true,
-  })
+  @ValidateNested({ each: true })
   @Type(() => CreateServiceSubTaskDto)
   subtasks?: CreateServiceSubTaskDto[];
 
@@ -157,10 +127,6 @@ export class CreateServiceTaskDto {
   @Type(() => CreateTaskCommentDto)
   comments?: CreateTaskCommentDto[];
 }
-
-// ======================================================
-// CREATE SERVICE DTO
-// ======================================================
 
 export class CreateServiceDto {
   @IsOptional()
@@ -174,6 +140,31 @@ export class CreateServiceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  jobCardNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  jobCardAt?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  petrolLevel?: number;
+
+  @IsOptional()
+  @IsArray()
+  lineItems?: Array<{
+    id: string;
+    description: string;
+    rate: number;
+    quantity: number;
+    discountPercent: number;
+  }>;
 
   @IsOptional()
   @IsArray()
@@ -193,22 +184,66 @@ export class CreateServiceDto {
   @IsDateString()
   deliveryDate?: Date;
 
-  // =====================================
-  // RELATIONS
-  // =====================================
+  // Customer intake
+  @ValidateIf((o) => !o.customerId)
+  @IsString()
+  @MinLength(2)
+  customerName?: string;
 
-  @IsUUID()
-  vehicleId!: string;
+  @ValidateIf((o) => !o.customerId)
+  @IsString()
+  @MinLength(8)
+  customerMobile?: string;
 
+  @IsOptional()
+  @IsString()
+  customerAddress?: string;
+
+  // Vehicle intake
+  @ValidateIf((o) => !o.vehicleId)
+  @IsString()
+  @MinLength(2)
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  make?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  modelYear?: string;
+
+  @IsOptional()
+  @IsString()
+  engineNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  chassisNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  odometerReading?: string;
+
+  @ValidateIf((o) => !o.registrationNumber)
   @IsUUID()
-  customerId!: string;
+  vehicleId?: string;
+
+  @ValidateIf((o) => !o.customerMobile)
+  @IsUUID()
+  customerId?: string;
 
   @IsUUID()
   createdById!: string;
 
-  // =====================================
-  // BILLING
-  // =====================================
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  assignedMechanicIds?: string[];
 
   @IsOptional()
   @IsNumber()
@@ -218,19 +253,9 @@ export class CreateServiceDto {
   @IsNumber()
   tax?: number;
 
-  // =====================================
-  // TASKS
-  // =====================================
-
   @IsOptional()
   @IsArray()
-  @ValidateNested({
-    each: true,
-  })
+  @ValidateNested({ each: true })
   @Type(() => CreateServiceTaskDto)
   tasks?: CreateServiceTaskDto[];
-
-
 }
-
-

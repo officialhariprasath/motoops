@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 export type NotificationCategory =
   | "service"
   | "invoice"
   | "payment"
-  | "procurement"
   | "attendance";
 
 export type GarageNotification = {
@@ -29,33 +28,25 @@ export const notificationCategories: Array<{
   { key: "service", label: "Service updates", description: "Service creation, job card updates, and status changes." },
   { key: "invoice", label: "Invoice updates", description: "Invoice generation and invoice document activity." },
   { key: "payment", label: "Payment updates", description: "Paid, partial, and unpaid payment changes." },
-  { key: "procurement", label: "Procurement requests", description: "Tool and parts requests, approvals, issues, and returns." },
   { key: "attendance", label: "Attendance and leave", description: "Leave requests and workforce attendance updates." },
 ];
 
 function getNotificationSettings() {
-  if (typeof window === "undefined") return {} as Record<string, boolean>;
+  if (typeof window === "undefined") return { notificationsEnabled: true };
 
   try {
     const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
     return {
       notificationsEnabled: settings.notificationsEnabled !== false,
-      service: settings.notificationService !== false,
-      invoice: settings.notificationInvoice !== false,
-      payment: settings.notificationPayment !== false,
-      procurement: settings.notificationProcurement !== false,
-      attendance: settings.notificationAttendance !== false,
     };
   } catch {
-    return { notificationsEnabled: true } as Record<string, boolean>;
+    return { notificationsEnabled: true };
   }
 }
 
-function canNotify(category?: NotificationCategory) {
+function canNotify(_category?: NotificationCategory) {
   const settings = getNotificationSettings();
-  if (settings.notificationsEnabled === false) return false;
-  if (!category) return true;
-  return settings[category] !== false;
+  return settings.notificationsEnabled !== false;
 }
 
 export function getNotifications(role?: string): GarageNotification[] {

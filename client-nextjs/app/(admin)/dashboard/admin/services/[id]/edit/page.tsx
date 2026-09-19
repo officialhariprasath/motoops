@@ -14,14 +14,11 @@ async function getService(id: string) {
   const json = await res.json();
 
   if (!res.ok) {
-    throw new Error(
-      json?.message || "Failed to load service"
-    );
+    throw new Error(json?.message || "Failed to load job card");
   }
 
   const rows = json.data ?? json;
 
-  // API returning tasks[]
   if (Array.isArray(rows) && rows.length > 0) {
     return {
       ...rows[0].service,
@@ -43,18 +40,19 @@ export default function EditServicePage() {
   });
 
   if (serviceQuery.isLoading) {
-    return <p>Loading service...</p>;
+    return <p>Loading job card...</p>;
   }
 
   if (serviceQuery.isError) {
-    return <p className="text-red-600">Failed to load service.</p>;
+    return <p className="text-red-600">Failed to load job card.</p>;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Edit Service</h1>
-
-      <ServiceForm key={serviceQuery.data.id} editingService={serviceQuery.data} />
+      <ServiceForm
+        key={serviceQuery.data.id}
+        editingService={serviceQuery.data}
+      />
     </div>
   );
 }

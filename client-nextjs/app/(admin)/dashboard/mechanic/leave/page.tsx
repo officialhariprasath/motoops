@@ -74,13 +74,6 @@ export default function MechanicLeavePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Leave Requests</h1>
-        <p className="text-sm text-gray-500">
-          Request future leave so admin can plan task assignments.
-        </p>
-      </div>
-
       {message && (
         <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
           {message}

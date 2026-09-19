@@ -214,14 +214,7 @@ export default function WorkforcePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Workforce & Attendance</h1>
-          <p className="text-sm text-gray-500">
-            Monitor task load, technician progress, leave, holidays, and availability.
-          </p>
-        </div>
-
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Link href="/dashboard/admin/services/create">
           <Button>Assign New Service</Button>
         </Link>

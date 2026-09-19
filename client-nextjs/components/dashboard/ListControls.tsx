@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +14,7 @@ type ListControlsProps = {
   totalItems: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  filters?: ReactNode;
 };
 
 export default function ListControls({
@@ -23,20 +26,24 @@ export default function ListControls({
   totalItems,
   pageSize,
   onPageChange,
+  filters,
 }: ListControlsProps) {
   const safeTotalPages = Math.max(totalPages, 1);
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-white p-4 md:flex-row md:items-center md:justify-between">
-      <Input
-        value={search}
-        onChange={(event) => {
-          onSearchChange(event.target.value);
-          onPageChange(1);
-        }}
-        placeholder={searchPlaceholder}
-        className="md:max-w-sm"
-      />
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center md:max-w-2xl">
+        <Input
+          value={search}
+          onChange={(event) => {
+            onSearchChange(event.target.value);
+            onPageChange(1);
+          }}
+          placeholder={searchPlaceholder}
+          className="sm:min-w-[220px] sm:flex-1"
+        />
+        {filters}
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
         <span>

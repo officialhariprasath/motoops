@@ -1,62 +1,26 @@
 ﻿"use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-
-import VehicleForm from "./VehicleForm";
-
-import { Button } from "@/components/ui/button";
-import { useDeleteActionsEnabled } from "@/lib/delete-settings";
-import { useGaragePageSize } from "@/lib/list-settings";
 import ListControls from "@/components/dashboard/ListControls";
+import VehicleSummaryCard from "@/components/dashboard/VehicleSummaryCard";
+import { useGaragePageSize } from "@/lib/list-settings";
 
 const getVehicles = async () => {
   const res = await fetch("/api/vehicles");
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch vehicles");
-  }
-
-  return res.json();
-};
-
-const deleteVehicle = async (id: string) => {
-  const res = await fetch(`/api/vehicles/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to delete vehicle");
-  }
-
+  if (!res.ok) throw new Error("Failed to fetch vehicles");
   return res.json();
 };
 
 export default function VehiclesPage() {
-  const queryClient = useQueryClient();
-  const deleteActionsEnabled = useDeleteActionsEnabled();
   const pageSize = useGaragePageSize();
-
-  const [editingVehicle, setEditingVehicle] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const vehiclesQuery = useQuery({
     queryKey: ["vehicles"],
     queryFn: getVehicles,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteVehicle,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-    },
   });
 
   const vehicles = vehiclesQuery?.data?.data ?? [];
@@ -67,17 +31,13 @@ export default function VehiclesPage() {
     return vehicles.filter((vehicle: any) =>
       [
         vehicle.registrationNumber,
-        vehicle.vinNumber,
         vehicle.brand,
         vehicle.model,
         vehicle.year,
-        vehicle.color,
-        vehicle.mileage,
-        vehicle.engineNumber,
-        vehicle.chassisNumber,
+        vehicle.vehicleCode,
         vehicle.owner?.name,
-        vehicle.owner?.email,
         vehicle.owner?.mobile,
+        vehicle.owner?.customerCode,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
@@ -95,27 +55,19 @@ export default function VehiclesPage() {
   }, [totalPages]);
 
   if (vehiclesQuery.isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading vehicles...</div>;
   }
 
   if (vehiclesQuery.error instanceof Error) {
-    return <div>{vehiclesQuery.error.message}</div>;
+    return <div className="text-red-600">{vehiclesQuery.error.message}</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <VehicleForm
-        editingVehicle={editingVehicle}
-        onSuccess={() => {
-          setEditingVehicle(null);
-          queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-        }}
-      />
-
+    <div className="space-y-4">
       <ListControls
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search vehicles by registration, owner, brand, model, VIN, or mileage"
+        searchPlaceholder="Search by registration, owner, make, model, JMV..."
         page={page}
         totalPages={totalPages}
         totalItems={filteredVehicles.length}
@@ -123,101 +75,16 @@ export default function VehiclesPage() {
         onPageChange={setPage}
       />
 
-      <div className="overflow-hidden rounded-xl border bg-white p-6">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr className="border-b">
-              <th className="p-3 text-left">Photo</th>
-              <th className="p-3 text-left">Vehicle</th>
-              <th className="p-3 text-left">Registration / VIN</th>
-              <th className="p-3 text-left">Owner</th>
-              <th className="p-3 text-left">Workshop Info</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {paginatedVehicles.map((vehicle: any) => (
-              <tr key={vehicle.id} className="border-b align-top hover:bg-slate-50">
-                <td className="p-3">
-                  {vehicle.photoUrl ? (
-                    <img
-                      src={vehicle.photoUrl}
-                      alt={`${vehicle.registrationNumber} vehicle`}
-                      className="h-16 w-20 rounded-md border object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-16 w-20 items-center justify-center rounded-md border bg-slate-100 text-xs text-gray-500">
-                      No photo
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
-                  <p className="font-semibold">{vehicle.brand} {vehicle.model}</p>
-                  <p className="text-xs text-gray-500">Year: {vehicle.year || "N/A"}</p>
-                  <p className="text-xs text-gray-500">Color: {vehicle.color || "N/A"}</p>
-                </td>
-                <td className="p-3">
-                  <p className="font-semibold">{vehicle.registrationNumber}</p>
-                  <p className="text-xs text-gray-500">VIN: {vehicle.vinNumber || "N/A"}</p>
-                </td>
-                <td className="p-3">
-                  <p className="font-semibold">{vehicle.owner?.name || "No owner"}</p>
-                  <p className="text-xs text-gray-500">{vehicle.owner?.mobile || "No mobile"}</p>
-                  <p className="text-xs text-gray-500">{vehicle.owner?.email || "No email"}</p>
-                </td>
-                <td className="p-3">
-                  <p>Mileage: {vehicle.mileage || "N/A"}</p>
-                  <p className="text-xs text-gray-500">Engine: {vehicle.engineNumber || "N/A"}</p>
-                  <p className="text-xs text-gray-500">Created: {vehicle.createdAt ? new Date(vehicle.createdAt).toLocaleDateString() : "N/A"}</p>
-                </td>
-                <td className="p-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/admin/vehicles/${vehicle.id}`}>
-                      <Button size="sm" variant="outline">View</Button>
-                    </Link>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditingVehicle(vehicle)}
-                    >
-                      Edit
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={!deleteActionsEnabled || deleteMutation.isPending}
-                      title={
-                        deleteActionsEnabled
-                          ? "Delete vehicle"
-                          : "Enable delete actions in Settings first"
-                      }
-                      onClick={() => deleteMutation.mutate(vehicle.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {paginatedVehicles.length === 0 && (
-              <tr>
-                <td className="p-6 text-center text-sm text-gray-500" colSpan={6}>
-                  No vehicles found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {paginatedVehicles.map((vehicle: any) => (
+          <VehicleSummaryCard key={vehicle.id} vehicle={vehicle} />
+        ))}
+        {paginatedVehicles.length === 0 && (
+          <div className="col-span-full rounded-xl border bg-white p-8 text-center text-sm text-gray-500">
+            No vehicles found.
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-
-
-
-

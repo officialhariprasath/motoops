@@ -134,13 +134,6 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Profile</h1>
-        <p className="text-sm text-gray-500">
-          Update your contact details. Username is locked after account creation.
-        </p>
-      </div>
-
       {message && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           {message}

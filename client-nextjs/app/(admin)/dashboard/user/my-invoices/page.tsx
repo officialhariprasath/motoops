@@ -2,22 +2,17 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-
-import { Card, CardContent } from "@/components/ui/card";
+import { formatMoney } from "@/lib/job-card-items";
 
 async function getMyInvoices() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const res = await fetch("/api/invoices", {
-    cache: "no-store",
-  });
+  const res = await fetch("/api/invoices", { cache: "no-store" });
   const json = await res.json();
-
-  if (!res.ok) {
-    throw new Error(json?.message || "Failed to load invoices");
-  }
-
+  if (!res.ok) throw new Error(json?.message || "Failed to load invoices");
   const invoices = json?.data ?? json ?? [];
-  return invoices.filter((invoice: any) => invoice.service?.customer?.id === user.id);
+  return invoices.filter(
+    (invoice: any) => invoice.service?.customer?.id === user.id
+  );
 }
 
 export default function MyInvoicesPage() {
@@ -26,10 +21,7 @@ export default function MyInvoicesPage() {
     queryFn: getMyInvoices,
   });
 
-  if (query.isLoading) {
-    return <p>Loading invoices...</p>;
-  }
-
+  if (query.isLoading) return <p>Loading invoices...</p>;
   if (query.error instanceof Error) {
     return <p className="text-sm text-red-600">{query.error.message}</p>;
   }
@@ -38,51 +30,46 @@ export default function MyInvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">My Invoices</h1>
-        <p className="text-sm text-gray-500">
-          View invoices for your services.
-        </p>
-      </div>
-
       {invoices.length === 0 && (
         <div className="rounded-md border bg-white p-6 text-sm text-gray-500">
           No invoices found.
         </div>
       )}
 
-      <div className="grid gap-4">
-        {invoices.map((invoice: any) => (
-          <Card key={invoice.id}>
-            <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
-              <div>
-                <h2 className="font-semibold">Invoice #{invoice.id.slice(0, 8)}</h2>
-                <p className="text-sm text-gray-500">
-                  Vehicle:{" "}
-                  {invoice.service?.vehicle?.registrationNumber ?? "N/A"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Status: {invoice.paymentStatus}
-                </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {invoices.map((invoice: any) => {
+          const docType = invoice.documentType || "BILL";
+          return (
+            <Link
+              key={invoice.id}
+              href={`/dashboard/user/my-invoices/${invoice.id}`}
+              className="block rounded-xl border bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold">
+                    {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {invoice.service?.vehicle?.registrationNumber ?? "N/A"}
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium">
+                  {docType === "ESTIMATE" ? "Estimate" : "Bill"}
+                </span>
               </div>
-
-              <div className="text-right">
-                <p className="text-lg font-bold">
-                  {Number(invoice.totalAmount ?? 0).toFixed(2)}
+              <p className="mt-3 text-lg font-bold">
+                ₹{formatMoney(invoice.totalAmount)}
+              </p>
+              {docType === "BILL" && (
+                <p className="text-sm capitalize text-gray-500">
+                  {invoice.paymentStatus} · Due ₹
+                  {formatMoney(invoice.dueAmount)}
                 </p>
-                <p className="text-sm text-gray-500">
-                  Due: {Number(invoice.dueAmount ?? 0).toFixed(2)}
-                </p>
-                <Link
-                  href={`/dashboard/admin/invoices/${invoice.id}`}
-                  className="mt-2 inline-block rounded bg-black px-3 py-1 text-sm text-white"
-                >
-                  View
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

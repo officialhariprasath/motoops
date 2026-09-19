@@ -1,4 +1,17 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+
+export enum InvoiceDocumentTypeDto {
+  ESTIMATE = 'ESTIMATE',
+  BILL = 'BILL',
+}
 
 export class CreateInvoiceDto {
   @IsString()
@@ -10,7 +23,15 @@ export class CreateInvoiceDto {
   generatedById!: string;
 
   @IsOptional()
+  @IsEnum(InvoiceDocumentTypeDto)
+  documentType?: InvoiceDocumentTypeDto;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   paidAmount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  completeJob?: boolean;
 }
