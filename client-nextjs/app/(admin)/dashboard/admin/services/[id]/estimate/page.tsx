@@ -149,7 +149,7 @@ export default function EstimatePage() {
     );
   }
 
-  const garageName = settings.garageName || "Auto Garage";
+  const garageName = settings.garageName || "MotoOps";
   const garageAddress = settings.address || "";
   const garagePhone = settings.phone || "";
   const garageEmail = settings.email || "";

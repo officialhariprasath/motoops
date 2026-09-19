@@ -3,7 +3,7 @@
   const vehicle = service.vehicle ?? {};
   const customer = service.customer ?? {};
   const lines = [
-    "Auto Garage Invoice",
+    "MotoOps Invoice",
     `Invoice: ${invoice.id}`,
     `Date: ${new Date(invoice.createdAt).toLocaleDateString()}`,
     `Customer: ${customer.name ?? "N/A"}`,

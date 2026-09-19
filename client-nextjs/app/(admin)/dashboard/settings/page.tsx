@@ -11,13 +11,13 @@ import ImageUploadField from "@/components/dashboard/ImageUploadField";
 import { previewJobCardNumber } from "@/lib/job-card-settings";
 
 const defaultSettings = {
-  garageName: "Auto Garage",
+  garageName: "MotoOps",
   phone: "",
   email: "",
   address: "",
   gstin: "",
-  invoiceNote: "Thank you for choosing Auto Garage.",
-  invoiceLogoUrl: "",
+  invoiceNote: "Thank you for choosing MotoOps.",
+  invoiceLogoUrl: "/motoops-logo.png",
   jobCardPrefix: "JC",
   deleteActionsEnabled: false,
   listPageSize: 10,

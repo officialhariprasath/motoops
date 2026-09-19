@@ -199,18 +199,24 @@ export default function RegisterForm() {
   return (
     <div className="relative w-full max-w-6xl overflow-hidden rounded-[32px] border border-white/70 bg-white/80 shadow-[0_30px_90px_-20px_rgba(15,23,42,0.35)] backdrop-blur-xl">
       <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr]">
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white sm:p-8 lg:p-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium text-slate-100">
-            <ShieldCheck className="h-4 w-4" />
-            Modern garage operations
+        <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white sm:p-8 lg:p-12">
+          <div className="flex items-center gap-3">
+            <img
+              src="/motoops-logo.png"
+              alt="MotoOps"
+              className="h-14 w-auto object-contain"
+            />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium text-slate-100">
+              Motorcycle garage operations
+            </div>
           </div>
 
           <h1 className="mt-6 text-3xl font-semibold leading-tight sm:text-4xl">
-            Build trust with a polished service experience.
+            MotoOps
           </h1>
 
           <p className="mt-4 max-w-md text-sm leading-7 text-slate-300 sm:text-base">
-            Manage vehicles, services, invoices, and customer communication from one professional workspace.
+            Job cards, estimates, invoices, and workforce — built for bike service workshops.
           </p>
 
           <div className="mt-8 space-y-3 text-sm text-slate-200">

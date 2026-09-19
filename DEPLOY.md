@@ -25,7 +25,7 @@ Render free tier has monthly limits — keep **only the Nest API** on Render (on
 
 ## 1. Push to GitHub
 
-Repo: `https://github.com/hariprasathjaikrishnan-stack/motoops.git`
+Repo: `https://github.com/officialhariprasath/motoops.git`
 
 ```powershell
 cd auto-garage-services
