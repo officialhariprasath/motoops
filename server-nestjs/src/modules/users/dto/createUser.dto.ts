@@ -34,6 +34,11 @@ export class CreateUserDto {
   @MinLength(6)
   password!: string;
 
+  /** Invite / access key required for public garage signup */
+  @IsOptional()
+  @IsString()
+  accessKey?: string;
+
   @IsOptional()
   @IsEnum(Role)
   role?: Role;

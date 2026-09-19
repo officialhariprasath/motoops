@@ -9,7 +9,6 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from '../../common/decorators/user.decorator';
 import {LoginDto} from '../auth/dto/login.dto';
 import { CreateUserDto } from '../users/dto/createUser.dto';
-import { Role } from '../users/enums/role.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -35,15 +34,7 @@ export class AuthController {
 
  @Post('register')
   async register(@Body() dto: CreateUserDto) {
-    return this.auth.register({
-      name: dto.name,
-      username: dto.username,
-      email: dto.email,
-      mobile: dto.mobile,
-      address: dto.address,
-      password: dto.password,
-      role: Role.USER,
-    });
+    return this.auth.register(dto);
   }
 
   @Get('verify/:token')

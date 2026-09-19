@@ -40,3 +40,5 @@ services:
       - key: ENABLE_CORS
         # Add your Vercel URL after frontend deploy (comma-separated, no spaces)
         value: http://localhost:3000
+      - key: SIGNUP_ACCESS_KEY
+        sync: false

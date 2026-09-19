@@ -14,13 +14,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const { confirmPassword: _confirm, ...payload } = body;
 
     const res = await fetch(`${BACKEND_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ...body, role: "user" }),
+      body: JSON.stringify(payload),
     });
 
     const contentType = res.headers.get("content-type") || "";

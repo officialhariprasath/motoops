@@ -1,6 +1,6 @@
 ﻿//  File: src/module/auth/auth.service.ts
 
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from '../auth/dto/login.dto';
 import { CreateUserDto } from '../users/dto/createUser.dto';
+import { Role } from '../users/enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -17,19 +18,43 @@ export class AuthService {
   ) {}
 
   async register(dto: CreateUserDto) {
-    console.log('Register received', dto);
+    const expectedKey = process.env.SIGNUP_ACCESS_KEY?.trim();
+    if (!expectedKey) {
+      throw new ForbiddenException(
+        'Signup is disabled. Contact MotoOps for access.',
+      );
+    }
+
+    const provided = String(dto.accessKey || '').trim();
+    if (!provided || provided !== expectedKey) {
+      throw new ForbiddenException('Invalid access key');
+    }
+
+    console.log('Register received', {
+      username: dto.username,
+      email: dto.email,
+    });
     const verificationToken = randomBytes(24).toString('hex');
 
     const user = await this.usersService.create({
-      ...dto,
+      name: dto.name,
+      username: dto.username,
+      email: dto.email,
+      mobile: dto.mobile,
+      address: dto.address,
+      password: dto.password,
+      designation: dto.designation,
+      role: Role.ADMIN,
       isVerified: false,
       verificationToken,
     });
 
     return {
       user,
-      message: 'Registration successful. Verify your email to activate your account.',
-      verificationToken: process.env.NODE_ENV !== 'production' ? verificationToken : undefined,
+      message:
+        'Registration successful. Verify your email to activate your account.',
+      verificationToken:
+        process.env.NODE_ENV !== 'production' ? verificationToken : undefined,
     };
   }
 
