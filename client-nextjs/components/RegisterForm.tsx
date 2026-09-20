@@ -3,7 +3,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, Lock, Mail, MapPin, Phone, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { z } from "zod";
 
@@ -87,7 +86,6 @@ const loginUser = async (data: LoginFormData) => {
 };
 
 export default function RegisterForm() {
-  const router = useRouter();
   const [authView, setAuthView] = useState<AuthView>("login");
   const [form, setForm] = useState<RegisterFormData>(initialForm);
   const [loginForm, setLoginForm] = useState<LoginFormData>({
@@ -124,9 +122,12 @@ export default function RegisterForm() {
     mutationFn: loginUser,
     onSuccess: (data) => {
       localStorage.setItem("token", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       setLoginMessage("Login successful");
       setLoginMessageType("success");
-      router.push(getDashboardHome(data?.user?.role));
+      // Full document navigation after Set-Cookie avoids Next soft-nav
+      // "This page couldn't load" failures (esp. on mobile).
+      window.location.assign(getDashboardHome(data?.user?.role));
     },
     onError: (error: Error) => {
       setLoginMessage(error.message);

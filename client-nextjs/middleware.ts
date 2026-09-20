@@ -1,5 +1,3 @@
-//middleware.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
@@ -8,9 +6,9 @@ import {
   getDashboardHome,
 } from "@/lib/dashboard-home";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET
-);
+const secretValue =
+  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "";
+const SECRET = new TextEncoder().encode(secretValue);
 
 function readRole(req: NextRequest, payload: Record<string, unknown>): string {
   const fromJwt = String(payload?.role || "").toLowerCase();
@@ -22,8 +20,19 @@ function readRole(req: NextRequest, payload: Record<string, unknown>): string {
     const parsed = JSON.parse(raw);
     return String(parsed?.role || "").toLowerCase();
   } catch {
-    return "";
+    try {
+      const raw = req.cookies.get("user")?.value;
+      if (!raw) return "";
+      const parsed = JSON.parse(decodeURIComponent(raw));
+      return String(parsed?.role || "").toLowerCase();
+    } catch {
+      return "";
+    }
   }
+}
+
+function redirectHome(req: NextRequest) {
+  return NextResponse.redirect(new URL("/", req.url));
 }
 
 export async function middleware(req: NextRequest) {
@@ -33,10 +42,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Without a shared secret, JWT checks cannot succeed — send users home
+  // instead of throwing inside Edge middleware.
+  if (!secretValue) {
+    console.error(
+      "JWT_ACCESS_SECRET (or JWT_SECRET) is not configured for middleware"
+    );
+    return redirectHome(req);
+  }
+
   const accessToken = req.cookies.get("access_token")?.value;
 
   if (!accessToken) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return redirectHome(req);
   }
 
   try {
@@ -71,10 +89,10 @@ export async function middleware(req: NextRequest) {
 
     return NextResponse.next();
   } catch {
-    return NextResponse.redirect(new URL("/", req.url));
+    return redirectHome(req);
   }
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard", "/dashboard/:path*"],
 };

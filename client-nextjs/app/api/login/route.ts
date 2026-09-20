@@ -1,6 +1,6 @@
-﻿// File: api/register/route.ts
+﻿import { NextResponse } from "next/server";
 
-import { NextResponse } from "next/server";
+import { setAuthCookies } from "@/lib/auth-cookies";
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +21,6 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      credentials: "include",
     });
 
     const contentType = backendRes.headers.get("content-type") || "";
@@ -54,30 +53,10 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    response.cookies.set("access_token", loginData.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 15,
-    });
-
-    if (loginData.refresh_token) {
-      response.cookies.set("refresh_token", loginData.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
-      });
-    }
-
-    response.cookies.set("user", JSON.stringify(loginData.user), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+    setAuthCookies(response, {
+      access_token: loginData.access_token,
+      refresh_token: loginData.refresh_token,
+      user: loginData.user,
     });
 
     return response;

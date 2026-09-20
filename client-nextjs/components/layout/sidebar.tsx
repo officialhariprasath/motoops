@@ -194,10 +194,10 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
     }
   }, []);
  
-  const role = user?.role ?? "user";
+  const role = String(user?.role ?? "user").toLowerCase();
 
   // ROLE MENUS
-  const menus = sidebarByRole[role as keyof typeof sidebarByRole] || [];
+  const menus = sidebarByRole[role] || [];
 
   const allHrefs = menus.flatMap((menu) => [
     menu.href,

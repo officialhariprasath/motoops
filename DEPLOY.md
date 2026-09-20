@@ -90,7 +90,7 @@ Login: `admin` / `123456`
    |------|--------|
    | `BACKEND_SERVER_URL` | `https://motoops-api.onrender.com` (your Render URL, no trailing slash) |
    | `NEXT_PUBLIC_APP_URL` | `https://YOUR-APP.vercel.app` (set after first deploy, then redeploy) |
-   | `JWT_ACCESS_SECRET` | same value as Render `JWT_ACCESS_SECRET` (copy from Render) |
+   | `JWT_ACCESS_SECRET` | **Must match** Render `JWT_ACCESS_SECRET` exactly (copy/paste from Render → Environment). If this differs or is missing, sign-in looks successful but the dashboard fails to open. |
    | `JWT_REFRESH_SECRET` | same value as Render `JWT_REFRESH_SECRET` |
 
 5. Deploy → copy the Vercel URL.
