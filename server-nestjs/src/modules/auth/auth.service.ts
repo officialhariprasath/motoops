@@ -49,7 +49,14 @@ export class AuthService {
     });
 
     return {
-      user,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        mobile: user.mobile,
+        role: user.role,
+      },
       message: 'Registration successful. You can sign in now.',
     };
   }

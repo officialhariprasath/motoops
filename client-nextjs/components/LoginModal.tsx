@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, Mail, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 import { getDashboardHome } from "@/lib/dashboard-home";
@@ -42,7 +41,6 @@ const loginUser = async (data: { identifier: string; password: string }) => {
 };
 
 export default function LoginModal({ showLogin, onClose }: Props) {
-  const router = useRouter();
   const [form, setForm] = useState({ identifier: "", password: "" });
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"success" | "error">("error");
@@ -51,9 +49,12 @@ export default function LoginModal({ showLogin, onClose }: Props) {
     mutationFn: loginUser,
     onSuccess: (data) => {
       localStorage.setItem("token", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       setMessage("Login successful");
       setMessageType("success");
-      router.push(getDashboardHome(data?.user?.role));
+      // Full document navigation after Set-Cookie avoids Next soft-nav
+      // "This page couldn't load" failures (esp. on mobile).
+      window.location.assign(getDashboardHome(data?.user?.role));
       onClose();
     },
     onError: (error: Error) => {
