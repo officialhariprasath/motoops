@@ -77,9 +77,12 @@ export class ServicesService {
     }
 
     const jobCardAt = dto.jobCardAt ? new Date(dto.jobCardAt) : new Date();
-    const serviceDate =
-      dto.serviceDate ??
-      (jobCardAt.toISOString().slice(0, 10) as unknown as Date);
+    const serviceDate = dto.serviceDate
+      ? new Date(dto.serviceDate)
+      : jobCardAt;
+    const deliveryDate = dto.deliveryDate
+      ? new Date(dto.deliveryDate)
+      : undefined;
 
     const service = this.serviceRepo.create({
       status: dto.status || ServiceStatus.PENDING,
@@ -92,7 +95,7 @@ export class ServicesService {
       damagePhotoUrls: [],
       repairProofPhotoUrls: [],
       serviceDate,
-      deliveryDate: dto.deliveryDate,
+      deliveryDate,
       discount: 0,
       tax: 0,
       subtotal: 0,
@@ -638,11 +641,11 @@ export class ServicesService {
     // ---------------- DATES ----------------
 
     if (dto.serviceDate) {
-      service.serviceDate =  dto.serviceDate;
+      service.serviceDate = new Date(dto.serviceDate);
     }
 
     if (dto.deliveryDate) {
-      service.deliveryDate =  dto.deliveryDate;
+      service.deliveryDate = new Date(dto.deliveryDate);
     }
 
     // ---------------- BILLING ----------------
