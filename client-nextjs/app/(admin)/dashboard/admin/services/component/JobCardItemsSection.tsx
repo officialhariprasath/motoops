@@ -29,8 +29,6 @@ type CatalogItem = {
 type Props = {
   items: JobCardLineItem[];
   onChange: (items: JobCardLineItem[]) => void;
-  onSave?: (items: JobCardLineItem[]) => void;
-  dirty?: boolean;
   readOnly?: boolean;
   saving?: boolean;
 };
@@ -54,8 +52,6 @@ function round2(value: number) {
 export default function JobCardItemsSection({
   items,
   onChange,
-  onSave,
-  dirty = false,
   readOnly = false,
   saving = false,
 }: Props) {
@@ -89,7 +85,7 @@ export default function JobCardItemsSection({
       .slice(0, 8);
   }, [catalog, description]);
 
-  const resetDialog = () => {
+  const resetForm = () => {
     setDescription("");
     setRate("0");
     setQuantity("1");
@@ -115,8 +111,7 @@ export default function JobCardItemsSection({
   };
 
   const handleDescriptionChange = (value: string) => {
-    const upper = value.toUpperCase();
-    setDescription(upper);
+    setDescription(value.toUpperCase());
     setShowSuggestions(true);
   };
 
@@ -124,7 +119,6 @@ export default function JobCardItemsSection({
     setDescription(item.name.toUpperCase());
     setRate(String(item.rate));
     setShowSuggestions(false);
-    // keep current qty; recompute discount amount from current %
     const amountBase = round2(Number(item.rate || 0) * Number(quantity || 0));
     syncDiscountFromPercent(discountPercent, amountBase);
   };
@@ -139,6 +133,10 @@ export default function JobCardItemsSection({
     setQuantity(value);
     const amountBase = round2(Number(rate || 0) * Number(value || 0));
     syncDiscountFromPercent(discountPercent, amountBase);
+  };
+
+  const removeItem = (itemId: string) => {
+    onChange(items.filter((row) => row.id !== itemId));
   };
 
   const addItem = () => {
@@ -174,8 +172,7 @@ export default function JobCardItemsSection({
     }
 
     onChange([...items, next]);
-    // Keep dialog open for the next item; Cancel closes when done.
-    resetDialog();
+    resetForm();
     setOpen(true);
   };
 
@@ -184,29 +181,17 @@ export default function JobCardItemsSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold">Items</h3>
         {!readOnly && (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={saving}
-              onClick={() => {
-                resetDialog();
-                setOpen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-            {onSave && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving || !dirty}
-                onClick={() => onSave(items)}
-              >
-                {saving ? "Saving…" : "Save Items"}
-              </Button>
-            )}
-          </div>
+          <Button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              resetForm();
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Item
+          </Button>
         )}
       </div>
 
@@ -246,9 +231,7 @@ export default function JobCardItemsSection({
                         size="sm"
                         variant="ghost"
                         disabled={saving}
-                        onClick={() =>
-                          onChange(items.filter((row) => row.id !== item.id))
-                        }
+                        onClick={() => removeItem(item.id)}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
@@ -277,6 +260,9 @@ export default function JobCardItemsSection({
           <span className="font-semibold text-foreground">
             {formatMoney(total)}
           </span>
+          {saving && (
+            <span className="ml-2 text-muted-foreground">Saving…</span>
+          )}
         </div>
       </div>
 
@@ -284,15 +270,55 @@ export default function JobCardItemsSection({
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) resetDialog();
+          if (!next) resetForm();
         }}
       >
-        <DialogContent className="bg-card sm:max-w-lg">
+        <DialogContent className="bg-card max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add Item</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {items.length > 0 && (
+              <div className="rounded-md border bg-muted/40 p-3">
+                <p className="mb-2 text-sm font-medium">
+                  Items so far ({items.length})
+                </p>
+                <ul className="max-h-36 space-y-2 overflow-y-auto text-sm">
+                  {items.map((item) => {
+                    const { netAmount } = calcLineAmounts(item);
+                    return (
+                      <li
+                        key={item.id}
+                        className="flex items-start justify-between gap-2 rounded border bg-card px-2 py-1.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium uppercase">
+                            {item.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Qty {item.quantity}
+                            {" \u00B7 "}Rate {formatMoney(item.rate)}
+                            {" \u00B7 "}Net {formatMoney(netAmount)}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={saving}
+                          className="shrink-0"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
             <div className="relative">
               <label className="mb-1 block text-sm font-medium">
                 Item Description
@@ -304,7 +330,6 @@ export default function JobCardItemsSection({
                 }
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => {
-                  // allow click on suggestion before closing
                   window.setTimeout(() => setShowSuggestions(false), 150);
                 }}
                 placeholder="TYPE ITEM NAME"
@@ -388,6 +413,9 @@ export default function JobCardItemsSection({
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {saving && (
+              <p className="text-sm text-muted-foreground">Saving items…</p>
+            )}
           </div>
 
           <DialogFooter>
@@ -396,12 +424,12 @@ export default function JobCardItemsSection({
               variant="outline"
               onClick={() => {
                 setOpen(false);
-                resetDialog();
+                resetForm();
               }}
             >
               Cancel
             </Button>
-            <Button type="button" onClick={addItem}>
+            <Button type="button" onClick={addItem} disabled={saving}>
               Add
             </Button>
           </DialogFooter>

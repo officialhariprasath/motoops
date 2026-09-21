@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -168,6 +168,7 @@ export default function ServiceViewPage() {
   );
   const [draftItems, setDraftItems] = useState<JobCardLineItem[] | null>(null);
   const displayItems = draftItems ?? items;
+  const latestItemsRef = useRef<JobCardLineItem[]>([]);
 
   const estimateDoc = (invoicesQuery.data ?? []).find(
     (inv) => inv.documentType === "ESTIMATE"
@@ -184,37 +185,49 @@ export default function ServiceViewPage() {
 
   const saveMutation = useMutation({
     mutationFn: (lineItems: JobCardLineItem[]) => saveLineItems(id, lineItems),
-    onSuccess: (saved) => {
+    onSuccess: (saved, submitted) => {
+      // Ignore stale responses if the user already changed items again
+      const latestIds = latestItemsRef.current.map((row) => row.id).join(",");
+      const submittedIds = submitted.map((row) => row.id).join(",");
+      if (latestIds !== submittedIds) return;
+
       setSaveError("");
       const savedItems = (saved?.lineItems ?? []) as JobCardLineItem[];
       const hasValid =
         Array.isArray(savedItems) &&
+        savedItems.length === submitted.length &&
         savedItems.every(
-          (row) => row && typeof row.description === "string" && row.description.length > 0
+          (row) =>
+            row &&
+            typeof row.description === "string" &&
+            row.description.length > 0
         );
-      // Prefer server payload when intact; otherwise keep optimistic draft
+
       if (hasValid) {
-        setDraftItems(null);
+        setDraftItems(savedItems);
+        latestItemsRef.current = savedItems;
         queryClient.setQueryData(["service", id], (prev: any) =>
-          prev ? { ...prev, lineItems: savedItems, ...saved } : saved
+          prev ? { ...prev, ...saved, lineItems: savedItems } : saved
         );
+      } else {
+        setDraftItems(submitted);
       }
+
       queryClient.invalidateQueries({ queryKey: ["service", id] });
       queryClient.invalidateQueries({ queryKey: ["services"] });
-      addNotification({
-        title: "Items updated",
-        message: "Job card items saved successfully.",
-        category: "service",
-      });
     },
-    onError: (error) => {
-      setDraftItems(null);
+    onError: (error, submitted) => {
+      const latestIds = latestItemsRef.current.map((row) => row.id).join(",");
+      const submittedIds = submitted.map((row) => row.id).join(",");
+      if (latestIds !== submittedIds) return;
       setSaveError(error instanceof Error ? error.message : "Failed to save items");
     },
   });
 
   useEffect(() => {
     setDraftItems(null);
+    latestItemsRef.current = [];
+    setSaveError("");
   }, [id]);
 
   const statusMutation = useMutation({
@@ -643,26 +656,16 @@ export default function ServiceViewPage() {
 
         <JobCardItemsSection
           items={displayItems}
-          dirty={draftItems !== null}
           saving={saveMutation.isPending}
           onChange={(next) => {
             setDraftItems(next);
-          }}
-          onSave={(next) => {
-            setDraftItems(next);
+            latestItemsRef.current = next;
+            setSaveError("");
             saveMutation.mutate(next);
           }}
         />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-        {draftItems !== null && !saveMutation.isPending && (
-          <p className="text-sm text-muted-foreground">
-            Items changed locally. Click Save Items when you are done adding.
-          </p>
-        )}
-        {saveMutation.isPending && (
-          <p className="text-sm text-muted-foreground">Saving items...</p>
-        )}
       </Card>
     </div>
   );
