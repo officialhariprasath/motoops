@@ -26,6 +26,7 @@ type GarageSettings = {
   email?: string;
   gstin?: string;
   invoiceNote?: string;
+  invoiceLogoUrl?: string;
 };
 
 function readGarageSettings(): GarageSettings {
@@ -127,6 +128,8 @@ export default function InvoiceDetailsPage() {
   const garageAddress = settings.address || "";
   const garagePhone = settings.phone || "";
   const garageEmail = settings.email || "";
+  const invoiceLogoUrl =
+    settings.invoiceLogoUrl?.trim() || "/motoops-logo.png";
 
   const pageWidthPx = A4_WIDTH_MM * MM_TO_PX;
   const pageHeightPx = A4_HEIGHT_MM * MM_TO_PX;
@@ -182,6 +185,11 @@ export default function InvoiceDetailsPage() {
           >
             <div className="flex h-full min-h-[calc(297mm-16mm)] flex-col border border-[#1d4f91]">
               <div className="border-b border-[#1d4f91] px-3 py-2.5 text-center">
+                <img
+                  src={invoiceLogoUrl}
+                  alt={garageName}
+                  className="mx-auto mb-1.5 h-14 w-auto max-w-[180px] object-contain"
+                />
                 <h2 className="text-[16px] font-bold tracking-wide text-[#1d4f91]">
                   {garageName.toUpperCase()}
                 </h2>
