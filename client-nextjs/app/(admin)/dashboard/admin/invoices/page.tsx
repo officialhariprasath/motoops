@@ -4,8 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import ListControls from "@/components/dashboard/ListControls";
+import InvoicePaymentDialog, {
+  type PaymentInvoice,
+} from "@/components/dashboard/InvoicePaymentDialog";
 import { useGaragePageSize } from "@/lib/list-settings";
 import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -57,6 +61,7 @@ export default function InvoicesPage() {
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [page, setPage] = useState(1);
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const pageSize = useGaragePageSize();
 
   useEffect(() => {
@@ -90,9 +95,6 @@ export default function InvoicesPage() {
         invoice.paymentStatus !== paymentFilter
       ) {
         return false;
-      }
-      if (typeFilter === "ESTIMATE" && paymentFilter !== "ALL") {
-        // estimates stay unpaid; still allow filter
       }
       if (!query) return true;
 
@@ -130,6 +132,22 @@ export default function InvoicesPage() {
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
+
+  const handlePaymentSaved = (saved: PaymentInvoice) => {
+    setInvoices((current) =>
+      current.map((row) =>
+        row.id === saved.id
+          ? {
+              ...row,
+              paidAmount: Number(saved.paidAmount),
+              dueAmount: Number(saved.dueAmount),
+              paymentStatus: saved.paymentStatus,
+            }
+          : row
+      )
+    );
+    setPaymentInvoice(null);
+  };
 
   if (loading) {
     return <p className="p-6">Loading invoices...</p>;
@@ -188,68 +206,102 @@ export default function InvoicesPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {paginatedInvoices.map((inv) => {
           const docType = inv.documentType || "BILL";
+          const canRecordPayment =
+            docType === "BILL" && inv.paymentStatus !== "paid";
+
           return (
-            <Link
+            <div
               key={inv.id}
-              href={`/dashboard/admin/invoices/${inv.id}`}
-              className="block rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/40"
+              className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/40"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {inv.invoiceNumber || inv.id.slice(0, 8)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {inv.service?.jobCardNumber || "Job card"}
+              <Link
+                href={`/dashboard/admin/invoices/${inv.id}`}
+                className="block"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {inv.invoiceNumber || inv.id.slice(0, 8)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {inv.service?.jobCardNumber || "Job card"}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      docType === "ESTIMATE"
+                        ? "bg-sky-50 text-sky-800"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    {docType === "ESTIMATE" ? "Estimate" : "Bill"}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                  <p>{inv.service?.customer?.name || "-"}</p>
+                  <p>
+                    {inv.service?.vehicle?.registrationNumber || "-"}
+                    {inv.service?.vehicle?.brand
+                      ? `${DOT_SEP}${inv.service.vehicle.brand}`
+                      : ""}
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    docType === "ESTIMATE"
-                      ? "bg-sky-50 text-sky-800"
-                      : "bg-primary text-primary-foreground"
-                  }`}
-                >
-                  {docType === "ESTIMATE" ? "Estimate" : "Bill"}
-                </span>
-              </div>
 
-              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                <p>{inv.service?.customer?.name || "-"}</p>
-                <p>
-                  {inv.service?.vehicle?.registrationNumber || "-"}
-                  {inv.service?.vehicle?.brand
-                    ? `${DOT_SEP}${inv.service.vehicle.brand}`
-                    : ""}
-                </p>
-              </div>
-
-              <div className="mt-4 flex items-end justify-between gap-2">
-                <div>
-                  <p className="text-lg font-semibold text-foreground">
-                    {formatCurrency(Number(inv.totalAmount))}
-                  </p>
-                  {docType === "BILL" && (
-                    <p className="text-xs text-muted-foreground">
-                      Paid {formatCurrency(Number(inv.paidAmount))}
-                      {DOT_SEP}Due {formatCurrency(Number(inv.dueAmount))}
+                <div className="mt-4 flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-lg font-semibold text-foreground">
+                      {formatCurrency(Number(inv.totalAmount))}
                     </p>
+                    {docType === "BILL" && (
+                      <p className="text-xs text-muted-foreground">
+                        Paid {formatCurrency(Number(inv.paidAmount))}
+                        {DOT_SEP}Due {formatCurrency(Number(inv.dueAmount))}
+                      </p>
+                    )}
+                  </div>
+                  {docType === "BILL" && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusTone(
+                        inv.paymentStatus
+                      )}`}
+                    >
+                      {inv.paymentStatus}
+                    </span>
                   )}
                 </div>
-                {docType === "BILL" && (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusTone(
-                      inv.paymentStatus
-                    )}`}
-                  >
-                    {inv.paymentStatus}
-                  </span>
-                )}
-              </div>
-            </Link>
+              </Link>
+
+              {canRecordPayment && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setPaymentInvoice(inv);
+                  }}
+                >
+                  {inv.paymentStatus === "partial"
+                    ? "Update payment"
+                    : "Record payment"}
+                </Button>
+              )}
+            </div>
           );
         })}
       </div>
+
+      <InvoicePaymentDialog
+        invoice={paymentInvoice}
+        open={!!paymentInvoice}
+        onOpenChange={(open) => {
+          if (!open) setPaymentInvoice(null);
+        }}
+        onSaved={handlePaymentSaved}
+      />
     </div>
   );
 }

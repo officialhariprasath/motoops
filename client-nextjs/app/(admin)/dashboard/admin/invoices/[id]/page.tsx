@@ -16,6 +16,7 @@ import {
 } from "@/lib/job-card-items";
 import { numberToWordsIndian } from "@/lib/job-card-status";
 import { syncGarageSettingsCache } from "@/lib/garage-settings-api";
+import InvoicePaymentDialog from "@/components/dashboard/InvoicePaymentDialog";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -55,6 +56,7 @@ export default function InvoiceDetailsPage() {
   const [invoice, setInvoice] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [settings, setSettings] = useState<GarageSettings>({});
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -159,16 +161,48 @@ export default function InvoiceDetailsPage() {
           </Link>
         )}
         {!isEstimate && (
-          <Link href={`/dashboard/admin/invoices/${invoiceId}/payment`}>
-            <Button type="button" variant="outline">
-              Update Payment
-            </Button>
-          </Link>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPaymentOpen(true)}
+          >
+            Update Payment
+          </Button>
         )}
         <Button type="button" onClick={() => window.print()}>
           Download PDF
         </Button>
       </div>
+
+      <InvoicePaymentDialog
+        invoice={
+          invoice
+            ? {
+                id: invoice.id,
+                invoiceNumber: invoice.invoiceNumber,
+                documentType: invoice.documentType,
+                totalAmount: Number(invoice.totalAmount || 0),
+                paidAmount: Number(invoice.paidAmount || 0),
+                dueAmount: Number(invoice.dueAmount || 0),
+                paymentStatus: invoice.paymentStatus || "unpaid",
+              }
+            : null
+        }
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        onSaved={(saved) => {
+          setInvoice((prev: any) =>
+            prev
+              ? {
+                  ...prev,
+                  paidAmount: saved.paidAmount,
+                  dueAmount: saved.dueAmount,
+                  paymentStatus: saved.paymentStatus,
+                }
+              : prev
+          );
+        }}
+      />
 
       <div
         ref={wrapRef}
