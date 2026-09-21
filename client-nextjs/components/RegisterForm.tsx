@@ -125,8 +125,7 @@ export default function RegisterForm() {
       localStorage.setItem("user", JSON.stringify(data.user));
       setLoginMessage("Login successful");
       setLoginMessageType("success");
-      // Full document navigation after Set-Cookie avoids Next soft-nav
-      // "This page couldn't load" failures (esp. on mobile).
+      // Full document navigation after Set-Cookie avoids Next soft-nav failures
       window.location.assign(getDashboardHome(data?.user?.role));
     },
     onError: (error: Error) => {

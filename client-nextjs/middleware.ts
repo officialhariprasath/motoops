@@ -8,7 +8,6 @@ import {
 
 const secretValue =
   process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "";
-const SECRET = new TextEncoder().encode(secretValue);
 
 function readRole(req: NextRequest, payload: Record<string, unknown>): string {
   const fromJwt = String(payload?.role || "").toLowerCase();
@@ -58,6 +57,7 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
+    const SECRET = new TextEncoder().encode(secretValue);
     const { payload } = await jwtVerify(accessToken, SECRET);
     const role = readRole(req, payload as Record<string, unknown>);
     const home = getDashboardHome(role);

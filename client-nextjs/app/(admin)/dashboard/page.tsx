@@ -4,15 +4,24 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { normalizeJobCardStatus } from "@/lib/job-card-status";
 import { formatMoney } from "@/lib/job-card-items";
 
 async function apiGet(url: string) {
   const res = await fetch(url, { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Request failed");
-  return json?.data ?? json ?? [];
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("Invalid response from server");
+  }
+  if (!res.ok) {
+    throw new Error(json?.message || "Request failed");
+  }
+  const rows = json?.data ?? json;
+  return Array.isArray(rows) ? rows : [];
 }
 
 function isSameDay(date: Date, now: Date) {
@@ -72,8 +81,12 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const now = new Date();
-    const services = servicesQuery.data ?? [];
-    const invoices = invoicesQuery.data ?? [];
+    const services = Array.isArray(servicesQuery.data)
+      ? servicesQuery.data
+      : [];
+    const invoices = Array.isArray(invoicesQuery.data)
+      ? invoicesQuery.data
+      : [];
     const bills = invoices.filter(
       (inv: any) => (inv.documentType || "BILL") === "BILL"
     );
@@ -120,7 +133,35 @@ export default function DashboardPage() {
   }, [servicesQuery.data, invoicesQuery.data]);
 
   if (servicesQuery.isLoading || invoicesQuery.isLoading) {
-    return <p>Loading dashboard...</p>;
+    return <p className="text-muted-foreground">Loading dashboard...</p>;
+  }
+
+  if (servicesQuery.isError || invoicesQuery.isError) {
+    const message =
+      (servicesQuery.error as Error)?.message ||
+      (invoicesQuery.error as Error)?.message ||
+      "Could not load dashboard data";
+    return (
+      <div className="moto-card space-y-3 p-6">
+        <h2 className="text-lg font-semibold text-foreground">
+          Dashboard data unavailable
+        </h2>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <p className="text-sm text-muted-foreground">
+          The API may be waking up, or the database schema may need the next-service
+          SQL migration. Retry in a moment.
+        </p>
+        <Button
+          type="button"
+          onClick={() => {
+            void servicesQuery.refetch();
+            void invoicesQuery.refetch();
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   return (

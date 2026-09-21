@@ -52,10 +52,9 @@ export default function LoginModal({ showLogin, onClose }: Props) {
       localStorage.setItem("user", JSON.stringify(data.user));
       setMessage("Login successful");
       setMessageType("success");
-      // Full document navigation after Set-Cookie avoids Next soft-nav
-      // "This page couldn't load" failures (esp. on mobile).
-      window.location.assign(getDashboardHome(data?.user?.role));
       onClose();
+      // Full document navigation after Set-Cookie avoids Next soft-nav failures
+      window.location.assign(getDashboardHome(data?.user?.role));
     },
     onError: (error: Error) => {
       setMessage(error.message);

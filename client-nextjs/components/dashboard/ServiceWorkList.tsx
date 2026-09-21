@@ -31,7 +31,8 @@ async function getServices(mode: ServiceWorkListProps["mode"]) {
     throw new Error(json?.message || "Failed to load services");
   }
 
-  return json?.data ?? json ?? [];
+  const rows = json?.data ?? json;
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function updateJobStatus(serviceId: string, status: string) {
