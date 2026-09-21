@@ -38,6 +38,31 @@ function toOptionalIsoDateString({ value }: { value: unknown }) {
   return value;
 }
 
+export class JobCardLineItemDto {
+  @IsString()
+  id!: string;
+
+  @IsString()
+  @MinLength(1)
+  description!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  rate!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  quantity!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountPercent!: number;
+}
+
 export class CreateTaskPartDto {
   @IsString()
   name!: string;
@@ -205,13 +230,9 @@ export class CreateServiceDto {
 
   @IsOptional()
   @IsArray()
-  lineItems?: Array<{
-    id: string;
-    description: string;
-    rate: number;
-    quantity: number;
-    discountPercent: number;
-  }>;
+  @ValidateNested({ each: true })
+  @Type(() => JobCardLineItemDto)
+  lineItems?: JobCardLineItemDto[];
 
   @IsOptional()
   @IsArray()

@@ -37,7 +37,12 @@ async function getCatalogItems() {
   const res = await fetch("/api/catalog/items", { cache: "no-store" });
   const json = await res.json();
   if (!res.ok) throw new Error(json?.message || "Failed to load catalog");
-  return (json.data ?? json) as CatalogItem[];
+  const rows = (json.data ?? json ?? []) as CatalogItem[];
+  return rows.map((item) => ({
+    ...item,
+    rate: Number(item.rate || 0),
+    name: String(item.name || ""),
+  }));
 }
 
 function round2(value: number) {

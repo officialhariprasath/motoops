@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -165,6 +165,8 @@ export default function ServiceViewPage() {
     () => (serviceQuery.data?.lineItems ?? []) as JobCardLineItem[],
     [serviceQuery.data]
   );
+  const [draftItems, setDraftItems] = useState<JobCardLineItem[] | null>(null);
+  const displayItems = draftItems ?? items;
 
   const estimateDoc = (invoicesQuery.data ?? []).find(
     (inv) => inv.documentType === "ESTIMATE"
@@ -181,8 +183,21 @@ export default function ServiceViewPage() {
 
   const saveMutation = useMutation({
     mutationFn: (lineItems: JobCardLineItem[]) => saveLineItems(id, lineItems),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       setSaveError("");
+      const savedItems = (saved?.lineItems ?? []) as JobCardLineItem[];
+      const hasValid =
+        Array.isArray(savedItems) &&
+        savedItems.every(
+          (row) => row && typeof row.description === "string" && row.description.length > 0
+        );
+      // Prefer server payload when intact; otherwise keep optimistic draft
+      if (hasValid) {
+        setDraftItems(null);
+        queryClient.setQueryData(["service", id], (prev: any) =>
+          prev ? { ...prev, lineItems: savedItems, ...saved } : saved
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["service", id] });
       queryClient.invalidateQueries({ queryKey: ["services"] });
       addNotification({
@@ -192,9 +207,14 @@ export default function ServiceViewPage() {
       });
     },
     onError: (error) => {
+      setDraftItems(null);
       setSaveError(error instanceof Error ? error.message : "Failed to save items");
     },
   });
+
+  useEffect(() => {
+    setDraftItems(null);
+  }, [id]);
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateStatus(id, status),
@@ -623,9 +643,12 @@ export default function ServiceViewPage() {
         </section>
 
         <JobCardItemsSection
-          items={items}
+          items={displayItems}
           saving={saveMutation.isPending}
-          onChange={(next) => saveMutation.mutate(next)}
+          onChange={(next) => {
+            setDraftItems(next);
+            saveMutation.mutate(next);
+          }}
         />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
