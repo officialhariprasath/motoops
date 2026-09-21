@@ -19,6 +19,25 @@ import { Type, Transform } from 'class-transformer';
 
 import { ServiceStatus } from '../entities/service.entity';
 
+/** Keep date fields as ISO strings so @IsDateString works with enableImplicitConversion. */
+function toOptionalIsoDateString({ value }: { value: unknown }) {
+  if (value === '' || value === null || value === undefined) return undefined;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return `${trimmed}T00:00:00.000Z`;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    return trimmed;
+  }
+  return value;
+}
+
 export class CreateTaskPartDto {
   @IsString()
   name!: string;
@@ -147,9 +166,7 @@ export class CreateServiceDto {
   nextServiceOdometer?: string;
 
   @IsOptional()
-  @Transform(({ value }) =>
-    value === '' || value === null || value === undefined ? undefined : value,
-  )
+  @Transform(toOptionalIsoDateString)
   @IsDateString()
   nextServiceAt?: string;
 
@@ -175,6 +192,7 @@ export class CreateServiceDto {
   jobCardNumber?: string;
 
   @IsOptional()
+  @Transform(toOptionalIsoDateString)
   @IsDateString()
   jobCardAt?: string;
 
@@ -206,12 +224,14 @@ export class CreateServiceDto {
   repairProofPhotoUrls?: string[];
 
   @IsOptional()
+  @Transform(toOptionalIsoDateString)
   @IsDateString()
-  serviceDate?: Date;
+  serviceDate?: string;
 
   @IsOptional()
+  @Transform(toOptionalIsoDateString)
   @IsDateString()
-  deliveryDate?: Date;
+  deliveryDate?: string;
 
   // Customer intake
   @ValidateIf((o) => !o.customerId)

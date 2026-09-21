@@ -180,17 +180,21 @@ async function saveService({
   editingService?: any;
 }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const jobCardDate = data.jobCardAt.slice(0, 10);
+  const jobCardAtIso = new Date(data.jobCardAt).toISOString();
+  if (Number.isNaN(new Date(data.jobCardAt).getTime())) {
+    throw new Error("Job card date and time is invalid");
+  }
 
   const payload = {
     status: data.status,
     problemDescription: data.problemDescription,
     notes: data.notes,
     jobCardNumber: data.jobCardNumber,
-    jobCardAt: new Date(data.jobCardAt).toISOString(),
+    jobCardAt: jobCardAtIso,
     petrolLevel: data.petrolLevel,
-    serviceDate: jobCardDate,
-    deliveryDate: jobCardDate,
+    // Full ISO timestamps — Nest @IsDateString rejects bare YYYY-MM-DD after transform
+    serviceDate: jobCardAtIso,
+    deliveryDate: jobCardAtIso,
     customerName: data.customerName,
     customerMobile: data.customerMobile,
     customerAddress: data.customerAddress,
