@@ -1,6 +1,7 @@
 ﻿import {
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,9 +25,9 @@ export class VehiclesService {
     private usersRepo: Repository<UserEntity>,
   ) {}
 
-  async create(dto: CreateVehicleDto) {
+  async create(dto: CreateVehicleDto, garageId: string) {
     const owner = await this.usersRepo.findOne({
-      where: { id: dto.ownerId },
+      where: { id: dto.ownerId, garageId },
     });
 
     if (!owner) {
@@ -45,13 +46,15 @@ export class VehiclesService {
       mileage: dto.mileage,
       photoUrl: dto.photoUrl,
       owner,
+      garageId,
     });
 
     return this.repo.save(vehicle);
   }
 
-  async findAll() {
+  async findAll(garageId: string) {
     return this.repo.find({
+      where: { garageId },
       relations: ['owner'],
       order: {
         createdAt: 'DESC',
@@ -59,9 +62,10 @@ export class VehiclesService {
     });
   }
 
-  async findByOwner(ownerId: string) {
+  async findByOwner(ownerId: string, garageId: string) {
     return this.repo.find({
       where: {
+        garageId,
         owner: {
           id: ownerId,
         },
@@ -75,9 +79,9 @@ export class VehiclesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, garageId: string) {
     const vehicle = await this.repo.findOne({
-      where: { id },
+      where: { id, garageId },
       relations: ['owner'],
     });
 
@@ -93,15 +97,16 @@ export class VehiclesService {
   async update(
     id: string,
     dto: UpdateVehicleDto,
+    garageId: string,
   ) {
-    const vehicle = await this.findOne(id);
+    const vehicle = await this.findOne(id, garageId);
     const { ownerId, ...vehicleData } = dto;
 
     Object.assign(vehicle, vehicleData);
 
     if (ownerId) {
       const owner = await this.usersRepo.findOne({
-        where: { id: ownerId },
+        where: { id: ownerId, garageId },
       });
 
       if (!owner) {
@@ -114,13 +119,13 @@ export class VehiclesService {
     return this.repo.save(vehicle);
   }
 
-  async remove(id: string) {
-    const vehicle = await this.findOne(id);
+  async remove(id: string, garageId: string) {
+    const vehicle = await this.findOne(id, garageId);
 
     return this.repo.remove(vehicle);
   }
 
-  async search(q: string) {
+  async search(q: string, garageId: string) {
     if (!q || q.length < 2) {
       return {
         success: true,
@@ -133,29 +138,26 @@ export class VehiclesService {
     const vehicles = await this.repo
       .createQueryBuilder("vehicle")
       .leftJoinAndSelect("vehicle.owner", "owner")
-      .where("vehicle.registrationNumber ILIKE :q", { q: search })
-      .orWhere("vehicle.vinNumber ILIKE :q", { q: search })
-      .orWhere("vehicle.brand ILIKE :q", { q: search })
-      .orWhere("vehicle.model ILIKE :q", { q: search })
-      .orWhere("owner.name ILIKE :q", { q: search })
-      .orWhere("owner.mobile ILIKE :q", { q: search })
-      .orWhere("vehicle.vehicleCode ILIKE :q", { q: search })
-      .orWhere("owner.customerCode ILIKE :q", { q: search })
+      .where("vehicle.garageId = :garageId", { garageId })
+      .andWhere(
+        `(
+          vehicle.registrationNumber ILIKE :q
+          OR vehicle.vinNumber ILIKE :q
+          OR vehicle.brand ILIKE :q
+          OR vehicle.model ILIKE :q
+          OR owner.name ILIKE :q
+          OR owner.mobile ILIKE :q
+          OR vehicle.vehicleCode ILIKE :q
+          OR owner.customerCode ILIKE :q
+        )`,
+        { q: search },
+      )
       .take(20)
       .getMany();
-
-    if (!vehicles) {
-      throw new NotFoundException(
-        'Vehicle not found',
-      );
-    }
    
     return {
       success: true,
       data: vehicles,
     };
-}  
-
-  
+  }
 }
-

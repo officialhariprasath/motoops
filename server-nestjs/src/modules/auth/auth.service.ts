@@ -35,18 +35,22 @@ export class AuthService {
     });
 
     // Access key already proves invitation — garage owner can log in immediately.
-    const user = await this.usersService.create({
-      name: dto.name,
-      username: dto.username,
-      email: dto.email,
-      mobile: dto.mobile,
-      address: dto.address,
-      password: dto.password,
-      designation: dto.designation,
-      role: Role.ADMIN,
-      isVerified: true,
-      verificationToken: undefined,
-    });
+    const user = await this.usersService.create(
+      {
+        name: dto.name,
+        username: dto.username,
+        email: dto.email,
+        mobile: dto.mobile,
+        address: dto.address,
+        password: dto.password,
+        designation: dto.designation,
+        role: Role.ADMIN,
+        isVerified: true,
+        verificationToken: undefined,
+      },
+      // Self-owned garage; create() will set garageId = id after insert for admins
+      undefined,
+    );
 
     return {
       user: {
@@ -56,12 +60,12 @@ export class AuthService {
         username: user.username,
         mobile: user.mobile,
         role: user.role,
+        garageId: user.garageId || user.id,
       },
       message: 'Registration successful. You can sign in now.',
     };
   }
 
-  //async login(email: string, password: string) {
   async login(dto: LoginDto) {
       const user = await this.usersService.fineOneByIdentifier(dto.identifier);
 
@@ -75,11 +79,19 @@ export class AuthService {
       
       if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
-      const tokens = await this.generateTokens(user);
+      // Ensure admin garageId is self
+      let garageId = user.garageId as string | null | undefined;
+      if (String(user.role).toLowerCase() === Role.ADMIN) {
+        if (!garageId || garageId !== user.id) {
+          await this.usersService.setGarageId(user.id, user.id);
+          garageId = user.id;
+        }
+      }
+
+      const tokens = await this.generateTokens({ ...user, garageId });
 
       await this.updateRefreshToken(user.id, tokens.refresh_token);
 
-      //return tokens;
       return {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
@@ -90,6 +102,7 @@ export class AuthService {
             mobile: user.mobile,
             designation: user.designation,
             role: user.role,
+            garageId: garageId || (String(user.role).toLowerCase() === Role.ADMIN ? user.id : null),
           },
         };
 
@@ -98,20 +111,31 @@ export class AuthService {
   
 
   async generateTokens(user: any) {
+    const role = String(user.role || '').toLowerCase();
+    const garageId =
+      user.garageId ||
+      (role === Role.ADMIN ? user.id : null);
+
     const payload = {
       sub: user.id,
       mobile: user.mobile,
       email: user.email,
       role: user.role,
+      garageId,
     };
 
+    const accessSecret =
+      process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    const refreshSecret =
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+
     const access_token = this.jwtService.sign(payload, {
-      secret: process.env.JWT_ACCESS_SECRET,
+      secret: accessSecret,
       expiresIn: '15m',
     });
 
     const refresh_token = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
+      secret: refreshSecret,
       expiresIn: '7d',
     });
 
@@ -120,10 +144,6 @@ export class AuthService {
 
   async updateRefreshToken(userId: string, refreshToken: string) {
     const hashed = await bcrypt.hash(refreshToken, 10);
-
-    // await this.usersService.update(userId, {
-    //   refreshToken: hashed,
-    // });
     await this.usersService.updateRefreshToken(userId, hashed);
   }
 
@@ -170,5 +190,3 @@ export class AuthService {
   
 
 }
-
-

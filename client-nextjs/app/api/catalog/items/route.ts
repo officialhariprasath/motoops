@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_SERVER_URL || "http://localhost:3001";
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 export async function GET(req: NextRequest) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   const all = req.nextUrl.searchParams.get("all");
   const search = all ? `?all=${all}` : "";
-  const res = await fetch(`${BACKEND_URL}/catalog/items${search}`, {
-    cache: "no-store",
-  });
-  const data = await res.json();
+  const res = await backendFetch(`/catalog/items${search}`);
+  const data = await parseBackendResponse(res);
   return NextResponse.json(data, { status: res.status });
 }
 
 export async function POST(req: NextRequest) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   const body = await req.json();
-  const res = await fetch(`${BACKEND_URL}/catalog/items`, {
+  const res = await backendFetch(`/catalog/items`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    json: body,
   });
-  const data = await res.json();
+  const data = await parseBackendResponse(res);
   return NextResponse.json(data, { status: res.status });
 }

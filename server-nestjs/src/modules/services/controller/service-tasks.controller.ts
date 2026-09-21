@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ServiceTasksService } from '../services/service-tasks.service';
@@ -15,126 +16,99 @@ import { ServiceTasksService } from '../services/service-tasks.service';
 import {
   CreateServiceTaskDto,
 } from '../dto/create-service.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { User } from '../../../common/decorators/user.decorator';
+import { resolveGarageId } from '../../../common/tenant';
 
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class ServiceTasksController {
   constructor(
     private readonly serviceTasksService: ServiceTasksService,
   ) {}
 
-  // ======================================================
-  // CREATE TASK
-  // ======================================================
-
   @Post('services/:serviceId/tasks')
   create(
-    @Param('serviceId')
-    serviceId: string,
-
-    @Body()
-    dto: CreateServiceTaskDto,
+    @User() user: any,
+    @Param('serviceId') serviceId: string,
+    @Body() dto: CreateServiceTaskDto,
   ) {
     return this.serviceTasksService.create(
       serviceId,
       dto,
+      resolveGarageId(user),
     );
   }
-
-  // ======================================================
-  // GET TASKS OF SERVICE
-  // ======================================================
 
   @Get('services/:serviceId/tasks')
   findAll(
-    @Param('serviceId')
-    serviceId: string,
+    @User() user: any,
+    @Param('serviceId') serviceId: string,
   ) {
     return this.serviceTasksService.findAll(
       serviceId,
+      resolveGarageId(user),
     );
   }
-
-  // ======================================================
-  // GET SINGLE TASK
-  // ======================================================
 
   @Get('tasks/:taskId')
   findOne(
-    @Param('taskId')
-    taskId: string,
+    @User() user: any,
+    @Param('taskId') taskId: string,
   ) {
     return this.serviceTasksService.findOne(
       taskId,
+      resolveGarageId(user),
     );
   }
 
-  // ======================================================
-  // UPDATE TASK
-  // ======================================================
-
   @Patch('tasks/:taskId')
   update(
-    @Param('taskId')
-    taskId: string,
-
-    @Body()
-    dto: Partial<CreateServiceTaskDto>,
+    @User() user: any,
+    @Param('taskId') taskId: string,
+    @Body() dto: Partial<CreateServiceTaskDto>,
   ) {
     return this.serviceTasksService.update(
       taskId,
       dto,
+      resolveGarageId(user),
     );
   }
-
-  // ======================================================
-  // DELETE TASK
-  // ======================================================
 
   @Delete('tasks/:taskId')
   remove(
-    @Param('taskId')
-    taskId: string,
+    @User() user: any,
+    @Param('taskId') taskId: string,
   ) {
     return this.serviceTasksService.remove(
       taskId,
+      resolveGarageId(user),
     );
   }
 
-  // ======================================================
-  // ASSIGN MECHANICS
-  // ======================================================
-
   @Patch('tasks/:taskId/mechanics')
   assignMechanics(
-    @Param('taskId')
-    taskId: string,
-
-    @Body('mechanicIds')
-    mechanicIds: string[],
+    @User() user: any,
+    @Param('taskId') taskId: string,
+    @Body('mechanicIds') mechanicIds: string[],
   ) {
     return this.serviceTasksService.assignMechanics(
       taskId,
       mechanicIds,
+      resolveGarageId(user),
     );
   }
 
-  // ======================================================
-  // UPDATE ACCOUNTABLE TECHNICIAN
-  // ======================================================
-
-  @Patch(
-    'tasks/:taskId/accountable-technician',
-  )
+  @Patch('tasks/:taskId/accountable-technician')
   updateAccountableTechnician(
-    @Param('taskId')
-    taskId: string,
-
-    @Body('technicianId')
-    technicianId: string,
+    @User() user: any,
+    @Param('taskId') taskId: string,
+    @Body('technicianId') technicianId: string,
   ) {
     return this.serviceTasksService.updateAccountableTechnician(
       taskId,
       technicianId,
+      resolveGarageId(user),
     );
   }
 }

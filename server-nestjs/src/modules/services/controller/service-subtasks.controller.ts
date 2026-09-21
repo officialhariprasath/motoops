@@ -8,11 +8,14 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ServiceSubTasksService } from '../services/service-subtasks.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class ServiceSubTasksController {
   constructor(
     private readonly subtasksService: ServiceSubTasksService,

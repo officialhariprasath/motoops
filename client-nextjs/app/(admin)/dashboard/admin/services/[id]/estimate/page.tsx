@@ -16,6 +16,7 @@ import {
 } from "@/lib/job-card-items";
 import { numberToWordsIndian } from "@/lib/job-card-status";
 import { addNotification } from "@/lib/notifications";
+import { syncGarageSettingsCache } from "@/lib/garage-settings-api";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -68,7 +69,16 @@ export default function EstimatePage() {
   const savedOnce = useRef(false);
 
   useEffect(() => {
-    setSettings(readGarageSettings());
+    let cancelled = false;
+    (async () => {
+      const remote = await syncGarageSettingsCache();
+      if (!cancelled) {
+        setSettings(remote || readGarageSettings());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const serviceQuery = useQuery({

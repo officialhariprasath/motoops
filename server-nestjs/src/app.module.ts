@@ -13,6 +13,7 @@ import { ServicesModule } from './modules/services/services.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { LeaveModule } from './modules/leave/leave.module';
+import { GarageSettingsModule } from './modules/garage-settings/garage-settings.module';
 import { SchemaEnsureService } from './common/schema-ensure.service';
 
 // DB CONNECTED THROUGH app.module.ts VIA importing TypeOrmModule and configuring it with the database connection details.
@@ -45,6 +46,7 @@ import { SchemaEnsureService } from './common/schema-ensure.service';
     InvoicesModule,
     CatalogModule,
     LeaveModule,
+    GarageSettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SchemaEnsureService],

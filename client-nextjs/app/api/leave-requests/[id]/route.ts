@@ -1,30 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const backendUrl = process.env.BACKEND_SERVER_URL;
-  if (!backendUrl) {
+  if (!getBackendUrl()) {
     return NextResponse.json(
       { message: "BACKEND_SERVER_URL is not configured" },
       { status: 500 }
     );
   }
 
+  const { id } = await params;
   const body = await req.json();
-  const res = await fetch(`${backendUrl}/leave-requests/${id}`, {
+  const res = await backendFetch(`/leave-requests/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
+    json: body,
   });
-
-  const contentType = res.headers.get("content-type") || "";
-  const data = contentType.includes("application/json")
-    ? await res.json()
-    : { message: await res.text() };
+  const data = await parseBackendResponse(res);
 
   if (!res.ok) {
     return NextResponse.json(

@@ -60,7 +60,10 @@ export class ServiceEntity {
   @Column({ type: 'boolean', default: false })
   includeNextServiceOnBill!: boolean;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
+  @Column({ nullable: true })
   jobCardNumber?: string;
 
   @Column({ type: 'timestamptz', nullable: true })

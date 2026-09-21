@@ -15,10 +15,13 @@ export class VehicleEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
   @Column({ unique: true, nullable: true })
   vehicleCode?: string;
 
-  @Column({ unique: true })
+  @Column()
   registrationNumber!: string;
 
   @Column({ nullable: true })

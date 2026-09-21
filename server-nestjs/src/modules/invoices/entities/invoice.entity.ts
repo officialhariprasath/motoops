@@ -20,7 +20,10 @@ export class InvoiceEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
+  @Column({ nullable: true })
   invoiceNumber?: string;
 
   @Column({ type: 'varchar', default: 'BILL' })

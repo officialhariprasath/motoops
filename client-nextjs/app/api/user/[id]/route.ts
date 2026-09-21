@@ -1,8 +1,9 @@
-﻿// File: app/api/users/[id]/route.ts
-
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_SERVER_URL;
+﻿import { NextRequest, NextResponse } from "next/server";
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 function getCurrentUser(req: NextRequest) {
   const rawUser = req.cookies.get("user")?.value;
@@ -24,49 +25,47 @@ function isAdmin(req: NextRequest) {
 }
 
 function includesAdminOnlyFields(body: Record<string, unknown>) {
-  return Object.prototype.hasOwnProperty.call(body, "role") ||
-    Object.prototype.hasOwnProperty.call(body, "designation");
+  return (
+    Object.prototype.hasOwnProperty.call(body, "role") ||
+    Object.prototype.hasOwnProperty.call(body, "designation")
+  );
 }
 
-// ================= GET SINGLE USER =================
 export async function GET(
-  req: NextRequest,
-  context: {
-    params: Promise<{ id: string }>;
-  }
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { id } = await context.params;
-
-    const res = await fetch(`${BACKEND_URL}/users/${id}`, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    const data = await res.json();
-
-    return NextResponse.json(data, {
-      status: res.status,
-    });
-  } catch (error) {
+    const res = await backendFetch(`/users/${id}`);
+    const data = await parseBackendResponse(res);
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json(
-      {
-        message: "Failed to fetch user",
-      },
-      {
-        status: 500,
-      }
+      { message: "Failed to fetch user" },
+      { status: 500 }
     );
   }
 }
 
-// ================= UPDATE USER =================
 export async function PATCH(
   req: NextRequest,
-  context: {
-    params: Promise<{ id: string }>;
-  }
+  context: { params: Promise<{ id: string }> }
 ) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { id } = await context.params;
     const body = await req.json();
@@ -78,38 +77,31 @@ export async function PATCH(
       );
     }
 
-    const res = await fetch(`${BACKEND_URL}/users/${id}`, {
+    const res = await backendFetch(`/users/${id}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      json: body,
     });
-
-    const data = await res.json();
-
-    return NextResponse.json(data, {
-      status: res.status,
-    });
-  } catch (error) {
+    const data = await parseBackendResponse(res);
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json(
-      {
-        message: "Failed to update user",
-      },
-      {
-        status: 500,
-      }
+      { message: "Failed to update user" },
+      { status: 500 }
     );
   }
 }
 
-// ================= DELETE USER =================
 export async function DELETE(
   req: NextRequest,
-  context: {
-    params: Promise<{ id: string }>;
-  }
+  context: { params: Promise<{ id: string }> }
 ) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
     if (!isAdmin(req)) {
       return NextResponse.json(
@@ -119,25 +111,15 @@ export async function DELETE(
     }
 
     const { id } = await context.params;
-
-    const res = await fetch(`${BACKEND_URL}/users/${id}`, {
+    const res = await backendFetch(`/users/${id}`, {
       method: "DELETE",
     });
-
-    const data = await res.json();
-
-    return NextResponse.json(data, {
-      status: res.status,
-    });
-  } catch (error) {
+    const data = await parseBackendResponse(res);
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json(
-      {
-        message: "Failed to delete user",
-      },
-      {
-        status: 500,
-      }
+      { message: "Failed to delete user" },
+      { status: 500 }
     );
   }
 }
-

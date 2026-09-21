@@ -11,6 +11,9 @@ export class CatalogItemEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
   @Column()
   name!: string;
 

@@ -56,20 +56,23 @@ export class ServicesService {
   // CREATE SERVICE
   // ======================================================
 
-  async create(dto: CreateServiceDto) {
+  async create(dto: CreateServiceDto, garageId: string, createdByUserId: string) {
     const createdBy = await this.userRepo.findOne({
-      where: { id: dto.createdById },
+      where: { id: createdByUserId },
     });
 
     if (!createdBy) {
       throw new NotFoundException('Created by user not found');
     }
 
-    const { vehicle, customer } = await this.resolveVehicleAndCustomer(dto);
+    const { vehicle, customer } = await this.resolveVehicleAndCustomer(
+      dto,
+      garageId,
+    );
 
     if (dto.jobCardNumber?.trim()) {
       const existing = await this.serviceRepo.findOne({
-        where: { jobCardNumber: dto.jobCardNumber.trim() },
+        where: { jobCardNumber: dto.jobCardNumber.trim(), garageId },
       });
       if (existing) {
         throw new ConflictException('Job card number already exists');
@@ -103,12 +106,13 @@ export class ServicesService {
       vehicle,
       customer,
       createdBy,
+      garageId,
       assignedMechanics: [],
     });
 
     if (dto.assignedMechanicIds?.length) {
       service.assignedMechanics = await this.userRepo.find({
-        where: dto.assignedMechanicIds.map((id) => ({ id })),
+        where: dto.assignedMechanicIds.map((id) => ({ id, garageId })),
       });
       if (
         !dto.status ||
@@ -282,6 +286,7 @@ export class ServicesService {
 
     return this.findOne(
       savedService.id,
+      garageId,
     );
   }
 
@@ -289,12 +294,15 @@ export class ServicesService {
   // FIND ALL
   // ======================================================
 
-  async findAll(filters?: {
-    status?: string;
-    customerId?: string;
-    vehicleId?: string;
-    technicianId?: string;
-  }) {
+  async findAll(
+    garageId: string,
+    filters?: {
+      status?: string;
+      customerId?: string;
+      vehicleId?: string;
+      technicianId?: string;
+    },
+  ) {
     const qb =
       this.serviceRepo.createQueryBuilder(
         'service',
@@ -359,6 +367,8 @@ export class ServicesService {
       'subtaskAssignedTo',
     );
 
+    qb.where('service.garageId = :garageId', { garageId });
+
     // ======================================================
     // FILTERS
     // ======================================================
@@ -419,16 +429,25 @@ export class ServicesService {
     return qb.getMany();
   }
 
+  async assertServiceInGarage(serviceId: string, garageId: string) {
+    const service = await this.serviceRepo.findOne({
+      where: { id: serviceId, garageId },
+      select: ['id'],
+    });
+    if (!service) {
+      throw new NotFoundException('Service not found');
+    }
+    return service;
+  }
+
   // ======================================================
   // FIND ONE
   // ======================================================
 
-  async findOne(id: string) {
+  async findOne(id: string, garageId?: string) {
     const service =
       await this.serviceRepo.findOne({
-        where: {
-          id,
-        },
+        where: garageId ? { id, garageId } : { id },
 
         relations: [
           'vehicle',
@@ -494,10 +513,9 @@ export class ServicesService {
   // UPDATE SERVICE
   // ======================================================
 
-  async update(  id: string,  dto: UpdateServiceDto,
-  ) {
+  async update(id: string, dto: UpdateServiceDto, garageId: string) {
     const service = await this.serviceRepo.findOne({
-      where: { id },
+      where: { id, garageId },
       relations: ["createdBy", "customer", "vehicle", "assignedMechanics"],
     });
 
@@ -596,7 +614,7 @@ export class ServicesService {
         }
       } else {
         service.assignedMechanics = await this.userRepo.find({
-          where: dto.assignedMechanicIds.map((id) => ({ id })),
+          where: dto.assignedMechanicIds.map((id) => ({ id, garageId })),
         });
         if (
           service.status === ServiceStatus.PENDING ||
@@ -620,12 +638,15 @@ export class ServicesService {
       dto.chassisNumber !== undefined ||
       dto.odometerReading !== undefined
     ) {
-      const resolved = await this.resolveVehicleAndCustomer({
-        ...dto,
-        customerId: dto.customerId || service.customer?.id,
-        vehicleId: dto.vehicleId || service.vehicle?.id,
-        createdById: dto.createdById || service.createdBy?.id,
-      } as CreateServiceDto);
+      const resolved = await this.resolveVehicleAndCustomer(
+        {
+          ...dto,
+          customerId: dto.customerId || service.customer?.id,
+          vehicleId: dto.vehicleId || service.vehicle?.id,
+          createdById: dto.createdById || service.createdBy?.id,
+        } as CreateServiceDto,
+        garageId,
+      );
       service.customer = resolved.customer;
       service.vehicle = resolved.vehicle;
     }
@@ -814,14 +835,15 @@ export class ServicesService {
 
     
 
-    return this.findOne(id);
+    return this.findOne(id, garageId);
   }
 
   // ======================================================
   // DELETE SERVICE
   // ======================================================
 
-  async remove(id: string) {
+  async remove(id: string, garageId: string) {
+    await this.assertServiceInGarage(id, garageId);
     const oldTasks = await this.taskRepo.find({
           where: {
             service: {
@@ -834,6 +856,12 @@ export class ServicesService {
         if (oldTasks.length > 0) {
           await this.taskRepo.remove(oldTasks);
         }
+
+    const service = await this.serviceRepo.findOne({ where: { id, garageId } });
+    if (service) {
+      await this.serviceRepo.remove(service);
+    }
+    return { deleted: true };
   }
 
   // ======================================================
@@ -843,9 +871,10 @@ export class ServicesService {
   async updateStatus(
     id: string,
     status: string,
+    garageId: string,
   ) {
     const service =
-      await this.findOne(id);
+      await this.findOne(id, garageId);
 
     service.status =
       status as ServiceStatus;
@@ -854,7 +883,7 @@ export class ServicesService {
       service,
     );
 
-    return this.findOne(id);
+    return this.findOne(id, garageId);
   }
 
   // ======================================================
@@ -865,11 +894,12 @@ export class ServicesService {
     return value.replace(/\s+/g, '').toUpperCase();
   }
 
-  private async nextCustomerCode() {
+  private async nextCustomerCode(garageId: string) {
     const rows = await this.userRepo
       .createQueryBuilder('user')
       .select('user.customerCode', 'customerCode')
-      .where('user.customerCode IS NOT NULL')
+      .where('user.garageId = :garageId', { garageId })
+      .andWhere('user.customerCode IS NOT NULL')
       .getRawMany<{ customerCode: string }>();
 
     let max = 0;
@@ -880,11 +910,12 @@ export class ServicesService {
     return `JMC${String(max + 1).padStart(6, '0')}`;
   }
 
-  private async nextVehicleCode() {
+  private async nextVehicleCode(garageId: string) {
     const rows = await this.vehicleRepo
       .createQueryBuilder('vehicle')
       .select('vehicle.vehicleCode', 'vehicleCode')
-      .where('vehicle.vehicleCode IS NOT NULL')
+      .where('vehicle.garageId = :garageId', { garageId })
+      .andWhere('vehicle.vehicleCode IS NOT NULL')
       .getRawMany<{ vehicleCode: string }>();
 
     let max = 0;
@@ -895,24 +926,29 @@ export class ServicesService {
     return `JMV${String(max + 1).padStart(6, '0')}`;
   }
 
-  private async ensureCustomerCode(customer: UserEntity) {
+  private async ensureCustomerCode(customer: UserEntity, garageId: string) {
     if (customer.customerCode) return customer;
-    customer.customerCode = await this.nextCustomerCode();
+    customer.customerCode = await this.nextCustomerCode(garageId);
     return this.userRepo.save(customer);
   }
 
-  private async ensureVehicleCode(vehicle: VehicleEntity) {
+  private async ensureVehicleCode(vehicle: VehicleEntity, garageId: string) {
     if (vehicle.vehicleCode) return vehicle;
-    vehicle.vehicleCode = await this.nextVehicleCode();
+    vehicle.vehicleCode = await this.nextVehicleCode(garageId);
     return this.vehicleRepo.save(vehicle);
   }
 
-  private async resolveVehicleAndCustomer(dto: CreateServiceDto) {
+  private async resolveVehicleAndCustomer(
+    dto: CreateServiceDto,
+    garageId: string,
+  ) {
     let customer: UserEntity | null = null;
     let vehicle: VehicleEntity | null = null;
 
     if (dto.customerId) {
-      customer = await this.userRepo.findOne({ where: { id: dto.customerId } });
+      customer = await this.userRepo.findOne({
+        where: { id: dto.customerId, garageId },
+      });
       if (!customer) throw new NotFoundException('Customer not found');
 
       let dirty = false;
@@ -931,27 +967,34 @@ export class ServicesService {
           dirty = true;
         }
       }
+      if (!customer.garageId) {
+        customer.garageId = garageId;
+        dirty = true;
+      }
       if (dirty) customer = await this.userRepo.save(customer);
-      customer = await this.ensureCustomerCode(customer);
+      customer = await this.ensureCustomerCode(customer, garageId);
     } else if (dto.customerMobile && dto.customerName) {
       const mobile = dto.customerMobile.trim();
       const address = (dto.customerAddress || '—').trim() || '—';
-      customer = await this.userRepo.findOne({ where: { mobile } });
+      customer = await this.userRepo.findOne({
+        where: { mobile, garageId },
+      });
 
       if (!customer) {
-        const usernameBase = `cust_${mobile}`.slice(0, 40);
+        const usernameBase = `cust_${garageId.slice(0, 8)}_${mobile}`.slice(0, 40);
         const hashed = await bcrypt.hash(`temp_${mobile}`, 10);
         customer = await this.userRepo.save(
           this.userRepo.create({
             name: dto.customerName.trim(),
             username: usernameBase,
-            email: `${mobile}@customer.local`,
+            email: `${garageId.slice(0, 8)}_${mobile}@customer.local`,
             mobile,
             address,
             password: hashed,
             role: Role.USER,
             isVerified: true,
-            customerCode: await this.nextCustomerCode(),
+            garageId,
+            customerCode: await this.nextCustomerCode(garageId),
           }),
         );
       } else {
@@ -965,7 +1008,7 @@ export class ServicesService {
           dirty = true;
         }
         if (dirty) customer = await this.userRepo.save(customer);
-        customer = await this.ensureCustomerCode(customer);
+        customer = await this.ensureCustomerCode(customer, garageId);
       }
     } else {
       throw new BadRequestException(
@@ -975,7 +1018,7 @@ export class ServicesService {
 
     if (dto.vehicleId) {
       vehicle = await this.vehicleRepo.findOne({
-        where: { id: dto.vehicleId },
+        where: { id: dto.vehicleId, garageId },
         relations: ['owner'],
       });
       if (!vehicle) throw new NotFoundException('Vehicle not found');
@@ -997,19 +1040,23 @@ export class ServicesService {
         vehicle.mileage = dto.odometerReading?.trim() || vehicle.mileage;
       }
       vehicle.owner = customer;
+      vehicle.garageId = garageId;
       vehicle = await this.vehicleRepo.save(vehicle);
-      vehicle = await this.ensureVehicleCode(vehicle);
+      vehicle = await this.ensureVehicleCode(vehicle, garageId);
     } else if (dto.registrationNumber) {
       const registrationNumber = dto.registrationNumber.trim().toUpperCase();
       const normalized = this.normalizeRegistration(registrationNumber);
 
       vehicle = await this.vehicleRepo.findOne({
-        where: { registrationNumber: ILike(registrationNumber) },
+        where: { registrationNumber: ILike(registrationNumber), garageId },
         relations: ['owner'],
       });
 
       if (!vehicle) {
-        const all = await this.vehicleRepo.find({ relations: ['owner'] });
+        const all = await this.vehicleRepo.find({
+          where: { garageId },
+          relations: ['owner'],
+        });
         vehicle =
           all.find(
             (v) => this.normalizeRegistration(v.registrationNumber) === normalized,
@@ -1033,7 +1080,8 @@ export class ServicesService {
             chassisNumber: dto.chassisNumber?.trim() || undefined,
             mileage: dto.odometerReading?.trim() || undefined,
             owner: customer,
-            vehicleCode: await this.nextVehicleCode(),
+            garageId,
+            vehicleCode: await this.nextVehicleCode(garageId),
           }),
         );
       } else {
@@ -1052,8 +1100,9 @@ export class ServicesService {
           vehicle.mileage = dto.odometerReading?.trim() || vehicle.mileage;
         }
         vehicle.owner = customer;
+        vehicle.garageId = garageId;
         vehicle = await this.vehicleRepo.save(vehicle);
-        vehicle = await this.ensureVehicleCode(vehicle);
+        vehicle = await this.ensureVehicleCode(vehicle, garageId);
       }
     } else {
       throw new BadRequestException(

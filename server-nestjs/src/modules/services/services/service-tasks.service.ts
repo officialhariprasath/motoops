@@ -37,17 +37,14 @@ export class ServiceTasksService {
     private readonly userRepo: Repository<UserEntity>,
   ) {}
 
-  // ======================================================
-  // CREATE TASK
-  // ======================================================
-
   async create(
     serviceId: string,
     dto: CreateServiceTaskDto,
+    garageId: string,
   ) {
     const service =
       await this.serviceRepo.findOne({
-        where: { id: serviceId },
+        where: { id: serviceId, garageId },
       });
 
     if (!service) {
@@ -65,6 +62,7 @@ export class ServiceTasksService {
         await this.userRepo.findOne({
           where: {
             id: dto.accountableTechnicianId,
+            garageId,
           },
         });
 
@@ -85,49 +83,40 @@ export class ServiceTasksService {
         await this.userRepo.find({
           where: {
             id: In(dto.mechanicIds),
+            garageId,
           },
         });
     }
 
     const task = this.taskRepo.create({
       title: dto.title,
-
       description: dto.description,
-
-      laborCost:
-        dto.laborCost || 0,
-
-      additionalCost:
-        dto.additionalCost || 0,
-
+      laborCost: dto.laborCost || 0,
+      additionalCost: dto.additionalCost || 0,
       partsCost: 0,
-
       totalCost:
         (dto.laborCost || 0) +
         (dto.additionalCost || 0),
-
       service,
-
       accountableTechnician,
-
       mechanics,
     });
 
     return this.taskRepo.save(task);
   }
 
-  // ======================================================
-  // FIND ALL TASKS
-  // ======================================================
+  async findAll(serviceId: string, garageId: string) {
+    const service = await this.serviceRepo.findOne({
+      where: { id: serviceId, garageId },
+    });
+    if (!service) throw new NotFoundException('Service not found');
 
-  async findAll(serviceId: string) {
     return this.taskRepo.find({
       where: {
         service: {
           id: serviceId,
         },
       },
-
       relations: [
         'service',
         'accountableTechnician',
@@ -136,24 +125,19 @@ export class ServiceTasksService {
         'subtasks',
         'comments',
       ],
-
       order: {
         createdAt: 'DESC',
       },
     });
   }
 
-  // ======================================================
-  // FIND ONE TASK
-  // ======================================================
-
-  async findOne(taskId: string) {
+  async findOne(taskId: string, garageId: string) {
     const task =
       await this.taskRepo.findOne({
         where: {
           id: taskId,
+          service: { garageId },
         },
-
         relations: [
           'service',
           'accountableTechnician',
@@ -173,16 +157,13 @@ export class ServiceTasksService {
     return task;
   }
 
-  // ======================================================
-  // UPDATE TASK
-  // ======================================================
-
   async update(
     taskId: string,
     dto: Partial<CreateServiceTaskDto>,
+    garageId: string,
   ) {
     const task =
-      await this.findOne(taskId);
+      await this.findOne(taskId, garageId);
 
     if (dto.title !== undefined) {
       task.title = dto.title;
@@ -207,7 +188,6 @@ export class ServiceTasksService {
         dto.additionalCost;
     }
 
-    // recalculate
     task.totalCost =
       Number(task.laborCost || 0) +
       Number(task.partsCost || 0) +
@@ -216,32 +196,26 @@ export class ServiceTasksService {
     return this.taskRepo.save(task);
   }
 
-  // ======================================================
-  // DELETE TASK
-  // ======================================================
-
-  async remove(taskId: string) {
+  async remove(taskId: string, garageId: string) {
     const task =
-      await this.findOne(taskId);
+      await this.findOne(taskId, garageId);
 
     return this.taskRepo.remove(task);
   }
 
-  // ======================================================
-  // ASSIGN MECHANICS
-  // ======================================================
-
   async assignMechanics(
     taskId: string,
     mechanicIds: string[],
+    garageId: string,
   ) {
     const task =
-      await this.findOne(taskId);
+      await this.findOne(taskId, garageId);
 
     const mechanics =
       await this.userRepo.find({
         where: {
           id: In(mechanicIds),
+          garageId,
         },
       });
 
@@ -250,21 +224,19 @@ export class ServiceTasksService {
     return this.taskRepo.save(task);
   }
 
-  // ======================================================
-  // UPDATE ACCOUNTABLE TECHNICIAN
-  // ======================================================
-
   async updateAccountableTechnician(
     taskId: string,
     technicianId: string,
+    garageId: string,
   ) {
     const task =
-      await this.findOne(taskId);
+      await this.findOne(taskId, garageId);
 
     const technician =
       await this.userRepo.findOne({
         where: {
           id: technicianId,
+          garageId,
         },
       });
 

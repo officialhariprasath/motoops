@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -30,14 +30,14 @@ const DEFAULT_BIKE_ITEMS: Array<{ name: string; rate: number }> = [
 ];
 
 @Injectable()
-export class CatalogService implements OnModuleInit {
+export class CatalogService {
   constructor(
     @InjectRepository(CatalogItemEntity)
     private readonly repo: Repository<CatalogItemEntity>,
   ) {}
 
-  async onModuleInit() {
-    const count = await this.repo.count();
+  private async ensureDefaults(garageId: string) {
+    const count = await this.repo.count({ where: { garageId } });
     if (count > 0) return;
 
     await this.repo.save(
@@ -46,29 +46,34 @@ export class CatalogService implements OnModuleInit {
           name: item.name,
           rate: item.rate,
           isActive: true,
+          garageId,
         }),
       ),
     );
   }
 
-  findAll(includeInactive = false) {
+  async findAll(garageId: string, includeInactive = false) {
+    await this.ensureDefaults(garageId);
     return this.repo.find({
-      where: includeInactive ? undefined : { isActive: true },
+      where: includeInactive
+        ? { garageId }
+        : { garageId, isActive: true },
       order: { name: 'ASC' },
     });
   }
 
-  async create(dto: CreateCatalogItemDto) {
+  async create(dto: CreateCatalogItemDto, garageId: string) {
     const item = this.repo.create({
       name: dto.name.trim(),
       rate: dto.rate,
       isActive: true,
+      garageId,
     });
     return this.repo.save(item);
   }
 
-  async update(id: string, dto: UpdateCatalogItemDto) {
-    const item = await this.repo.findOne({ where: { id } });
+  async update(id: string, dto: UpdateCatalogItemDto, garageId: string) {
+    const item = await this.repo.findOne({ where: { id, garageId } });
     if (!item) throw new NotFoundException('Item not found');
 
     if (dto.name !== undefined) item.name = dto.name.trim();
@@ -78,8 +83,8 @@ export class CatalogService implements OnModuleInit {
     return this.repo.save(item);
   }
 
-  async remove(id: string) {
-    const item = await this.repo.findOne({ where: { id } });
+  async remove(id: string, garageId: string) {
+    const item = await this.repo.findOne({ where: { id, garageId } });
     if (!item) throw new NotFoundException('Item not found');
     item.isActive = false;
     return this.repo.save(item);

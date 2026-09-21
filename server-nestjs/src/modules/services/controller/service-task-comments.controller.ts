@@ -6,11 +6,14 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ServiceTaskCommentsService } from '../services/service-task-comments.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class ServiceTaskCommentsController {
   constructor(
     private readonly commentsService: ServiceTaskCommentsService,

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { TaskPartsService } from '../services/task-parts.service';
@@ -15,8 +16,10 @@ import { TaskPartsService } from '../services/task-parts.service';
 import {
   CreateTaskPartDto,
 } from '../dto/create-service.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class TaskPartsController {
   constructor(
     private readonly taskPartsService: TaskPartsService,

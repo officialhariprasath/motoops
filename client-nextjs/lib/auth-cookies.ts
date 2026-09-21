@@ -19,6 +19,7 @@ type SessionUser = {
   mobile?: string;
   designation?: string | null;
   role?: string;
+  garageId?: string;
 };
 
 /** Compact user payload for the httpOnly cookie (avoid oversized Set-Cookie). */
@@ -30,6 +31,7 @@ export function sessionUserCookieValue(user: SessionUser): string {
     mobile: user.mobile,
     designation: user.designation ?? null,
     role: user.role,
+    garageId: user.garageId,
   });
 }
 

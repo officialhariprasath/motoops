@@ -97,5 +97,153 @@ export class SchemaEnsureService implements OnModuleInit {
         "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
+
+    // ---------- Per-garage tenancy ----------
+    await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(`ALTER TABLE services ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(`ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(`ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(`ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+
+    await q(`
+      CREATE TABLE IF NOT EXISTS garage_settings (
+        "garageId" uuid PRIMARY KEY,
+        settings text NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+
+    // Drop global uniques that break multi-tenant (best-effort)
+    await this.dropUniqueOnColumn('services', 'jobCardNumber');
+    await this.dropUniqueOnColumn('vehicles', 'registrationNumber');
+    await this.dropUniqueOnColumn('invoices', 'invoiceNumber');
+
+    // Backfill garageId
+    await q(`
+      UPDATE users
+      SET "garageId" = id
+      WHERE role::text = 'admin' AND ("garageId" IS NULL OR "garageId"::text = '');
+    `);
+
+    await q(`
+      UPDATE services s
+      SET "garageId" = u.id
+      FROM users u
+      WHERE s."garageId" IS NULL
+        AND s."createdById" = u.id;
+    `);
+
+    await q(`
+      UPDATE services s
+      SET "garageId" = u."garageId"
+      FROM users u
+      WHERE s."garageId" IS NULL
+        AND s."createdById" = u.id
+        AND u."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE vehicles v
+      SET "garageId" = s."garageId"
+      FROM services s
+      WHERE v."garageId" IS NULL
+        AND s."vehicleId" = v.id
+        AND s."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE vehicles v
+      SET "garageId" = u."garageId"
+      FROM users u
+      WHERE v."garageId" IS NULL
+        AND v."ownerId" = u.id
+        AND u."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE invoices i
+      SET "garageId" = s."garageId"
+      FROM services s
+      WHERE i."garageId" IS NULL
+        AND i."serviceId" = s.id
+        AND s."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE users u
+      SET "garageId" = s."garageId"
+      FROM services s
+      WHERE u."garageId" IS NULL
+        AND u.role::text IN ('user', 'mechanic')
+        AND s."customerId" = u.id
+        AND s."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE users u
+      SET "garageId" = v."garageId"
+      FROM vehicles v
+      WHERE u."garageId" IS NULL
+        AND u.role::text = 'user'
+        AND v."ownerId" = u.id
+        AND v."garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      UPDATE leave_requests lr
+      SET "garageId" = u."garageId"
+      FROM users u
+      WHERE lr."garageId" IS NULL
+        AND lr."mechanicId" = u.id::text
+        AND u."garageId" IS NOT NULL;
+    `);
+
+    // Composite uniqueness (nullable garageId rows excluded)
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_services_garage_jobCard"
+      ON services ("garageId", "jobCardNumber")
+      WHERE "garageId" IS NOT NULL AND "jobCardNumber" IS NOT NULL;
+    `);
+
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_vehicles_garage_reg"
+      ON vehicles ("garageId", "registrationNumber")
+      WHERE "garageId" IS NOT NULL;
+    `);
+
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_invoices_garage_number"
+      ON invoices ("garageId", "invoiceNumber")
+      WHERE "garageId" IS NOT NULL AND "invoiceNumber" IS NOT NULL;
+    `);
+  }
+
+  private async dropUniqueOnColumn(table: string, column: string) {
+    try {
+      await this.dataSource.query(`
+        DO $$
+        DECLARE r record;
+        BEGIN
+          FOR r IN (
+            SELECT c.conname
+            FROM pg_constraint c
+            JOIN pg_class t ON c.conrelid = t.oid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE n.nspname = 'public'
+              AND t.relname = '${table}'
+              AND c.contype = 'u'
+              AND pg_get_constraintdef(c.oid) ILIKE '%${column}%'
+          ) LOOP
+            EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I', '${table}', r.conname);
+          END LOOP;
+        END $$;
+      `);
+    } catch (error) {
+      this.logger.warn(
+        `Could not drop unique on ${table}.${column}: ${(error as Error).message}`,
+      );
+    }
   }
 }

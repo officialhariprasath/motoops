@@ -56,6 +56,10 @@ export class UserEntity {
   })
   role!: Role;
 
+  /** Garage tenant: admin = own id; mechanic/customer = owning admin id */
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
   @Column({ default: true })
   isVerified!: boolean;
 

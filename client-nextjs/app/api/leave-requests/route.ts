@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
-async function proxy(path: string, init?: RequestInit) {
-  const backendUrl = process.env.BACKEND_SERVER_URL;
-  if (!backendUrl) {
+async function proxyLeave(path: string, init?: Parameters<typeof backendFetch>[1]) {
+  if (!getBackendUrl()) {
     return NextResponse.json(
       { message: "BACKEND_SERVER_URL is not configured" },
       { status: 500 }
     );
   }
 
-  const res = await fetch(`${backendUrl}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
-    cache: "no-store",
-  });
-
-  const contentType = res.headers.get("content-type") || "";
-  const data = contentType.includes("application/json")
-    ? await res.json()
-    : { message: await res.text() };
+  const res = await backendFetch(path, init);
+  const data = await parseBackendResponse(res);
 
   if (!res.ok) {
     const raw =
@@ -36,10 +29,7 @@ async function proxy(path: string, init?: RequestInit) {
         ? " Leave API is missing on the backend - restart Nest locally, or push/redeploy so LeaveModule is live."
         : "";
     return NextResponse.json(
-      {
-        message:
-          (raw || "Leave request failed") + hint,
-      },
+      { message: (raw || "Leave request failed") + hint },
       { status: res.status }
     );
   }
@@ -50,13 +40,13 @@ async function proxy(path: string, init?: RequestInit) {
 export async function GET(req: NextRequest) {
   const mechanicId = req.nextUrl.searchParams.get("mechanicId");
   const qs = mechanicId ? `?mechanicId=${encodeURIComponent(mechanicId)}` : "";
-  return proxy(`/leave-requests${qs}`);
+  return proxyLeave(`/leave-requests${qs}`);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  return proxy("/leave-requests", {
+  return proxyLeave("/leave-requests", {
     method: "POST",
-    body: JSON.stringify(body),
+    json: body,
   });
 }

@@ -1,8 +1,9 @@
-﻿// File: app/api/users/route.ts
-
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_SERVER_URL;
+﻿import { NextRequest, NextResponse } from "next/server";
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 function getCurrentUser(req: NextRequest) {
   const rawUser = req.cookies.get("user")?.value;
@@ -23,32 +24,34 @@ function isAdmin(req: NextRequest) {
   return getCurrentUser(req)?.role === "admin";
 }
 
-// ================= GET USERS =================
 export async function GET() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/users`, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    const data = await res.json();
-    return NextResponse.json(data, {
-      status: res.status,
-    });
-  } catch (error) {
+  if (!getBackendUrl()) {
     return NextResponse.json(
-      {
-        message: "Failed to fetch users",
-      },
-      {
-        status: 500,
-      }
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const res = await backendFetch(`/users`);
+    const data = await parseBackendResponse(res);
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json(
+      { message: "Failed to fetch users" },
+      { status: 500 }
     );
   }
 }
 
-// ================= CREATE USER =================
 export async function POST(req: NextRequest) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
     if (!isAdmin(req)) {
       return NextResponse.json(
@@ -58,29 +61,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-
-    const res = await fetch(`${BACKEND_URL}/users`, {
+    const res = await backendFetch(`/users`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      json: body,
     });
-
-    const data = await res.json();
-
-    return NextResponse.json(data, {
-      status: res.status,
-    });
-  } catch (error) {
+    const data = await parseBackendResponse(res);
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json(
-      {
-        message: "Failed to create user",
-      },
-      {
-        status: 500,
-      }
+      { message: "Failed to create user" },
+      { status: 500 }
     );
   }
 }
-

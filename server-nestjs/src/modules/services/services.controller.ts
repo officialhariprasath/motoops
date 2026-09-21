@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ServicesService } from './services.service';
@@ -16,43 +17,35 @@ import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 
 import { UpdateServiceDto } from './dto/updateService.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../../common/decorators/user.decorator';
+import { resolveGarageId, resolveUserId } from '../../common/tenant';
 
 @Controller('services')
+@UseGuards(JwtAuthGuard)
 export class ServicesController {
   constructor(
     private readonly servicesService: ServicesService,
   ) {}
 
-  // ======================================================
-  // CREATE SERVICE
-  // ======================================================
-
   @Post()
-  create(
-    @Body() dto: CreateServiceDto,
-  ) {
-
-    return this.servicesService.create(dto);
+  create(@User() user: any, @Body() dto: CreateServiceDto) {
+    return this.servicesService.create(
+      dto,
+      resolveGarageId(user),
+      resolveUserId(user),
+    );
   }
-
-  // ======================================================
-  // GET ALL SERVICES
-  // ======================================================
 
   @Get()
   findAll(
+    @User() user: any,
     @Query('status') status?: string,
-
-    @Query('customerId')
-    customerId?: string,
-
-    @Query('vehicleId')
-    vehicleId?: string,
-
-    @Query('technicianId')
-    technicianId?: string,
+    @Query('customerId') customerId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('technicianId') technicianId?: string,
   ) {
-    return this.servicesService.findAll({
+    return this.servicesService.findAll(resolveGarageId(user), {
       status,
       customerId,
       vehicleId,
@@ -60,60 +53,35 @@ export class ServicesController {
     });
   }
 
-  // ======================================================
-  // GET SINGLE SERVICE
-  // ======================================================
-
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-  ) {
-    return this.servicesService.findOne(id);
+  findOne(@User() user: any, @Param('id') id: string) {
+    return this.servicesService.findOne(id, resolveGarageId(user));
   }
-
-  // ======================================================
-  // UPDATE SERVICE
-  // ======================================================
 
   @Patch(':id')
   update(
+    @User() user: any,
     @Param('id') id: string,
-
-    @Body()
-    dto: UpdateServiceDto,
+    @Body() dto: UpdateServiceDto,
   ) {
-    console.log('Update data: ',dto);
-    return this.servicesService.update(
-      id,
-      dto,
-    );
+    return this.servicesService.update(id, dto, resolveGarageId(user));
   }
-
-  // ======================================================
-  // DELETE SERVICE
-  // ======================================================
 
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-  ) {
-    return this.servicesService.remove(id);
+  remove(@User() user: any, @Param('id') id: string) {
+    return this.servicesService.remove(id, resolveGarageId(user));
   }
-
-  // ======================================================
-  // UPDATE SERVICE STATUS
-  // ======================================================
 
   @Patch(':id/status')
   updateStatus(
+    @User() user: any,
     @Param('id') id: string,
-
-    @Body('status')
-    status: string,
+    @Body('status') status: string,
   ) {
     return this.servicesService.updateStatus(
       id,
       status,
+      resolveGarageId(user),
     );
   }
 }

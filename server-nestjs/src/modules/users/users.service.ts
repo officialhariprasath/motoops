@@ -2,6 +2,7 @@
 
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -12,6 +13,7 @@ import { Not, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Role } from './enums/role.enum';
 
 import * as bcrypt from 'bcrypt';
 
@@ -50,10 +52,20 @@ export class UsersService {
     }
   }
 
-  async create(dto: CreateUserDto & { isVerified?: boolean; verificationToken?: string }) {
+  async create(
+    dto: CreateUserDto & { isVerified?: boolean; verificationToken?: string },
+    garageId?: string,
+  ) {
     await this.ensureUniqueUserFields(dto);
 
     const hashed = await bcrypt.hash(dto.password, 10);
+    const role = dto.role || Role.USER;
+    const isAdmin = String(role).toLowerCase() === Role.ADMIN;
+
+    if (!isAdmin && !garageId) {
+      throw new ForbiddenException('garageId is required for this user');
+    }
+
     const user = this.repo.create({
       name: dto.name,
       username: dto.username,
@@ -62,21 +74,36 @@ export class UsersService {
       address: dto.address,
       designation: dto.designation,
       password: hashed,
-      role: dto.role,
+      role,
       isVerified: dto.isVerified ?? true,
       verificationToken: dto.verificationToken,
+      garageId: isAdmin ? undefined : garageId,
     });
 
-    return this.repo.save(user);
+    const saved = await this.repo.save(user);
+
+    if (isAdmin) {
+      saved.garageId = saved.id;
+      return this.repo.save(saved);
+    }
+
+    return saved;
   }
 
-  findAll() {
-    return this.repo.find({});
+  async setGarageId(userId: string, garageId: string) {
+    await this.repo.update(userId, { garageId });
   }
 
-  async findOne(id: string) {
+  findAll(garageId: string) {
+    return this.repo.find({
+      where: { garageId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOne(id: string, garageId?: string) {
     const user = await this.repo.findOne({
-      where: { id },
+      where: garageId ? { id, garageId } : { id },
       relations: ['vehicles'],
     });
 
@@ -90,12 +117,34 @@ export class UsersService {
     if (identifier.includes('@')) {
       user = await this.repo.findOne({
         where: { email: identifier },
-        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role', 'isVerified'],
+        select: [
+          'id',
+          'name',
+          'username',
+          'email',
+          'mobile',
+          'designation',
+          'password',
+          'role',
+          'isVerified',
+          'garageId',
+        ],
       });
     } else {
       user = await this.repo.findOne({
         where: [{ username: identifier }, { mobile: identifier }],
-        select: ['id', 'name', 'username', 'email', 'mobile', 'designation', 'password', 'role', 'isVerified'],
+        select: [
+          'id',
+          'name',
+          'username',
+          'email',
+          'mobile',
+          'designation',
+          'password',
+          'role',
+          'isVerified',
+          'garageId',
+        ],
       });
     }
 
@@ -125,8 +174,8 @@ export class UsersService {
     });
   }
 
-  async update(id: string, dto: UpdateUserDto) {
-    const user = await this.findOne(id);
+  async update(id: string, dto: UpdateUserDto, garageId?: string) {
+    const user = await this.findOne(id, garageId);
 
     await this.ensureUniqueUserFields(
       {
@@ -148,8 +197,8 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  async remove(id: string) {
-    const user = await this.findOne(id);
+  async remove(id: string, garageId?: string) {
+    const user = await this.findOne(id, garageId);
     return this.repo.remove(user);
   }
 
@@ -159,7 +208,3 @@ export class UsersService {
     });
   }
 }
-
-
-
-

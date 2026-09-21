@@ -1,38 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_SERVER_URL;
-
-async function parseBackendResponse(res: Response) {
-  const text = await res.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {
-      message: "Backend returned a non-JSON response",
-      detail: text.slice(0, 300),
-    };
-  }
-}
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   const { id } = await context.params;
-  const res = await fetch(
-    `${BACKEND_URL}/invoices/${id}`,
-    {
-      cache: "no-store",
-    }
-  );
-
+  const res = await backendFetch(`/invoices/${id}`);
   const data = await parseBackendResponse(res);
-
   return NextResponse.json(data, { status: res.status });
 }
 
@@ -40,21 +26,19 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  if (!getBackendUrl()) {
+    return NextResponse.json(
+      { message: "BACKEND_SERVER_URL is not configured" },
+      { status: 500 }
+    );
+  }
+
   const { id } = await context.params;
   const body = await req.json();
-
-  const res = await fetch(
-    `${BACKEND_URL}/invoices/${id}/payment`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
+  const res = await backendFetch(`/invoices/${id}/payment`, {
+    method: "PATCH",
+    json: body,
+  });
   const data = await parseBackendResponse(res);
-
   return NextResponse.json(data, { status: res.status });
 }

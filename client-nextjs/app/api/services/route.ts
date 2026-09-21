@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_SERVER_URL;
-
-async function parseBackendResponse(res: Response) {
-  const text = await res.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {
-      message: "Backend returned a non-JSON response",
-      detail: text.slice(0, 300),
-    };
-  }
-}
+import {
+  backendFetch,
+  parseBackendResponse,
+  getBackendUrl,
+} from "@/lib/backend-fetch";
 
 export async function GET(req: NextRequest) {
-  if (!BACKEND_URL) {
+  if (!getBackendUrl()) {
     return NextResponse.json(
       { message: "BACKEND_SERVER_URL is not configured" },
       { status: 500 }
@@ -25,9 +15,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { search } = new URL(req.url);
-    const res = await fetch(`${BACKEND_URL}/services${search}`, {
-      cache: "no-store",
-    });
+    const res = await backendFetch(`/services${search}`);
     const data = await parseBackendResponse(res);
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
@@ -40,7 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!BACKEND_URL) {
+  if (!getBackendUrl()) {
     return NextResponse.json(
       { message: "BACKEND_SERVER_URL is not configured" },
       { status: 500 }
@@ -49,14 +37,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const res = await fetch(`${BACKEND_URL}/services`, {
+    const res = await backendFetch(`/services`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      json: body,
     });
-
     const data = await parseBackendResponse(res);
     return NextResponse.json(data, { status: res.status });
   } catch (error) {

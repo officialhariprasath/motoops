@@ -55,12 +55,16 @@ export class InvoicesService {
     return { paidAmount: paid, dueAmount, paymentStatus };
   }
 
-  private async nextInvoiceNumber(documentType: InvoiceDocumentType) {
+  private async nextInvoiceNumber(
+    documentType: InvoiceDocumentType,
+    garageId: string,
+  ) {
     const prefix = documentType === 'ESTIMATE' ? 'JME' : 'JMI';
     const rows = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .select('invoice.invoiceNumber', 'invoiceNumber')
-      .where('invoice.invoiceNumber IS NOT NULL')
+      .where('invoice.garageId = :garageId', { garageId })
+      .andWhere('invoice.invoiceNumber IS NOT NULL')
       .andWhere('invoice.invoiceNumber LIKE :prefix', { prefix: `${prefix}%` })
       .getRawMany<{ invoiceNumber: string }>();
 
@@ -74,20 +78,24 @@ export class InvoicesService {
     return `${prefix}${String(max + 1).padStart(6, '0')}`;
   }
 
-  async create(dto: CreateInvoiceDto) {
+  async create(
+    dto: CreateInvoiceDto,
+    garageId: string,
+    generatedByUserId: string,
+  ) {
     const documentType =
       (dto.documentType as InvoiceDocumentType) ||
       InvoiceDocumentTypeDto.BILL;
 
     const serviceRow = await this.serviceRepo.findOne({
-      where: { id: dto.serviceId },
+      where: { id: dto.serviceId, garageId },
       relations: ['vehicle', 'customer'],
     });
 
     if (!serviceRow) throw new NotFoundException('Service not found');
 
     const user = await this.userRepo.findOne({
-      where: { id: dto.generatedById },
+      where: { id: generatedByUserId },
     });
     if (!user) throw new NotFoundException('User not found');
 
@@ -144,6 +152,9 @@ export class InvoicesService {
         } else if (serviceRow.futureWorksNotes) {
           serviceRow.vehicle.futureWorksNotes = serviceRow.futureWorksNotes;
         }
+        if (!serviceRow.vehicle.garageId) {
+          serviceRow.vehicle.garageId = garageId;
+        }
         await this.vehicleRepo.save(serviceRow.vehicle);
       }
     }
@@ -152,6 +163,7 @@ export class InvoicesService {
 
     const existing = await this.invoiceRepo.findOne({
       where: {
+        garageId,
         service: { id: dto.serviceId },
         documentType,
       },
@@ -199,11 +211,15 @@ export class InvoicesService {
       existing.dueAmount = amounts.dueAmount;
       existing.paymentStatus = amounts.paymentStatus;
       existing.generatedBy = user;
+      existing.garageId = garageId;
       if (billExtras) {
         existing.billExtras = billExtras;
       }
       if (!existing.invoiceNumber) {
-        existing.invoiceNumber = await this.nextInvoiceNumber(documentType);
+        existing.invoiceNumber = await this.nextInvoiceNumber(
+          documentType,
+          garageId,
+        );
       }
       const saved = await this.invoiceRepo.save(existing);
 
@@ -214,14 +230,15 @@ export class InvoicesService {
         }
       }
 
-      return this.findOne(saved.id);
+      return this.findOne(saved.id, garageId);
     }
 
     const invoice = this.invoiceRepo.create({
       service: serviceRow,
       generatedBy: user,
       documentType,
-      invoiceNumber: await this.nextInvoiceNumber(documentType),
+      garageId,
+      invoiceNumber: await this.nextInvoiceNumber(documentType, garageId),
       totalAmount: total,
       paidAmount: amounts.paidAmount,
       dueAmount: amounts.dueAmount,
@@ -236,16 +253,20 @@ export class InvoicesService {
       await this.serviceRepo.save(serviceRow);
     }
 
-    return this.findOne(saved.id);
+    return this.findOne(saved.id, garageId);
   }
 
-  async findAll(filters?: { serviceId?: string; documentType?: string }) {
+  async findAll(
+    garageId: string,
+    filters?: { serviceId?: string; documentType?: string },
+  ) {
     const qb = this.invoiceRepo
       .createQueryBuilder('invoice')
       .leftJoinAndSelect('invoice.service', 'service')
       .leftJoinAndSelect('service.vehicle', 'vehicle')
       .leftJoinAndSelect('service.customer', 'customer')
       .leftJoinAndSelect('invoice.generatedBy', 'generatedBy')
+      .where('invoice.garageId = :garageId', { garageId })
       .orderBy('invoice.createdAt', 'DESC');
 
     if (filters?.serviceId) {
@@ -260,9 +281,9 @@ export class InvoicesService {
     return qb.getMany();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, garageId: string) {
     const invoice = await this.invoiceRepo.findOne({
-      where: { id },
+      where: { id, garageId },
       relations: [
         'service',
         'service.vehicle',
@@ -275,9 +296,8 @@ export class InvoicesService {
     return invoice;
   }
 
-  async updatePayment(id: string, paidAmount: number) {
-    const invoice = await this.findOne(id);
-    if (!invoice) throw new NotFoundException('Invoice not found');
+  async updatePayment(id: string, paidAmount: number, garageId: string) {
+    const invoice = await this.findOne(id, garageId);
 
     if (invoice.documentType === 'ESTIMATE') {
       throw new BadRequestException('Cannot record payment on an estimate');

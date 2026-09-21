@@ -13,6 +13,9 @@ export class LeaveRequestEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  garageId?: string | null;
+
   @Column()
   mechanicId!: string;
 
