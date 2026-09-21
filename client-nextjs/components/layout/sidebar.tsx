@@ -237,22 +237,15 @@ export default function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
       {/* LOGO */}
       {/* ====================================================== */}
 
-      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
+      <div className="flex h-16 flex-col items-start justify-center gap-0.5 border-b border-border px-4">
         <img
           src="/motoops-logo.png"
           alt="MotoOps"
-          className="h-10 w-auto object-contain"
+          className="h-9 w-auto object-contain"
         />
-
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold tracking-wide text-foreground">
-            MOTO OPS
-          </h1>
-
-          <p className="text-xs text-muted-foreground capitalize">
-            {role} panel
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground capitalize">
+          {role} panel
+        </p>
       </div>
 
       {/* ====================================================== */}

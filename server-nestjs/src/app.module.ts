@@ -13,7 +13,7 @@ import { ServicesModule } from './modules/services/services.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { LeaveModule } from './modules/leave/leave.module';
-
+import { SchemaEnsureService } from './common/schema-ensure.service';
 
 // DB CONNECTED THROUGH app.module.ts VIA importing TypeOrmModule and configuring it with the database connection details.
 @Module({
@@ -47,7 +47,6 @@ import { LeaveModule } from './modules/leave/leave.module';
     LeaveModule,
   ],
   controllers: [AppController],
-  providers: [AppService], // ✅ ONLY THIS
+  providers: [AppService, SchemaEnsureService],
 })
-
 export class AppModule {}

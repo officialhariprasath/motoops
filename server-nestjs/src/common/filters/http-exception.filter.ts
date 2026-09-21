@@ -27,6 +27,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = (response as any).message || message;
         errors = (response as any).errors || [];
       }
+    } else if (exception && typeof exception === 'object') {
+      const err = exception as { message?: string; name?: string; code?: string };
+      console.error('Unhandled exception', err?.name, err?.message, err);
+      if (err.message) {
+        // Surface DB/schema issues so deploys are diagnosable
+        message = err.message;
+      }
     }
 
     res.status(statusCode).json({

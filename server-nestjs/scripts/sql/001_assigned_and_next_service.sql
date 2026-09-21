@@ -1,5 +1,5 @@
--- MotoOps: ASSIGNED + next-service + leave_requests
--- Run on Neon when TYPEORM_SYNC=false.
+-- MotoOps: ASSIGNED + next-service + leave_requests + assign join table
+-- Run on Neon when TYPEORM_SYNC=false (also applied automatically on API boot).
 
 DO $$
 BEGIN
@@ -23,6 +23,12 @@ ALTER TABLE vehicles
 
 ALTER TABLE invoices
   ADD COLUMN IF NOT EXISTS "billExtras" text NULL;
+
+CREATE TABLE IF NOT EXISTS service_assigned_mechanics (
+  "servicesId" uuid NOT NULL,
+  "usersId" uuid NOT NULL,
+  PRIMARY KEY ("servicesId", "usersId")
+);
 
 CREATE TABLE IF NOT EXISTS leave_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
