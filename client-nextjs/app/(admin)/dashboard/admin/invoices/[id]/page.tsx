@@ -184,11 +184,11 @@ export default function InvoiceDetailsPage() {
             }}
           >
             <div className="flex h-full min-h-[calc(297mm-16mm)] flex-col border border-[#1d4f91]">
-              <div className="border-b border-[#1d4f91] px-3 py-2.5 text-center">
+              <div className="relative border-b border-[#1d4f91] px-3 py-2.5 text-center">
                 <img
                   src={invoiceLogoUrl}
-                  alt={garageName}
-                  className="mx-auto mb-1.5 h-14 w-auto max-w-[180px] object-contain"
+                  alt=""
+                  className="pointer-events-none absolute left-2 top-2 h-11 w-auto max-w-[72px] object-contain"
                 />
                 <h2 className="text-[16px] font-bold tracking-wide text-[#1d4f91]">
                   {garageName.toUpperCase()}
