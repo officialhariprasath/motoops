@@ -18,7 +18,7 @@ export class VehicleEntity {
   @Column({ type: 'uuid', nullable: true })
   garageId?: string | null;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   vehicleCode?: string;
 
   @Column()

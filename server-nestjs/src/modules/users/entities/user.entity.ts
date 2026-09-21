@@ -24,7 +24,7 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   customerCode?: string;
 
   @Column()

@@ -118,7 +118,9 @@ export class SchemaEnsureService implements OnModuleInit {
     // Drop global uniques that break multi-tenant (best-effort)
     await this.dropUniqueOnColumn('services', 'jobCardNumber');
     await this.dropUniqueOnColumn('vehicles', 'registrationNumber');
+    await this.dropUniqueOnColumn('vehicles', 'vehicleCode');
     await this.dropUniqueOnColumn('invoices', 'invoiceNumber');
+    await this.dropUniqueOnColumn('users', 'customerCode');
 
     // Backfill garageId
     await q(`
@@ -218,6 +220,18 @@ export class SchemaEnsureService implements OnModuleInit {
       ON invoices ("garageId", "invoiceNumber")
       WHERE "garageId" IS NOT NULL AND "invoiceNumber" IS NOT NULL;
     `);
+
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_users_garage_customerCode"
+      ON users ("garageId", "customerCode")
+      WHERE "garageId" IS NOT NULL AND "customerCode" IS NOT NULL;
+    `);
+
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_vehicles_garage_vehicleCode"
+      ON vehicles ("garageId", "vehicleCode")
+      WHERE "garageId" IS NOT NULL AND "vehicleCode" IS NOT NULL;
+    `);
   }
 
   private async dropUniqueOnColumn(table: string, column: string) {
@@ -237,6 +251,22 @@ export class SchemaEnsureService implements OnModuleInit {
               AND pg_get_constraintdef(c.oid) ILIKE '%${column}%'
           ) LOOP
             EXECUTE format('ALTER TABLE %I DROP CONSTRAINT IF EXISTS %I', '${table}', r.conname);
+          END LOOP;
+
+          FOR r IN (
+            SELECT i.relname AS idxname
+            FROM pg_index x
+            JOIN pg_class i ON i.oid = x.indexrelid
+            JOIN pg_class t ON t.oid = x.indrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(x.indkey)
+            WHERE n.nspname = 'public'
+              AND t.relname = '${table}'
+              AND x.indisunique
+              AND NOT x.indisprimary
+              AND a.attname = '${column}'
+          ) LOOP
+            EXECUTE format('DROP INDEX IF EXISTS %I', r.idxname);
           END LOOP;
         END $$;
       `);
