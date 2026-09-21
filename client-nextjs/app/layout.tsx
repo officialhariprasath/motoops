@@ -24,10 +24,22 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "MotoOps",
-  description: "Motorcycle garage operations - job cards, estimates, invoices, and workforce.",
+  description:
+    "Motorcycle garage operations - job cards, estimates, invoices, and workforce.",
+  applicationName: "MotoOps",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "MotoOps",
+    statusBarStyle: "default",
+  },
   icons: {
-    icon: "/motoops-logo.png",
-    apple: "/motoops-logo.png",
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
