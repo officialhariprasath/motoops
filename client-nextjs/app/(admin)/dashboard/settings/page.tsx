@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
@@ -27,7 +35,7 @@ const defaultSettings = {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
-  const [message, setMessage] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("garageSettings");
@@ -43,18 +51,29 @@ export default function SettingsPage() {
   const saveSettings = () => {
     localStorage.setItem("garageSettings", JSON.stringify(settings));
     window.dispatchEvent(new Event(DELETE_ACTIONS_UPDATED_EVENT));
-    setMessage("Settings saved.");
+    setSaveDialogOpen(true);
   };
 
   const jobCardPreview = previewJobCardNumber(settings.jobCardPrefix);
 
   return (
     <div className="max-w-4xl space-y-6">
-      {message && (
-        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          {message}
-        </div>
-      )}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settings saved</DialogTitle>
+            <DialogDescription>
+              Your garage profile and preferences were saved. Invoice logo and
+              details will show on estimates and bills.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={() => setSaveDialogOpen(false)}>
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent className="space-y-4 p-6">

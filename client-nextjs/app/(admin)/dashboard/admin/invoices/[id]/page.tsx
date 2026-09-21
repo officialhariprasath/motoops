@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { OtherDetailsBlock } from "@/components/print/OtherDetailsBlock";
 import { NextServicePrintBlock } from "@/components/print/NextServicePrintBlock";
+import { DocumentGarageHeader } from "@/components/print/DocumentGarageHeader";
 import {
   calcLineAmounts,
   calcLineItemsTotal,
@@ -184,30 +185,14 @@ export default function InvoiceDetailsPage() {
             }}
           >
             <div className="flex h-full min-h-[calc(297mm-16mm)] flex-col border border-[#1d4f91]">
-              <div className="relative border-b border-[#1d4f91] px-3 py-2.5 text-center">
-                <img
-                  src={invoiceLogoUrl}
-                  alt=""
-                  className="pointer-events-none absolute left-2 top-2 h-11 w-auto max-w-[72px] object-contain"
-                />
-                <h2 className="text-[16px] font-bold tracking-wide text-[#1d4f91]">
-                  {garageName.toUpperCase()}
-                </h2>
-                {garageAddress && (
-                  <p className="mt-1 leading-snug">{garageAddress}</p>
-                )}
-                <p className="mt-0.5">
-                  {[
-                    garagePhone ? `Mobile: ${garagePhone}` : null,
-                    garageEmail ? `Email: ${garageEmail}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" | ")}
-                </p>
-                {settings.gstin && (
-                  <p className="mt-0.5 font-medium">GSTIN : {settings.gstin}</p>
-                )}
-              </div>
+              <DocumentGarageHeader
+                garageName={garageName}
+                garageAddress={garageAddress}
+                garagePhone={garagePhone}
+                garageEmail={garageEmail}
+                gstin={settings.gstin}
+                logoUrl={invoiceLogoUrl}
+              />
 
               <div className="grid grid-cols-2 border-b border-[#1d4f91]">
                 <div className="border-r border-[#1d4f91] p-2.5">
