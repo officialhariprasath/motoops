@@ -59,7 +59,7 @@ export default function VehicleSummaryCard({
             <span className="font-medium text-right">
               {String(vehicle.nextServiceAt).slice(0, 10)}
               {vehicle.nextServiceOdometer
-                ? ` Â· ${vehicle.nextServiceOdometer} km`
+                ? ` \u00B7 ${vehicle.nextServiceOdometer} km`
                 : ""}
             </span>
           </div>

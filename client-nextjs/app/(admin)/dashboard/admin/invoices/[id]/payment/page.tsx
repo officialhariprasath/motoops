@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { addNotification } from "@/lib/notifications";
-import { formatMoney } from "@/lib/job-card-items";
+import { formatCurrency } from "@/lib/job-card-items";
 
 type Invoice = {
   id: string;
@@ -64,7 +64,7 @@ export default function UpdateInvoicePaymentPage() {
 
     addNotification({
       title: "Payment updated",
-      message: `Paid amount set to ?${formatMoney(paidAmount)}.`,
+      message: `Paid amount set to ${formatCurrency(paidAmount)}.`,
       category: "invoice",
     });
     setSaving(false);
@@ -96,7 +96,7 @@ export default function UpdateInvoicePaymentPage() {
 
         <div>
           <p className="text-sm text-muted-foreground">Total Amount</p>
-          <p className="text-xl font-bold">?{formatMoney(total)}</p>
+          <p className="text-xl font-bold">{formatCurrency(total)}</p>
         </div>
 
         <div>
@@ -120,7 +120,7 @@ export default function UpdateInvoicePaymentPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-muted p-4">
             <p className="text-sm text-muted-foreground">Due</p>
-            <p className="text-lg font-bold">?{formatMoney(dueAmount)}</p>
+            <p className="text-lg font-bold">{formatCurrency(dueAmount)}</p>
           </div>
           <div className="rounded-lg bg-muted p-4">
             <p className="text-sm text-muted-foreground">Status</p>

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { normalizeJobCardStatus } from "@/lib/job-card-status";
-import { formatMoney } from "@/lib/job-card-items";
+import { formatCurrency } from "@/lib/job-card-items";
 
 async function apiGet(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -225,15 +225,15 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
           label="Collected today"
-          value={`₹${formatMoney(stats.revenue.daily)}`}
+          value={formatCurrency(stats.revenue.daily)}
         />
         <StatCard
           label="Collected this week"
-          value={`₹${formatMoney(stats.revenue.weekly)}`}
+          value={formatCurrency(stats.revenue.weekly)}
         />
         <StatCard
           label="Collected this month"
-          value={`₹${formatMoney(stats.revenue.monthly)}`}
+          value={formatCurrency(stats.revenue.monthly)}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { formatMoney } from "@/lib/job-card-items";
+import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
 
 async function getMyInvoices() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -59,12 +59,12 @@ export default function MyInvoicesPage() {
                 </span>
               </div>
               <p className="mt-3 text-lg font-bold">
-                ₹{formatMoney(invoice.totalAmount)}
+                {formatCurrency(Number(invoice.totalAmount))}
               </p>
               {docType === "BILL" && (
                 <p className="text-sm capitalize text-muted-foreground">
-                  {invoice.paymentStatus} · Due ₹
-                  {formatMoney(invoice.dueAmount)}
+                  {invoice.paymentStatus}
+                  {DOT_SEP}Due {formatCurrency(Number(invoice.dueAmount))}
                 </p>
               )}
             </Link>

@@ -23,3 +23,11 @@ export function calcLineItemsTotal(items: JobCardLineItem[]) {
 export function formatMoney(value: number) {
   return Number(value || 0).toFixed(2);
 }
+
+/** Rupee amount that stays valid in UTF-8 source files. */
+export function formatCurrency(value: number) {
+  return `\u20B9${formatMoney(value)}`;
+}
+
+/** Safe visual separator (middle dot). */
+export const DOT_SEP = " \u00B7 ";

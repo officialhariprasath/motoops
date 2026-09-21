@@ -232,6 +232,46 @@ export class SchemaEnsureService implements OnModuleInit {
       ON vehicles ("garageId", "vehicleCode")
       WHERE "garageId" IS NOT NULL AND "vehicleCode" IS NOT NULL;
     `);
+
+    // One invoice document per job card (estimate upgrades to bill in place)
+    await q(`
+      DO $$
+      DECLARE r record;
+      BEGIN
+        FOR r IN (
+          SELECT c.conname
+          FROM pg_constraint c
+          JOIN pg_class t ON c.conrelid = t.oid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname = 'public'
+            AND t.relname = 'invoices'
+            AND c.contype = 'u'
+            AND pg_get_constraintdef(c.oid) ILIKE '%serviceId%'
+            AND pg_get_constraintdef(c.oid) ILIKE '%documentType%'
+        ) LOOP
+          EXECUTE format('ALTER TABLE invoices DROP CONSTRAINT IF EXISTS %I', r.conname);
+        END LOOP;
+      END $$;
+    `);
+
+    await q(`
+      DELETE FROM invoices i
+      USING invoices j
+      WHERE i."serviceId" = j."serviceId"
+        AND i.id <> j.id
+        AND (
+          (j."documentType" = 'BILL' AND i."documentType" <> 'BILL')
+          OR (
+            i."documentType" = j."documentType"
+            AND i."createdAt" < j."createdAt"
+          )
+        );
+    `);
+
+    await q(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_invoices_service_one"
+      ON invoices ("serviceId");
+    `);
   }
 
   private async dropUniqueOnColumn(table: string, column: string) {

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   calcLineAmounts,
-  formatMoney,
+  formatCurrency,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
 
@@ -66,7 +66,7 @@ export default function CustomerInvoiceViewPage() {
             </h1>
           </div>
           <p className="text-2xl font-bold">
-            â‚¹{formatMoney(invoice.totalAmount)}
+            {formatCurrency(Number(invoice.totalAmount))}
           </p>
         </div>
 
@@ -78,7 +78,7 @@ export default function CustomerInvoiceViewPage() {
           {docType === "BILL" && (
             <>
               <p className="capitalize">Status: {invoice.paymentStatus}</p>
-              <p>Due: â‚¹{formatMoney(invoice.dueAmount)}</p>
+              <p>Due: {formatCurrency(Number(invoice.dueAmount))}</p>
             </>
           )}
         </div>
@@ -97,7 +97,7 @@ export default function CustomerInvoiceViewPage() {
                 <td className="py-2">{item.description}</td>
                 <td className="py-2 text-right">{item.quantity}</td>
                 <td className="py-2 text-right">
-                  â‚¹{formatMoney(calcLineAmounts(item).netAmount)}
+                  {formatCurrency(calcLineAmounts(item).netAmount)}
                 </td>
               </tr>
             ))}

@@ -15,7 +15,7 @@ export type PaymentStatus = 'unpaid' | 'paid' | 'partial';
 export type InvoiceDocumentType = 'ESTIMATE' | 'BILL';
 
 @Entity('invoices')
-@Index(['service', 'documentType'], { unique: true })
+@Index(['service'], { unique: true })
 export class InvoiceEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

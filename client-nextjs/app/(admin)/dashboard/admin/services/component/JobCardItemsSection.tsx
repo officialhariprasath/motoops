@@ -29,6 +29,8 @@ type CatalogItem = {
 type Props = {
   items: JobCardLineItem[];
   onChange: (items: JobCardLineItem[]) => void;
+  onSave?: (items: JobCardLineItem[]) => void;
+  dirty?: boolean;
   readOnly?: boolean;
   saving?: boolean;
 };
@@ -52,6 +54,8 @@ function round2(value: number) {
 export default function JobCardItemsSection({
   items,
   onChange,
+  onSave,
+  dirty = false,
   readOnly = false,
   saving = false,
 }: Props) {
@@ -170,8 +174,9 @@ export default function JobCardItemsSection({
     }
 
     onChange([...items, next]);
-    setOpen(false);
+    // Keep dialog open for the next item; Cancel closes when done.
     resetDialog();
+    setOpen(true);
   };
 
   return (
@@ -179,17 +184,29 @@ export default function JobCardItemsSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold">Items</h3>
         {!readOnly && (
-          <Button
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              resetDialog();
-              setOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                resetDialog();
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+            {onSave && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving || !dirty}
+                onClick={() => onSave(items)}
+              >
+                {saving ? "Saving…" : "Save Items"}
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

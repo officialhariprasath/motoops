@@ -55,11 +55,8 @@ export class InvoicesService {
     return { paidAmount: paid, dueAmount, paymentStatus };
   }
 
-  private async nextInvoiceNumber(
-    documentType: InvoiceDocumentType,
-    garageId: string,
-  ) {
-    const prefix = documentType === 'ESTIMATE' ? 'JME' : 'JMI';
+  private async nextInvoiceNumber(garageId: string) {
+    const prefix = 'JMI';
     const rows = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .select('invoice.invoiceNumber', 'invoiceNumber')
@@ -161,11 +158,11 @@ export class InvoicesService {
 
     await this.serviceRepo.save(serviceRow);
 
+    // One document per job card: estimate and bill share the same row.
     const existing = await this.invoiceRepo.findOne({
       where: {
         garageId,
         service: { id: dto.serviceId },
-        documentType,
       },
       relations: ['service', 'service.vehicle', 'service.customer', 'generatedBy'],
     });
@@ -206,21 +203,49 @@ export class InvoicesService {
         : undefined;
 
     if (existing) {
+      // Do not downgrade a bill back to estimate
+      if (
+        documentType === 'ESTIMATE' &&
+        existing.documentType === 'BILL'
+      ) {
+        existing.totalAmount = total;
+        existing.generatedBy = user;
+        existing.garageId = garageId;
+        const saved = await this.invoiceRepo.save(existing);
+        return this.findOne(saved.id, garageId);
+      }
+
+      const upgradingToBill =
+        documentType === 'BILL' && existing.documentType === 'ESTIMATE';
+
+      existing.documentType = documentType;
       existing.totalAmount = total;
-      existing.paidAmount = amounts.paidAmount;
-      existing.dueAmount = amounts.dueAmount;
-      existing.paymentStatus = amounts.paymentStatus;
       existing.generatedBy = user;
       existing.garageId = garageId;
-      if (billExtras) {
-        existing.billExtras = billExtras;
+
+      if (documentType === 'BILL') {
+        existing.paidAmount = amounts.paidAmount;
+        existing.dueAmount = amounts.dueAmount;
+        existing.paymentStatus = amounts.paymentStatus;
+        if (billExtras) existing.billExtras = billExtras;
+      } else {
+        existing.paidAmount = 0;
+        existing.dueAmount = total;
+        existing.paymentStatus = 'unpaid';
       }
-      if (!existing.invoiceNumber) {
-        existing.invoiceNumber = await this.nextInvoiceNumber(
-          documentType,
-          garageId,
-        );
+
+      // Invoice-style IDs only (JMI). Convert old JME estimate numbers on bill.
+      const number = String(existing.invoiceNumber || '');
+      if (
+        !existing.invoiceNumber ||
+        upgradingToBill ||
+        number.toUpperCase().startsWith('JME')
+      ) {
+        if (!number.toUpperCase().startsWith('JMI')) {
+          existing.invoiceNumber = await this.nextInvoiceNumber(garageId);
+        }
       }
+
       const saved = await this.invoiceRepo.save(existing);
 
       if (documentType === 'BILL' && dto.completeJob !== false) {
@@ -238,7 +263,7 @@ export class InvoicesService {
       generatedBy: user,
       documentType,
       garageId,
-      invoiceNumber: await this.nextInvoiceNumber(documentType, garageId),
+      invoiceNumber: await this.nextInvoiceNumber(garageId),
       totalAmount: total,
       paidAmount: amounts.paidAmount,
       dueAmount: amounts.dueAmount,

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import JobCardItemsSection from "../component/JobCardItemsSection";
 import type { JobCardLineItem } from "@/lib/job-card-items";
+import { DOT_SEP } from "@/lib/job-card-items";
 import { addNotification } from "@/lib/notifications";
 import {
   JOB_CARD_STATUSES,
@@ -440,20 +441,18 @@ export default function ServiceViewPage() {
 
       {!isMechanicView && (estimateDoc || billDoc) && (
         <div className="flex flex-wrap gap-2">
-          {estimateDoc && (
+          {(billDoc || estimateDoc) && (
             <Link
-              href={`/dashboard/admin/invoices/${estimateDoc.id}`}
-              className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-800"
+              href={`/dashboard/admin/invoices/${(billDoc || estimateDoc).id}`}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                billDoc
+                  ? "bg-emerald-50 text-emerald-800"
+                  : "bg-sky-50 text-sky-800"
+              }`}
             >
-              Estimate {estimateDoc.invoiceNumber || ""}
-            </Link>
-          )}
-          {billDoc && (
-            <Link
-              href={`/dashboard/admin/invoices/${billDoc.id}`}
-              className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800"
-            >
-              Bill {billDoc.invoiceNumber || ""} Â· {billDoc.paymentStatus}
+              {billDoc
+                ? `Bill ${(billDoc.invoiceNumber || "")}${DOT_SEP}${billDoc.paymentStatus}`
+                : `Estimate ${estimateDoc?.invoiceNumber || ""}`}
             </Link>
           )}
         </div>
@@ -554,7 +553,7 @@ export default function ServiceViewPage() {
                     >
                       {mechanic.name}
                       {mechanic.designation
-                        ? ` Â· ${mechanic.designation}`
+                        ? `${DOT_SEP}${mechanic.designation}`
                         : ""}
                     </button>
                   );
@@ -644,14 +643,23 @@ export default function ServiceViewPage() {
 
         <JobCardItemsSection
           items={displayItems}
+          dirty={draftItems !== null}
           saving={saveMutation.isPending}
           onChange={(next) => {
+            setDraftItems(next);
+          }}
+          onSave={(next) => {
             setDraftItems(next);
             saveMutation.mutate(next);
           }}
         />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+        {draftItems !== null && !saveMutation.isPending && (
+          <p className="text-sm text-muted-foreground">
+            Items changed locally. Click Save Items when you are done adding.
+          </p>
+        )}
         {saveMutation.isPending && (
           <p className="text-sm text-muted-foreground">Saving items...</p>
         )}

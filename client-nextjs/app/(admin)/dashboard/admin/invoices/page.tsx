@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import ListControls from "@/components/dashboard/ListControls";
 import { useGaragePageSize } from "@/lib/list-settings";
-import { formatMoney } from "@/lib/job-card-items";
+import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
 import {
   Select,
   SelectContent,
@@ -219,7 +219,7 @@ export default function InvoicesPage() {
                 <p>
                   {inv.service?.vehicle?.registrationNumber || "-"}
                   {inv.service?.vehicle?.brand
-                    ? ` Â· ${inv.service.vehicle.brand}`
+                    ? `${DOT_SEP}${inv.service.vehicle.brand}`
                     : ""}
                 </p>
               </div>
@@ -227,12 +227,12 @@ export default function InvoicesPage() {
               <div className="mt-4 flex items-end justify-between gap-2">
                 <div>
                   <p className="text-lg font-semibold text-foreground">
-                    ?{formatMoney(inv.totalAmount)}
+                    {formatCurrency(Number(inv.totalAmount))}
                   </p>
                   {docType === "BILL" && (
                     <p className="text-xs text-muted-foreground">
-                      Paid ?{formatMoney(inv.paidAmount)} Â· Due ?
-                      {formatMoney(inv.dueAmount)}
+                      Paid {formatCurrency(Number(inv.paidAmount))}
+                      {DOT_SEP}Due {formatCurrency(Number(inv.dueAmount))}
                     </p>
                   )}
                 </div>

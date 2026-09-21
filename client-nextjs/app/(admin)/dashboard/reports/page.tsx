@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/job-card-items";
+import { formatCurrency } from "@/lib/job-card-items";
 import { normalizeJobCardStatus } from "@/lib/job-card-status";
 
 async function apiGet(url: string) {
@@ -97,7 +97,7 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Collected (bills)</p>
             <p className="mt-2 text-3xl font-bold">
-              ?{formatMoney(report.revenue)}
+              {formatCurrency(report.revenue)}
             </p>
           </CardContent>
         </Card>
@@ -105,7 +105,7 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Outstanding (bills)</p>
             <p className="mt-2 text-3xl font-bold">
-              ?{formatMoney(report.outstanding)}
+              {formatCurrency(report.outstanding)}
             </p>
           </CardContent>
         </Card>
