@@ -41,9 +41,10 @@ export function DocumentGarageHeader({
       <img
         src={logoUrl}
         alt=""
+        crossOrigin="anonymous"
         className={`pointer-events-none absolute left-2 top-1/2 z-10 w-auto -translate-y-1/2 object-contain object-left ${logoSizeClass}`}
       />
-      <h2 className="text-[16px] font-bold tracking-wide text-[#1d4f91]">
+      <h2 className="text-[18px] font-bold tracking-wide text-[#1d4f91]">
         {garageName.toUpperCase()}
       </h2>
       {garageAddress ? (

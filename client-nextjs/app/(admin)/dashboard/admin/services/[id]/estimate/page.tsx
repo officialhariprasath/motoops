@@ -17,6 +17,7 @@ import {
 import { numberToWordsIndian } from "@/lib/job-card-status";
 import { addNotification } from "@/lib/notifications";
 import { syncGarageSettingsCache } from "@/lib/garage-settings-api";
+import { downloadSheetAsPdf } from "@/lib/download-sheet-pdf";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -63,9 +64,11 @@ export default function EstimatePage() {
   const id = params.id as string;
   const [settings, setSettings] = useState<GarageSettings>({});
   const wrapRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [savedEstimateId, setSavedEstimateId] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const savedOnce = useRef(false);
 
   useEffect(() => {
@@ -193,8 +196,32 @@ export default function EstimatePage() {
             </Button>
           </Link>
         )}
-        <Button type="button" onClick={() => window.print()}>
-          Download PDF
+        <Button
+          type="button"
+          disabled={downloading}
+          onClick={async () => {
+            if (!sheetRef.current || downloading) return;
+            setDownloading(true);
+            try {
+              const name =
+                service?.jobCardNumber ||
+                String(id || "estimate").slice(0, 8);
+              await downloadSheetAsPdf(
+                sheetRef.current,
+                `estimate-${name}.pdf`
+              );
+            } catch (err) {
+              setSaveMsg(
+                err instanceof Error
+                  ? err.message
+                  : "Failed to download PDF"
+              );
+            } finally {
+              setDownloading(false);
+            }
+          }}
+        >
+          {downloading ? "Preparing PDF…" : "Download PDF"}
         </Button>
       </div>
       {saveMsg && (
@@ -214,7 +241,8 @@ export default function EstimatePage() {
           }}
         >
           <div
-            className="estimate-sheet bg-card text-[9.5px] text-foreground shadow-md print:shadow-none"
+            ref={sheetRef}
+            className="estimate-sheet bg-card text-[11.5px] leading-snug text-foreground shadow-md print:shadow-none"
             style={{
               width: `${A4_WIDTH_MM}mm`,
               minHeight: `${A4_HEIGHT_MM}mm`,
@@ -255,7 +283,7 @@ export default function EstimatePage() {
                   </div>
                 </div>
                 <div className="p-2.5">
-                  <p className="mb-2 text-center text-[12px] font-bold tracking-[0.18em]">
+                  <p className="mb-2 text-center text-[14px] font-bold tracking-[0.18em]">
                     ESTIMATE
                   </p>
                   <div className="space-y-0.5">
@@ -386,7 +414,7 @@ export default function EstimatePage() {
                 />
                 <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
                   <span className="font-bold">GRAND TOTAL</span>
-                  <span className="text-sm font-bold">
+                  <span className="text-base font-bold">
                     {formatMoney(totalNet)}
                   </span>
                 </div>
@@ -397,7 +425,7 @@ export default function EstimatePage() {
                   <p className="mb-1.5 font-semibold underline">
                     Terms & Conditions
                   </p>
-                  <ol className="list-decimal space-y-0.5 pl-3 text-[8.5px] leading-snug">
+                  <ol className="list-decimal space-y-0.5 pl-3 text-[10px] leading-snug">
                     <li>Subject to local jurisdiction only.</li>
                     <li>
                       Our responsibility ceases as soon as the goods leave our
