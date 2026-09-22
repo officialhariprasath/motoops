@@ -3,7 +3,6 @@ export const DOCUMENT_FONT_SIZES = [
   { value: 10, label: "Small (10px)" },
   { value: 11.5, label: "Medium (11.5px)" },
   { value: 13, label: "Large (13px)" },
-  { value: 14.5, label: "Extra large (14.5px)" },
 ] as const;
 
 export type DocumentFontSize = (typeof DOCUMENT_FONT_SIZES)[number]["value"];
@@ -13,6 +12,8 @@ export const DEFAULT_DOCUMENT_FONT_SIZE: DocumentFontSize = 11.5;
 export function resolveDocumentFontSize(raw?: unknown): DocumentFontSize {
   const n = Number(raw);
   const match = DOCUMENT_FONT_SIZES.find((item) => item.value === n);
+  // Migrate removed "Extra large" (14.5) → Large
+  if (!match && n === 14.5) return 13;
   return match ? match.value : DEFAULT_DOCUMENT_FONT_SIZE;
 }
 

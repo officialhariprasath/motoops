@@ -46,8 +46,8 @@ async function savePdfBlob(blob: Blob, fileName: string) {
 }
 
 /**
- * Clone the bill/estimate sheet into an off-screen full-size host so capture
- * is not affected by the on-page CSS scale transform (which breaks cell alignment).
+ * Clone bill/estimate pages off-screen so capture is not affected by preview scale.
+ * Supports a multi-page stack (`.estimate-sheet-stack` with several `.estimate-sheet`).
  */
 function mountCaptureClone(sheet: HTMLElement): {
   host: HTMLDivElement;
@@ -71,12 +71,20 @@ function mountCaptureClone(sheet: HTMLElement): {
   clone.style.transformOrigin = "top left";
   clone.style.width = `${A4_WIDTH_MM}mm`;
   clone.style.maxWidth = `${A4_WIDTH_MM}mm`;
-  clone.style.minHeight = `${A4_HEIGHT_MM}mm`;
   clone.style.margin = "0";
   clone.style.boxShadow = "none";
   clone.style.backgroundColor = "#ffffff";
 
-  // Keep table rows content-sized; avoid stretched cells that look top-aligned in screenshots
+  clone.querySelectorAll(".estimate-sheet").forEach((node) => {
+    const page = node as HTMLElement;
+    page.style.transform = "none";
+    page.style.minHeight = `${A4_HEIGHT_MM}mm`;
+    page.style.width = `${A4_WIDTH_MM}mm`;
+    page.style.maxWidth = `${A4_WIDTH_MM}mm`;
+    page.style.boxShadow = "none";
+    page.style.backgroundColor = "#ffffff";
+  });
+
   clone.querySelectorAll("table").forEach((table) => {
     const el = table as HTMLElement;
     el.style.height = "auto";
@@ -89,7 +97,6 @@ function mountCaptureClone(sheet: HTMLElement): {
   });
   clone.querySelectorAll(".doc-cell-inner").forEach((node) => {
     const inner = node as HTMLElement;
-    // Drop flex — screenshot engines mishandle align-items in table cells
     inner.style.display = "block";
     inner.style.minHeight = "0";
     inner.style.height = "auto";
@@ -101,7 +108,6 @@ function mountCaptureClone(sheet: HTMLElement): {
     inner.style.boxSizing = "border-box";
   });
 
-  // Keep footer blocks bottom-aligned in the captured PDF
   clone.querySelectorAll("[data-doc-align='bottom']").forEach((node) => {
     const el = node as HTMLElement;
     el.style.display = "flex";
@@ -124,8 +130,7 @@ function mountCaptureClone(sheet: HTMLElement): {
 }
 
 /**
- * Capture an on-screen A4 estimate/bill sheet and save a real PDF.
- * Avoids browser print chrome (URL, date/time, page numbers) that appears on iOS.
+ * Capture A4 estimate/bill sheet(s) and save a real PDF (one PDF page per A4 sheet).
  */
 export async function downloadSheetAsPdf(
   sheet: HTMLElement,
@@ -137,16 +142,13 @@ export async function downloadSheetAsPdf(
   ]);
 
   const { host, clone } = mountCaptureClone(sheet);
-
-  // Allow layout/fonts to settle on the off-screen clone
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   try {
-    const dataUrl = await domToJpeg(clone, {
-      scale: 2,
-      quality: 0.92,
-      backgroundColor: "#ffffff",
-    });
+    const pages = Array.from(
+      clone.querySelectorAll(".estimate-sheet")
+    ) as HTMLElement[];
+    const targets = pages.length > 0 ? pages : [clone];
 
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -155,31 +157,24 @@ export async function downloadSheetAsPdf(
       compress: true,
     });
 
-    const pageWidth = A4_WIDTH_MM;
-    const pageHeight = A4_HEIGHT_MM;
+    for (let i = 0; i < targets.length; i += 1) {
+      const dataUrl = await domToJpeg(targets[i], {
+        scale: 2,
+        quality: 0.92,
+        backgroundColor: "#ffffff",
+      });
 
-    // Measure image natural size via Image
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error("Failed to load captured invoice image"));
-      image.src = dataUrl;
-    });
-
-    const imgWidth = pageWidth;
-    const imgHeight = (img.naturalHeight * imgWidth) / img.naturalWidth;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(dataUrl, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 1) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(dataUrl, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
+      if (i > 0) pdf.addPage();
+      pdf.addImage(
+        dataUrl,
+        "JPEG",
+        0,
+        0,
+        A4_WIDTH_MM,
+        A4_HEIGHT_MM,
+        undefined,
+        "FAST"
+      );
     }
 
     const blob = pdf.output("blob");
