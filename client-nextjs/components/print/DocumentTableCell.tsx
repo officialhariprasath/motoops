@@ -8,20 +8,20 @@ type Props = {
   children?: ReactNode;
   className?: string;
   colSpan?: number;
-  /** Extra classes for the inner flex wrapper (e.g. uppercase, whitespace-nowrap). */
+  /** Extra classes for the inner content wrapper. */
   innerClassName?: string;
 };
 
-const justifyClass: Record<Align, string> = {
-  left: "justify-start text-left",
-  center: "justify-center text-center",
-  right: "justify-end text-right",
+const alignClass: Record<Align, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
 };
 
 /**
- * Bill/estimate table cell using flex centering.
- * html2canvas ignores CSS vertical-align on native td/th, so we center with flex
- * so on-screen preview and downloaded PDF match.
+ * Bill/estimate table cell.
+ * Uses normal table-cell + padding (not flex). Screenshot/PDF engines
+ * mishandle flex vertical centering inside td/th.
  */
 export function DocumentTableCell({
   as = "td",
@@ -36,10 +36,10 @@ export function DocumentTableCell({
   return (
     <Tag
       colSpan={colSpan}
-      className={`border border-[#1d4f91] p-0 ${className}`}
+      className={`border border-[#1d4f91] p-0 align-middle ${className}`}
     >
       <div
-        className={`doc-cell-inner flex min-h-[1.7em] w-full items-center px-1 py-1 ${justifyClass[align]} ${innerClassName}`}
+        className={`doc-cell-inner px-1 py-1.5 leading-snug ${alignClass[align]} ${innerClassName}`}
       >
         {children}
       </div>
