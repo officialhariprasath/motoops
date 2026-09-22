@@ -428,17 +428,20 @@ export default function EstimatePage() {
                 </table>
               </div>
 
-              <div className="mt-auto grid grid-cols-[1fr_120px] border-t border-[#1d4f91]">
+              <div className="mt-auto grid grid-cols-[1fr_120px] items-stretch border-t border-[#1d4f91]">
                 <OtherDetailsBlock
                   notes={service.notes}
                   invoiceNote={settings.invoiceNote}
                   amountInWords={numberToWordsIndian(totalNet)}
                   currentOdometer={service.vehicle?.mileage}
                 />
-                <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
-                  <span className="font-bold">GRAND TOTAL</span>
+                <div
+                  data-doc-align="bottom"
+                  className="flex h-full min-h-full flex-col items-center justify-end gap-2 p-2.5 text-center"
+                >
+                  <span className="font-bold leading-tight">GRAND TOTAL</span>
                   <span
-                    className="font-bold"
+                    className="font-bold leading-tight"
                     style={{ fontSize: `${typeScale.grandTotal}px` }}
                   >
                     {formatMoney(totalNet)}
@@ -446,7 +449,7 @@ export default function EstimatePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 border-t border-[#1d4f91]">
+              <div className="grid grid-cols-3 items-stretch border-t border-[#1d4f91]">
                 <div className="border-r border-[#1d4f91] p-2.5">
                   <p className="mb-1.5 font-semibold underline">
                     Terms & Conditions
@@ -465,17 +468,23 @@ export default function EstimatePage() {
                     </li>
                   </ol>
                 </div>
-                <div className="border-r border-[#1d4f91] p-2.5">
-                  <p className="mb-8 font-semibold">
+                <div
+                  data-doc-align="spread"
+                  className="flex min-h-[5.75rem] flex-col justify-between border-r border-[#1d4f91] p-2.5"
+                >
+                  <p className="font-semibold">
                     Received the goods in good condition
                   </p>
-                  <p>Signature Receiving Authority</p>
+                  <p className="pt-6">Signature Receiving Authority</p>
                 </div>
-                <div className="p-2.5 text-right">
-                  <p className="mb-8 font-semibold">
+                <div
+                  data-doc-align="spread"
+                  className="flex min-h-[5.75rem] flex-col justify-between p-2.5 text-right"
+                >
+                  <p className="font-semibold">
                     For {garageName.toUpperCase()}
                   </p>
-                  <p>Authorised Signatory</p>
+                  <p className="pt-6">Authorised Signatory</p>
                 </div>
               </div>
             </div>

@@ -101,6 +101,23 @@ function mountCaptureClone(sheet: HTMLElement): {
     inner.style.boxSizing = "border-box";
   });
 
+  // Keep footer blocks bottom-aligned in the captured PDF
+  clone.querySelectorAll("[data-doc-align='bottom']").forEach((node) => {
+    const el = node as HTMLElement;
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.justifyContent = "flex-end";
+    el.style.height = "100%";
+  });
+  clone.querySelectorAll("[data-doc-align='spread']").forEach((node) => {
+    const el = node as HTMLElement;
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.justifyContent = "space-between";
+    el.style.height = "100%";
+    el.style.minHeight = "5.75rem";
+  });
+
   host.appendChild(clone);
   document.body.appendChild(host);
   return { host, clone };

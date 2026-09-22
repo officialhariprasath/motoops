@@ -19,7 +19,7 @@ export function OtherDetailsBlock({
   currentOdometer,
 }: OtherDetailsBlockProps) {
   return (
-    <div className="space-y-1 border-r border-[#1d4f91] p-2.5">
+    <div className="h-full space-y-1 border-r border-[#1d4f91] p-2.5">
       <p className="font-semibold">Other Details</p>
       <p>
         <span className="font-semibold">Payment Terms :</span> IMMEDIATE
