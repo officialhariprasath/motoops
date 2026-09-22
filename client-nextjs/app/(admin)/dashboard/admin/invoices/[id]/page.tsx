@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { OtherDetailsBlock } from "@/components/print/OtherDetailsBlock";
 import { NextServicePrintBlock } from "@/components/print/NextServicePrintBlock";
 import { DocumentGarageHeader } from "@/components/print/DocumentGarageHeader";
+import { DocumentTableCell } from "@/components/print/DocumentTableCell";
 import {
   calcLineAmounts,
   calcLineItemsTotal,
@@ -348,23 +349,27 @@ export default function InvoiceDetailsPage() {
                     <col style={{ width: "10%" }} />
                   </colgroup>
                   <thead>
-                    <tr className="text-left">
-                      {[
-                        "SNo",
-                        "Item Description",
-                        "Quantity",
-                        "Rate",
-                        "Amount",
-                        "Dis%",
-                        "Dis-Amt",
-                        "Net-Amt",
-                      ].map((heading) => (
-                        <th
+                    <tr>
+                      {(
+                        [
+                          ["SNo", "center"],
+                          ["Item Description", "left"],
+                          ["Quantity", "center"],
+                          ["Rate", "center"],
+                          ["Amount", "center"],
+                          ["Dis%", "center"],
+                          ["Dis-Amt", "center"],
+                          ["Net-Amt", "center"],
+                        ] as const
+                      ).map(([heading, align]) => (
+                        <DocumentTableCell
                           key={heading}
-                          className="border border-[#1d4f91] px-1 py-1 align-middle font-semibold"
+                          as="th"
+                          align={align}
+                          className="font-semibold"
                         >
                           {heading}
-                        </th>
+                        </DocumentTableCell>
                       ))}
                     </tr>
                   </thead>
@@ -374,60 +379,65 @@ export default function InvoiceDetailsPage() {
                         calcLineAmounts(item);
                       return (
                         <tr key={item.id || index}>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-center">
+                          <DocumentTableCell align="center">
                             {index + 1}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle break-words uppercase">
+                          </DocumentTableCell>
+                          <DocumentTableCell
+                            align="left"
+                            innerClassName="break-words uppercase"
+                          >
                             {item.description}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right whitespace-nowrap">
+                          </DocumentTableCell>
+                          <DocumentTableCell
+                            align="right"
+                            innerClassName="whitespace-nowrap"
+                          >
                             {Number(item.quantity).toFixed(3)} NOS
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                          </DocumentTableCell>
+                          <DocumentTableCell align="right">
                             {formatMoney(item.rate)}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                          </DocumentTableCell>
+                          <DocumentTableCell align="right">
                             {formatMoney(amount)}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                          </DocumentTableCell>
+                          <DocumentTableCell align="right">
                             {item.discountPercent
                               ? formatMoney(item.discountPercent)
                               : ""}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                          </DocumentTableCell>
+                          <DocumentTableCell align="right">
                             {discountAmount ? formatMoney(discountAmount) : ""}
-                          </td>
-                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                          </DocumentTableCell>
+                          <DocumentTableCell align="right">
                             {formatMoney(netAmount)}
-                          </td>
+                          </DocumentTableCell>
                         </tr>
                       );
                     })}
                     {items.length === 0 && (
                       <tr>
-                        <td
+                        <DocumentTableCell
                           colSpan={8}
-                          className="border border-[#1d4f91] px-2 py-5 text-center text-muted-foreground"
+                          align="center"
+                          className="text-muted-foreground"
+                          innerClassName="py-5"
                         >
                           No items added on this job card.
-                        </td>
+                        </DocumentTableCell>
                       </tr>
                     )}
                     <tr className="font-semibold">
-                      <td
-                        className="border border-[#1d4f91] px-1 py-1 align-middle text-right"
-                        colSpan={4}
-                      >
+                      <DocumentTableCell align="right" colSpan={4}>
                         TOTAL
-                      </td>
-                      <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                      </DocumentTableCell>
+                      <DocumentTableCell align="right">
                         {formatMoney(totalAmount)}
-                      </td>
-                      <td className="border border-[#1d4f91] px-1 py-1 align-middle" />
-                      <td className="border border-[#1d4f91] px-1 py-1 align-middle" />
-                      <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
+                      </DocumentTableCell>
+                      <DocumentTableCell align="right" />
+                      <DocumentTableCell align="right" />
+                      <DocumentTableCell align="right">
                         {formatMoney(totalNet)}
-                      </td>
+                      </DocumentTableCell>
                     </tr>
                   </tbody>
                 </table>

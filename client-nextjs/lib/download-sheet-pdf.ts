@@ -78,15 +78,52 @@ export async function downloadSheetAsPdf(
       scrollY: 0,
       windowWidth: sheet.scrollWidth,
       windowHeight: sheet.scrollHeight,
-      onclone: (_doc, cloned) => {
-        // Ensure cloned sheet is unscaled and opaque for capture
-        const cloneSheet = cloned.classList?.contains("estimate-sheet")
-          ? cloned
-          : cloned.querySelector?.(".estimate-sheet");
-        if (cloneSheet instanceof HTMLElement) {
-          cloneSheet.style.transform = "none";
-          cloneSheet.style.backgroundColor = "#ffffff";
-        }
+      onclone: (clonedDoc, cloned) => {
+        const cloneSheet =
+          cloned instanceof HTMLElement &&
+          cloned.classList.contains("estimate-sheet")
+            ? cloned
+            : cloned instanceof HTMLElement
+              ? cloned.querySelector(".estimate-sheet")
+              : null;
+
+        if (!(cloneSheet instanceof HTMLElement)) return;
+
+        cloneSheet.style.transform = "none";
+        cloneSheet.style.backgroundColor = "#ffffff";
+
+        // html2canvas often ignores vertical-align on td/th — force flex middle align
+        cloneSheet.querySelectorAll("td, th").forEach((node) => {
+          const cell = node as HTMLTableCellElement;
+          if (cell.querySelector(":scope > .doc-cell-inner")) return;
+
+          const computed = clonedDoc.defaultView?.getComputedStyle(cell);
+          const textAlign = (computed?.textAlign || "left").toLowerCase();
+
+          const wrap = clonedDoc.createElement("div");
+          wrap.className = "doc-cell-inner";
+          wrap.style.display = "flex";
+          wrap.style.alignItems = "center";
+          wrap.style.width = "100%";
+          wrap.style.minHeight = "1.7em";
+          wrap.style.boxSizing = "border-box";
+          wrap.style.padding =
+            computed?.padding || "0.25em 0.25em";
+          wrap.style.justifyContent =
+            textAlign === "center" || textAlign === "right"
+              ? textAlign === "center"
+                ? "center"
+                : "flex-end"
+              : "flex-start";
+          wrap.style.textAlign = textAlign === "right" ? "right" : textAlign === "center" ? "center" : "left";
+
+          while (cell.firstChild) {
+            wrap.appendChild(cell.firstChild);
+          }
+          cell.style.padding = "0";
+          cell.style.verticalAlign = "middle";
+          cell.appendChild(wrap);
+        });
       },
     });
 
