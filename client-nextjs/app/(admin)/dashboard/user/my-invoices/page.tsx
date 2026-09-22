@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
+import { paymentStatusTone } from "@/lib/job-card-status";
 
 async function getMyInvoices() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -62,9 +63,17 @@ export default function MyInvoicesPage() {
                 {formatCurrency(Number(invoice.totalAmount))}
               </p>
               {docType === "BILL" && (
-                <p className="text-sm capitalize text-muted-foreground">
-                  {invoice.paymentStatus}
-                  {DOT_SEP}Due {formatCurrency(Number(invoice.dueAmount))}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
+                      invoice.paymentStatus
+                    )}`}
+                  >
+                    {invoice.paymentStatus}
+                  </span>
+                  <span>
+                    Due {formatCurrency(Number(invoice.dueAmount))}
+                  </span>
                 </p>
               )}
             </Link>

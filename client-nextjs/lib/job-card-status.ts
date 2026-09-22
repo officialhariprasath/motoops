@@ -28,6 +28,35 @@ export function formatJobCardStatus(status?: string | null) {
   return match?.label ?? normalized.replace(/_/g, " ");
 }
 
+/** Badge colors: unassigned=red, assigned=blue, in progress=yellow, completed=green */
+export function jobCardStatusTone(status?: string | null) {
+  switch (normalizeJobCardStatus(status)) {
+    case "COMPLETED":
+      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    case "IN_PROGRESS":
+      return "bg-amber-50 text-amber-900 border-amber-200";
+    case "ASSIGNED":
+      return "bg-sky-50 text-sky-800 border-sky-200";
+    case "CANCELLED":
+      return "bg-slate-100 text-slate-700 border-slate-200";
+    case "PENDING":
+    default:
+      return "bg-rose-50 text-rose-800 border-rose-200";
+  }
+}
+
+export function paymentStatusTone(status?: string | null) {
+  switch (String(status || "").toLowerCase()) {
+    case "paid":
+      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    case "partial":
+      return "bg-amber-50 text-amber-900 border-amber-200";
+    case "unpaid":
+    default:
+      return "bg-rose-50 text-rose-800 border-rose-200";
+  }
+}
+
 export function numberToWordsIndian(amount: number) {
   const ones = [
     "",

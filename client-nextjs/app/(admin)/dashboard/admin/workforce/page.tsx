@@ -20,6 +20,7 @@ import {
 } from "@/lib/attendance-settings";
 import {
   formatJobCardStatus,
+  jobCardStatusTone,
   normalizeJobCardStatus,
 } from "@/lib/job-card-status";
 import WorkforceEmployeeForm from "./WorkforceEmployeeForm";
@@ -635,8 +636,14 @@ export default function WorkforcePage() {
                     <td className="p-3 text-muted-foreground">
                       {row.service.customer?.name || "-"}
                     </td>
-                    <td className="p-3 capitalize">
-                      {formatJobCardStatus(row.status)}
+                    <td className="p-3">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${jobCardStatusTone(
+                          row.status
+                        )}`}
+                      >
+                        {formatJobCardStatus(row.status)}
+                      </span>
                     </td>
                     <td className="p-3">
                       <Link

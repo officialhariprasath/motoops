@@ -22,6 +22,7 @@ import {
   fetchGarageSettings,
   saveGarageSettingsRemote,
 } from "@/lib/garage-settings-api";
+import { DOCUMENT_FONT_SIZES } from "@/lib/document-font";
 
 const defaultSettings = {
   garageName: "MotoOps",
@@ -36,6 +37,7 @@ const defaultSettings = {
   listPageSize: 10,
   passwordEditingEnabled: false,
   notificationsEnabled: true,
+  documentFontSize: 11.5,
 };
 
 export default function SettingsPage() {
@@ -172,6 +174,29 @@ export default function SettingsPage() {
               value={settings.invoiceNote}
               onChange={(event) => updateField("invoiceNote", event.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Estimate &amp; Bill Font Size
+            </label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={settings.documentFontSize}
+              onChange={(event) =>
+                updateField("documentFontSize", Number(event.target.value))
+              }
+            >
+              {DOCUMENT_FONT_SIZES.map((size) => (
+                <option key={size.value} value={size.value}>
+                  {size.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Controls text size on estimate and bill screens and downloaded PDFs.
+              Layout scales with the chosen size.
+            </p>
           </div>
         </CardContent>
       </Card>

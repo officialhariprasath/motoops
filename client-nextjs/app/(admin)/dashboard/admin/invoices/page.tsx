@@ -9,6 +9,7 @@ import InvoicePaymentDialog, {
 } from "@/components/dashboard/InvoicePaymentDialog";
 import { useGaragePageSize } from "@/lib/list-settings";
 import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
+import { paymentStatusTone } from "@/lib/job-card-status";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -46,12 +47,6 @@ type Invoice = {
     name: string;
   };
 };
-
-function statusTone(status: string) {
-  if (status === "paid") return "bg-emerald-50 text-emerald-800";
-  if (status === "partial") return "bg-amber-50 text-amber-800";
-  return "bg-rose-50 text-rose-800";
-}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -262,7 +257,7 @@ export default function InvoicesPage() {
                   </div>
                   {docType === "BILL" && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusTone(
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
                         inv.paymentStatus
                       )}`}
                     >

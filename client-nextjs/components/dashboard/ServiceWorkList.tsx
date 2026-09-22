@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   formatJobCardStatus,
+  jobCardStatusTone,
   normalizeJobCardStatus,
 } from "@/lib/job-card-status";
 
@@ -254,7 +255,11 @@ export default function ServiceWorkList({ mode }: ServiceWorkListProps) {
                 </div>
 
                 <div className="space-y-2 text-right text-sm">
-                  <span className="rounded-full bg-muted px-3 py-1 font-medium capitalize">
+                  <span
+                    className={`rounded-full border px-3 py-1 font-medium capitalize ${jobCardStatusTone(
+                      service.status
+                    )}`}
+                  >
                     {formatJobCardStatus(service.status)}
                   </span>
                   <p className="font-semibold">

@@ -8,6 +8,7 @@ import {
   formatCurrency,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
+import { paymentStatusTone } from "@/lib/job-card-status";
 
 export default function CustomerInvoiceViewPage() {
   const params = useParams();
@@ -77,7 +78,16 @@ export default function CustomerInvoiceViewPage() {
           </p>
           {docType === "BILL" && (
             <>
-              <p className="capitalize">Status: {invoice.paymentStatus}</p>
+              <p>
+                Status:{" "}
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${paymentStatusTone(
+                    invoice.paymentStatus
+                  )}`}
+                >
+                  {invoice.paymentStatus}
+                </span>
+              </p>
               <p>Due: {formatCurrency(Number(invoice.dueAmount))}</p>
             </>
           )}

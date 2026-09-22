@@ -5,6 +5,8 @@ type DocumentGarageHeaderProps = {
   garageEmail?: string;
   gstin?: string;
   logoUrl: string;
+  /** Garage name size in px (scales with document font setting). */
+  nameFontSizePx?: number;
 };
 
 /**
@@ -18,6 +20,7 @@ export function DocumentGarageHeader({
   garageEmail,
   gstin,
   logoUrl,
+  nameFontSizePx = 18,
 }: DocumentGarageHeaderProps) {
   const contactLine = [garagePhone ? `Mobile: ${garagePhone}` : null, garageEmail ? `Email: ${garageEmail}` : null]
     .filter(Boolean)
@@ -44,7 +47,10 @@ export function DocumentGarageHeader({
         crossOrigin="anonymous"
         className={`pointer-events-none absolute left-2 top-1/2 z-10 w-auto -translate-y-1/2 object-contain object-left ${logoSizeClass}`}
       />
-      <h2 className="text-[18px] font-bold tracking-wide text-[#1d4f91]">
+      <h2
+        className="font-bold tracking-wide text-[#1d4f91]"
+        style={{ fontSize: `${nameFontSizePx}px` }}
+      >
         {garageName.toUpperCase()}
       </h2>
       {garageAddress ? (

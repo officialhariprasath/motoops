@@ -18,6 +18,10 @@ import { numberToWordsIndian } from "@/lib/job-card-status";
 import { addNotification } from "@/lib/notifications";
 import { syncGarageSettingsCache } from "@/lib/garage-settings-api";
 import { downloadSheetAsPdf } from "@/lib/download-sheet-pdf";
+import {
+  documentTypeScale,
+  resolveDocumentFontSize,
+} from "@/lib/document-font";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -38,6 +42,7 @@ type GarageSettings = {
   gstin?: string;
   invoiceNote?: string;
   invoiceLogoUrl?: string;
+  documentFontSize?: number;
 };
 
 function readGarageSettings(): GarageSettings {
@@ -171,6 +176,9 @@ export default function EstimatePage() {
   const garageEmail = settings.email || "";
   const invoiceLogoUrl =
     settings.invoiceLogoUrl?.trim() || "/motoops-logo.png";
+  const typeScale = documentTypeScale(
+    resolveDocumentFontSize(settings.documentFontSize)
+  );
   const estimateNo =
     String(service.jobCardNumber || service.id || "")
       .replace(/\D/g, "")
@@ -242,13 +250,14 @@ export default function EstimatePage() {
         >
           <div
             ref={sheetRef}
-            className="estimate-sheet bg-card text-[11.5px] leading-snug text-foreground shadow-md print:shadow-none"
+            className="estimate-sheet bg-card leading-snug text-foreground shadow-md print:shadow-none"
             style={{
               width: `${A4_WIDTH_MM}mm`,
               minHeight: `${A4_HEIGHT_MM}mm`,
               maxWidth: `${A4_WIDTH_MM}mm`,
               boxSizing: "border-box",
               padding: "8mm",
+              fontSize: `${typeScale.sheet}px`,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
@@ -261,6 +270,7 @@ export default function EstimatePage() {
                 garageEmail={garageEmail}
                 gstin={settings.gstin}
                 logoUrl={invoiceLogoUrl}
+                nameFontSizePx={typeScale.garageName}
               />
 
               <div className="grid grid-cols-2 border-b border-[#1d4f91]">
@@ -283,7 +293,10 @@ export default function EstimatePage() {
                   </div>
                 </div>
                 <div className="p-2.5">
-                  <p className="mb-2 text-center text-[14px] font-bold tracking-[0.18em]">
+                  <p
+                    className="mb-2 text-center font-bold tracking-[0.18em]"
+                    style={{ fontSize: `${typeScale.title}px` }}
+                  >
                     ESTIMATE
                   </p>
                   <div className="space-y-0.5">
@@ -333,7 +346,7 @@ export default function EstimatePage() {
                       ].map((heading) => (
                         <th
                           key={heading}
-                          className="border border-[#1d4f91] px-1 py-1 font-semibold"
+                          className="border border-[#1d4f91] px-1 py-1 align-middle font-semibold"
                         >
                           {heading}
                         </th>
@@ -346,30 +359,30 @@ export default function EstimatePage() {
                         calcLineAmounts(item);
                       return (
                         <tr key={item.id}>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-center">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-center">
                             {index + 1}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 break-words uppercase">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle break-words uppercase">
                             {item.description}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right whitespace-nowrap">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right whitespace-nowrap">
                             {Number(item.quantity).toFixed(3)} NOS
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                             {formatMoney(item.rate)}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                             {formatMoney(amount)}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                             {item.discountPercent
                               ? formatMoney(item.discountPercent)
                               : ""}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                             {discountAmount ? formatMoney(discountAmount) : ""}
                           </td>
-                          <td className="border border-[#1d4f91] px-1 py-0.5 text-right">
+                          <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                             {formatMoney(netAmount)}
                           </td>
                         </tr>
@@ -387,17 +400,17 @@ export default function EstimatePage() {
                     )}
                     <tr className="font-semibold">
                       <td
-                        className="border border-[#1d4f91] px-1 py-1 text-right"
+                        className="border border-[#1d4f91] px-1 py-1 align-middle text-right"
                         colSpan={4}
                       >
                         TOTAL
                       </td>
-                      <td className="border border-[#1d4f91] px-1 py-1 text-right">
+                      <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                         {formatMoney(totalAmount)}
                       </td>
-                      <td className="border border-[#1d4f91] px-1 py-1" />
-                      <td className="border border-[#1d4f91] px-1 py-1" />
-                      <td className="border border-[#1d4f91] px-1 py-1 text-right">
+                      <td className="border border-[#1d4f91] px-1 py-1 align-middle" />
+                      <td className="border border-[#1d4f91] px-1 py-1 align-middle" />
+                      <td className="border border-[#1d4f91] px-1 py-1 align-middle text-right">
                         {formatMoney(totalNet)}
                       </td>
                     </tr>
@@ -414,7 +427,10 @@ export default function EstimatePage() {
                 />
                 <div className="flex flex-col items-center justify-center gap-1 p-2 text-center">
                   <span className="font-bold">GRAND TOTAL</span>
-                  <span className="text-base font-bold">
+                  <span
+                    className="font-bold"
+                    style={{ fontSize: `${typeScale.grandTotal}px` }}
+                  >
                     {formatMoney(totalNet)}
                   </span>
                 </div>
@@ -425,7 +441,10 @@ export default function EstimatePage() {
                   <p className="mb-1.5 font-semibold underline">
                     Terms & Conditions
                   </p>
-                  <ol className="list-decimal space-y-0.5 pl-3 text-[10px] leading-snug">
+                  <ol
+                    className="list-decimal space-y-0.5 pl-3 leading-snug"
+                    style={{ fontSize: `${typeScale.terms}px` }}
+                  >
                     <li>Subject to local jurisdiction only.</li>
                     <li>
                       Our responsibility ceases as soon as the goods leave our

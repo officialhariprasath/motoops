@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/job-card-items";
 import { addNotification } from "@/lib/notifications";
+import { paymentStatusTone } from "@/lib/job-card-status";
 
 export type PaymentInvoice = {
   id: string;
@@ -141,8 +142,10 @@ export default function InvoicePaymentDialog({
               <p className="text-sm text-muted-foreground">Due</p>
               <p className="text-lg font-bold">{formatCurrency(dueAmount)}</p>
             </div>
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm text-muted-foreground">Status</p>
+            <div
+              className={`rounded-lg border p-4 ${paymentStatusTone(previewStatus)}`}
+            >
+              <p className="text-sm opacity-80">Status</p>
               <p className="text-lg font-bold capitalize">{previewStatus}</p>
             </div>
           </div>

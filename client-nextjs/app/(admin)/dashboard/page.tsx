@@ -6,7 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { normalizeJobCardStatus } from "@/lib/job-card-status";
+import {
+  jobCardStatusTone,
+  normalizeJobCardStatus,
+  paymentStatusTone,
+} from "@/lib/job-card-status";
 import { formatCurrency } from "@/lib/job-card-items";
 
 async function apiGet(url: string) {
@@ -48,15 +52,17 @@ function StatCard({
   label,
   value,
   href,
+  toneClass,
 }: {
   label: string;
   value: string | number;
   href?: string;
+  toneClass?: string;
 }) {
   const body = (
-    <Card>
+    <Card className={toneClass ? `border ${toneClass}` : undefined}>
       <CardContent className="p-5">
-        <h2 className="text-sm font-medium text-muted-foreground">{label}</h2>
+        <h2 className="text-sm font-medium opacity-80">{label}</h2>
         <p className="mt-2 text-3xl font-bold">{value}</p>
       </CardContent>
     </Card>
@@ -193,18 +199,25 @@ export default function DashboardPage() {
           label="Unassigned"
           value={stats.pending}
           href="/dashboard/admin/services"
+          toneClass={jobCardStatusTone("PENDING")}
         />
         <StatCard
           label="Assigned"
           value={stats.assigned}
           href="/dashboard/admin/services"
+          toneClass={jobCardStatusTone("ASSIGNED")}
         />
         <StatCard
           label="In progress"
           value={stats.inProgress}
           href="/dashboard/admin/services"
+          toneClass={jobCardStatusTone("IN_PROGRESS")}
         />
-        <StatCard label="Completed" value={stats.completed} />
+        <StatCard
+          label="Completed"
+          value={stats.completed}
+          toneClass={jobCardStatusTone("COMPLETED")}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -217,9 +230,18 @@ export default function DashboardPage() {
           label="Unpaid bills"
           value={stats.unpaidBills}
           href="/dashboard/admin/invoices"
+          toneClass={paymentStatusTone("unpaid")}
         />
-        <StatCard label="Partial bills" value={stats.partialBills} />
-        <StatCard label="Paid bills" value={stats.paidBills} />
+        <StatCard
+          label="Partial bills"
+          value={stats.partialBills}
+          toneClass={paymentStatusTone("partial")}
+        />
+        <StatCard
+          label="Paid bills"
+          value={stats.paidBills}
+          toneClass={paymentStatusTone("paid")}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

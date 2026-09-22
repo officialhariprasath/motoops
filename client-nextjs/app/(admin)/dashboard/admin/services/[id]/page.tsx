@@ -22,7 +22,9 @@ import { addNotification } from "@/lib/notifications";
 import {
   JOB_CARD_STATUSES,
   formatJobCardStatus,
+  jobCardStatusTone,
   normalizeJobCardStatus,
+  paymentStatusTone,
 } from "@/lib/job-card-status";
 
 const getService = async (id: string) => {
@@ -337,7 +339,7 @@ export default function ServiceViewPage() {
   }
 
   if (serviceQuery.isError) {
-    return (
+  return (
       <p className="p-6 text-red-600">
         {(serviceQuery.error as Error).message || "Failed to load job card."}
       </p>
@@ -388,7 +390,7 @@ export default function ServiceViewPage() {
       {!isMechanicView && showBillModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md space-y-4 rounded-xl bg-card p-6 shadow-xl">
-            <div>
+      <div>
               <h2 className="text-lg font-semibold">Generate Bill</h2>
               <p className="text-sm text-muted-foreground">
                 Optional next-service details are saved on the vehicle. Check
@@ -457,10 +459,10 @@ export default function ServiceViewPage() {
           {(billDoc || estimateDoc) && (
             <Link
               href={`/dashboard/admin/invoices/${(billDoc || estimateDoc).id}`}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
                 billDoc
-                  ? "bg-emerald-50 text-emerald-800"
-                  : "bg-sky-50 text-sky-800"
+                  ? paymentStatusTone(billDoc.paymentStatus)
+                  : "border-sky-200 bg-sky-50 text-sky-800"
               }`}
             >
               {billDoc
@@ -488,7 +490,11 @@ export default function ServiceViewPage() {
             </label>
             {isMechanicView ? (
               <div className="space-y-2">
-                <p className="rounded-md border bg-muted px-3 py-2 text-sm font-medium">
+                <p
+                  className={`rounded-md border px-3 py-2 text-sm font-medium ${jobCardStatusTone(
+                    service?.status
+                  )}`}
+                >
                   {formatJobCardStatus(service?.status)}
                 </p>
                 {normalizeJobCardStatus(service?.status) === "ASSIGNED" && (
@@ -512,7 +518,9 @@ export default function ServiceViewPage() {
                   onValueChange={(value) => statusMutation.mutate(value)}
                   disabled={statusMutation.isPending}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    className={`border ${jobCardStatusTone(service?.status)}`}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
@@ -651,7 +659,7 @@ export default function ServiceViewPage() {
               value={service?.problemDescription}
             />
             <DetailItem label="Notes" value={service?.notes} />
-          </div>
+      </div>
         </section>
 
         <JobCardItemsSection
@@ -666,7 +674,7 @@ export default function ServiceViewPage() {
         />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-      </Card>
+    </Card>
     </div>
   );
 }

@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   listPageSize: 10,
   passwordEditingEnabled: false,
   notificationsEnabled: true,
+  documentFontSize: 11.5,
 };
 
 @Injectable()

@@ -4,6 +4,7 @@ import type { MouseEventHandler } from "react";
 import { Button } from "@/components/ui/button";
 import {
   formatJobCardStatus,
+  jobCardStatusTone,
   normalizeJobCardStatus,
 } from "@/lib/job-card-status";
 
@@ -48,7 +49,11 @@ export default function JobCardSummaryCard({
               {service.jobCardNumber || "-"}
             </p>
           </div>
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${jobCardStatusTone(
+              service.status
+            )}`}
+          >
             {formatJobCardStatus(service.status)}
           </span>
         </div>
