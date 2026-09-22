@@ -39,10 +39,9 @@ export function paginateLineItems(
     }
 
     // Remainder fits on one content page but not with footer →
-    // fill this page, leave the rest for the footer page
+    // fill this page as much as possible; leave the rest for the footer page
     if (remaining.length <= fullPage) {
-      const lastCount = Math.min(withFooter, remaining.length - 1);
-      const nowCount = remaining.length - lastCount;
+      const nowCount = Math.min(fullPage, remaining.length - 1);
       pages.push(remaining.slice(0, nowCount));
       pages.push(remaining.slice(nowCount));
       break;
