@@ -61,7 +61,9 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // Mobile: pin near top so the keyboard does not cover the dialog.
+          // Desktop (sm+): keep the centered modal.
+          "fixed top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 translate-y-0 gap-4 overflow-y-auto rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none max-h-[min(92dvh,calc(100dvh-1.5rem))] sm:top-1/2 sm:max-h-none sm:max-w-sm sm:-translate-y-1/2 sm:overflow-visible data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

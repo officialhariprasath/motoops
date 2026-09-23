@@ -1,6 +1,6 @@
 // File: app/layout.tsx
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Providers from './providers';
 
 import localFont from "next/font/local";
@@ -41,6 +41,13 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Shrink the layout when the on-screen keyboard opens (Android Chrome).
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
