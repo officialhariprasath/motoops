@@ -62,20 +62,16 @@ export default function MyInvoicesPage() {
               <p className="mt-3 text-lg font-bold">
                 {formatCurrency(Number(invoice.totalAmount))}
               </p>
-              {docType === "BILL" && (
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
-                      invoice.paymentStatus
-                    )}`}
-                  >
-                    {invoice.paymentStatus}
-                  </span>
-                  <span>
-                    Due {formatCurrency(Number(invoice.dueAmount))}
-                  </span>
-                </p>
-              )}
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
+                    invoice.paymentStatus
+                  )}`}
+                >
+                  {invoice.paymentStatus}
+                </span>
+                <span>Due {formatCurrency(Number(invoice.dueAmount))}</span>
+              </p>
             </Link>
           );
         })}

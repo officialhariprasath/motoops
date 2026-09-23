@@ -201,8 +201,7 @@ export default function InvoicesPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {paginatedInvoices.map((inv) => {
           const docType = inv.documentType || "BILL";
-          const canRecordPayment =
-            docType === "BILL" && inv.paymentStatus !== "paid";
+          const canRecordPayment = inv.paymentStatus !== "paid";
 
           return (
             <div
@@ -248,22 +247,18 @@ export default function InvoicesPage() {
                     <p className="text-lg font-semibold text-foreground">
                       {formatCurrency(Number(inv.totalAmount))}
                     </p>
-                    {docType === "BILL" && (
-                      <p className="text-xs text-muted-foreground">
-                        Paid {formatCurrency(Number(inv.paidAmount))}
-                        {DOT_SEP}Due {formatCurrency(Number(inv.dueAmount))}
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Paid {formatCurrency(Number(inv.paidAmount))}
+                      {DOT_SEP}Due {formatCurrency(Number(inv.dueAmount))}
+                    </p>
                   </div>
-                  {docType === "BILL" && (
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
-                        inv.paymentStatus
-                      )}`}
-                    >
-                      {inv.paymentStatus}
-                    </span>
-                  )}
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${paymentStatusTone(
+                      inv.paymentStatus
+                    )}`}
+                  >
+                    {inv.paymentStatus}
+                  </span>
                 </div>
               </Link>
 

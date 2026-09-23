@@ -109,7 +109,9 @@ export default function InvoicePaymentDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <p className="text-sm text-muted-foreground">Bill</p>
+            <p className="text-sm text-muted-foreground">
+              {invoice.documentType === "ESTIMATE" ? "Estimate" : "Bill"}
+            </p>
             <p className="font-semibold text-foreground">
               {invoice.invoiceNumber || `#${invoice.id.slice(0, 8)}`}
             </p>

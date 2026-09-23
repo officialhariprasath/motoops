@@ -76,21 +76,17 @@ export default function CustomerInvoiceViewPage() {
           <p>
             {invoice.service?.vehicle?.brand} {invoice.service?.vehicle?.model}
           </p>
-          {docType === "BILL" && (
-            <>
-              <p>
-                Status:{" "}
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${paymentStatusTone(
-                    invoice.paymentStatus
-                  )}`}
-                >
-                  {invoice.paymentStatus}
-                </span>
-              </p>
-              <p>Due: {formatCurrency(Number(invoice.dueAmount))}</p>
-            </>
-          )}
+          <p>
+            Status:{" "}
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${paymentStatusTone(
+                invoice.paymentStatus
+              )}`}
+            >
+              {invoice.paymentStatus}
+            </span>
+          </p>
+          <p>Due: {formatCurrency(Number(invoice.dueAmount))}</p>
         </div>
 
         <table className="mt-6 w-full text-left text-sm">
