@@ -152,15 +152,15 @@ export default function InvoiceDetailsPage() {
             </Button>
           </Link>
         )}
-        {!isEstimate && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setPaymentOpen(true)}
-          >
-            Update Payment
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setPaymentOpen(true)}
+        >
+          {Number(invoice.paidAmount) > 0
+            ? "Update payment"
+            : "Record payment"}
+        </Button>
         <Button
           type="button"
           disabled={downloading}
@@ -265,7 +265,7 @@ export default function InvoiceDetailsPage() {
                 items,
                 paidAmount: invoice.paidAmount,
                 dueAmount: invoice.dueAmount,
-                showPaymentOnSheet: !isEstimate,
+                showPaymentOnSheet: true,
                 includeNextService: Boolean(
                   !isEstimate &&
                     (invoice?.billExtras?.includeNextServiceOnBill ||

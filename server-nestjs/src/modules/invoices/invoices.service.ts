@@ -167,10 +167,6 @@ export class InvoicesService {
       relations: ['service', 'service.vehicle', 'service.customer', 'generatedBy'],
     });
 
-    const paidForCreate =
-      documentType === 'ESTIMATE' ? 0 : Number(dto.paidAmount || 0);
-    const amounts = this.paymentFromAmounts(total, paidForCreate);
-
     const includeFlag =
       dto.includeNextServiceOnBill !== undefined
         ? Boolean(dto.includeNextServiceOnBill)
@@ -211,6 +207,14 @@ export class InvoicesService {
         existing.totalAmount = total;
         existing.generatedBy = user;
         existing.garageId = garageId;
+        // Keep recorded payment; only refresh due/status against new total.
+        const preserved = this.paymentFromAmounts(
+          total,
+          Number(existing.paidAmount || 0),
+        );
+        existing.paidAmount = preserved.paidAmount;
+        existing.dueAmount = preserved.dueAmount;
+        existing.paymentStatus = preserved.paymentStatus;
         const saved = await this.invoiceRepo.save(existing);
         return this.findOne(saved.id, garageId);
       }
@@ -218,20 +222,23 @@ export class InvoicesService {
       const upgradingToBill =
         documentType === 'BILL' && existing.documentType === 'ESTIMATE';
 
+      // Prefer explicit paidAmount from payload; otherwise keep advance
+      // payments already recorded on the estimate/bill.
+      const paidSource =
+        dto.paidAmount !== undefined && dto.paidAmount !== null
+          ? Number(dto.paidAmount)
+          : Number(existing.paidAmount || 0);
+      const amounts = this.paymentFromAmounts(total, paidSource);
+
       existing.documentType = documentType;
       existing.totalAmount = total;
       existing.generatedBy = user;
       existing.garageId = garageId;
-
-      if (documentType === 'BILL') {
-        existing.paidAmount = amounts.paidAmount;
-        existing.dueAmount = amounts.dueAmount;
-        existing.paymentStatus = amounts.paymentStatus;
-        if (billExtras) existing.billExtras = billExtras;
-      } else {
-        existing.paidAmount = 0;
-        existing.dueAmount = total;
-        existing.paymentStatus = 'unpaid';
+      existing.paidAmount = amounts.paidAmount;
+      existing.dueAmount = amounts.dueAmount;
+      existing.paymentStatus = amounts.paymentStatus;
+      if (documentType === 'BILL' && billExtras) {
+        existing.billExtras = billExtras;
       }
 
       // Invoice-style IDs only (JMI). Convert old JME estimate numbers on bill.
@@ -257,6 +264,11 @@ export class InvoicesService {
 
       return this.findOne(saved.id, garageId);
     }
+
+    const amounts = this.paymentFromAmounts(
+      total,
+      Number(dto.paidAmount || 0),
+    );
 
     const invoice = this.invoiceRepo.create({
       service: serviceRow,
@@ -323,10 +335,6 @@ export class InvoicesService {
 
   async updatePayment(id: string, paidAmount: number, garageId: string) {
     const invoice = await this.findOne(id, garageId);
-
-    if (invoice.documentType === 'ESTIMATE') {
-      throw new BadRequestException('Cannot record payment on an estimate');
-    }
 
     const total = Number(invoice.totalAmount || 0);
     const amounts = this.paymentFromAmounts(total, paidAmount);
