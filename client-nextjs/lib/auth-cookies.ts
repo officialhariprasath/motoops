@@ -1,6 +1,11 @@
 import type { NextResponse } from "next/server";
 
-/** Cookie options shared by login/logout so Set-Cookie is consistent. */
+import {
+  getAccessMaxAgeSeconds,
+  getRefreshMaxAgeSeconds,
+} from "@/lib/session-config";
+
+/** Cookie options shared by login/logout/refresh so Set-Cookie is consistent. */
 export const AUTH_COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -9,10 +14,7 @@ export const AUTH_COOKIE_BASE = {
   path: "/",
 };
 
-export const ACCESS_TOKEN_MAX_AGE = 60 * 15;
-export const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7;
-
-type SessionUser = {
+export type SessionUser = {
   id?: string;
   email?: string;
   name?: string;
@@ -45,19 +47,19 @@ export function setAuthCookies(
 ) {
   response.cookies.set("access_token", data.access_token, {
     ...AUTH_COOKIE_BASE,
-    maxAge: ACCESS_TOKEN_MAX_AGE,
+    maxAge: getAccessMaxAgeSeconds(),
   });
 
   if (data.refresh_token) {
     response.cookies.set("refresh_token", data.refresh_token, {
       ...AUTH_COOKIE_BASE,
-      maxAge: REFRESH_TOKEN_MAX_AGE,
+      maxAge: getRefreshMaxAgeSeconds(),
     });
   }
 
   response.cookies.set("user", sessionUserCookieValue(data.user), {
     ...AUTH_COOKIE_BASE,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
+    maxAge: getRefreshMaxAgeSeconds(),
   });
 }
 

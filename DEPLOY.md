@@ -92,6 +92,10 @@ Login: `admin` / `123456`
    | `NEXT_PUBLIC_APP_URL` | `https://YOUR-APP.vercel.app` (set after first deploy, then redeploy) |
    | `JWT_ACCESS_SECRET` | **Must match** Render `JWT_ACCESS_SECRET` exactly (copy/paste from Render → Environment). If this differs or is missing, sign-in looks successful but the dashboard fails to open. |
    | `JWT_REFRESH_SECRET` | same value as Render `JWT_REFRESH_SECRET` |
+   | `JWT_ACCESS_EXPIRES_IN` | Optional. Access token lifetime. Examples: `15m`, `1h`, `12h`, `1d`. Default: `1h` |
+   | `JWT_REFRESH_EXPIRES_IN` | Optional. How long you stay signed in (silent renew). Examples: `7d`, `14d`, `30d`, `90d`. Default: `30d` |
+
+Set the same `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` on **both** Render and Vercel.
 
 5. Deploy → copy the Vercel URL.
 
@@ -127,6 +131,7 @@ Login: `admin` / `123456`
 | DB connection failed | Neon URI + `DATABASE_SSL=true`; use `?sslmode=require` |
 | Empty tables | First deploy needs `TYPEORM_SYNC=true`, then run `seed` |
 | Render “monthly limit” | Keep only this one web service; DB stays on Neon; wait for quota reset |
+| Asked to sign in again soon | Access token was short; app now silent-refreshes. Set `JWT_REFRESH_EXPIRES_IN=30d` (or `90d`) on Render + Vercel |
 | Frontend can’t reach API | `BACKEND_SERVER_URL` must be the public Render URL |
 | `ASSIGNED` status / next-service fields missing | With `TYPEORM_SYNC=false`, run `server-nestjs/scripts/sql/001_assigned_and_next_service.sql` on Neon |
 
