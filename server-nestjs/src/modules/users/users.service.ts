@@ -111,6 +111,18 @@ export class UsersService {
     return user;
   }
 
+  /** Loads refreshToken (select:false) for session renewal. */
+  async findOneForAuth(id: string) {
+    const user = await this.repo
+      .createQueryBuilder('user')
+      .addSelect('user.refreshToken')
+      .where('user.id = :id', { id })
+      .getOne();
+
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
   async fineOneByIdentifier(identifier: string) {
     let user: any;
 
@@ -204,7 +216,7 @@ export class UsersService {
 
   async updateRefreshToken(userId: string, refreshToken: string | null) {
     await this.repo.update(userId, {
-      refreshToken: refreshToken ?? undefined,
+      refreshToken: refreshToken,
     });
   }
 }

@@ -8,6 +8,10 @@ import { UsersService } from '../users/users.service';
 import { LoginDto } from '../auth/dto/login.dto';
 import { CreateUserDto } from '../users/dto/createUser.dto';
 import { Role } from '../users/enums/role.enum';
+import {
+  getAccessExpiresIn,
+  getRefreshExpiresIn,
+} from './session-config';
 
 @Injectable()
 export class AuthService {
@@ -95,6 +99,7 @@ export class AuthService {
       return {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
+<<<<<<< HEAD
           user: {
             id: user.id,
             email: user.email,
@@ -104,6 +109,9 @@ export class AuthService {
             role: user.role,
             garageId: garageId || (String(user.role).toLowerCase() === Role.ADMIN ? user.id : null),
           },
+=======
+          user: this.toPublicUser(user),
+>>>>>>> 4b871ca (Keep users signed in with silent session refresh)
         };
 
   }
@@ -130,6 +138,7 @@ export class AuthService {
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
 
     const access_token = this.jwtService.sign(payload, {
+<<<<<<< HEAD
       secret: accessSecret,
       expiresIn: '15m',
     });
@@ -137,9 +146,29 @@ export class AuthService {
     const refresh_token = this.jwtService.sign(payload, {
       secret: refreshSecret,
       expiresIn: '7d',
+=======
+      secret: process.env.JWT_ACCESS_SECRET,
+      expiresIn: getAccessExpiresIn() as `${number}${'s' | 'm' | 'h' | 'd'}`,
+    });
+
+    const refresh_token = this.jwtService.sign(payload, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: getRefreshExpiresIn() as `${number}${'s' | 'm' | 'h' | 'd'}`,
+>>>>>>> 4b871ca (Keep users signed in with silent session refresh)
     });
 
     return { access_token, refresh_token };
+  }
+
+  toPublicUser(user: any) {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      mobile: user.mobile,
+      designation: user.designation,
+      role: user.role,
+    };
   }
 
   async updateRefreshToken(userId: string, refreshToken: string) {
@@ -148,23 +177,25 @@ export class AuthService {
   }
 
   async refreshTokens(userId: string, refreshToken: string) {
-      const user = await this.usersService.findOne(userId);
+    const user = await this.usersService.findOneForAuth(userId);
 
-      if (!user || !user.refreshToken)
-        throw new Error('Access Denied');
+    if (!user?.refreshToken) {
+      throw new UnauthorizedException('Session expired. Please sign in again.');
+    }
 
-      const isMatch = await bcrypt.compare(
-        refreshToken,
-        user.refreshToken,
-      );
+    const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
 
-      if (!isMatch) throw new Error('Invalid refresh token');
+    if (!isMatch) {
+      throw new UnauthorizedException('Session expired. Please sign in again.');
+    }
 
-      const tokens = await this.generateTokens(user);
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshToken(user.id, tokens.refresh_token);
 
-      await this.updateRefreshToken(user.id, tokens.refresh_token);
-
-      return tokens;
+    return {
+      ...tokens,
+      user: this.toPublicUser(user),
+    };
   }
 
   decodeToken(token: string) {

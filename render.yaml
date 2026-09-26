@@ -37,6 +37,10 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 3600s
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: "1h"
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: "30d"
       - key: ENABLE_CORS
         # Add your Vercel URL after frontend deploy (comma-separated, no spaces)
         value: http://localhost:3000

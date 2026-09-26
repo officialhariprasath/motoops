@@ -68,7 +68,7 @@ export class UserEntity {
 
   // 🔐 refresh token
   @Column({ type: 'text', nullable: true, select: false })
-  refreshToken?: string;
+  refreshToken?: string | null;
 
   // ---------------- VEHICLES ----------------
   @OneToMany(() => VehicleEntity, (vehicle) => vehicle.owner)
