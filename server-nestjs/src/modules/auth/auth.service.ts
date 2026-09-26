@@ -99,19 +99,7 @@ export class AuthService {
       return {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
-<<<<<<< HEAD
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            mobile: user.mobile,
-            designation: user.designation,
-            role: user.role,
-            garageId: garageId || (String(user.role).toLowerCase() === Role.ADMIN ? user.id : null),
-          },
-=======
-          user: this.toPublicUser(user),
->>>>>>> 4b871ca (Keep users signed in with silent session refresh)
+          user: this.toPublicUser({ ...user, garageId }),
         };
 
   }
@@ -138,29 +126,20 @@ export class AuthService {
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
 
     const access_token = this.jwtService.sign(payload, {
-<<<<<<< HEAD
       secret: accessSecret,
-      expiresIn: '15m',
-    });
-
-    const refresh_token = this.jwtService.sign(payload, {
-      secret: refreshSecret,
-      expiresIn: '7d',
-=======
-      secret: process.env.JWT_ACCESS_SECRET,
       expiresIn: getAccessExpiresIn() as `${number}${'s' | 'm' | 'h' | 'd'}`,
     });
 
     const refresh_token = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
+      secret: refreshSecret,
       expiresIn: getRefreshExpiresIn() as `${number}${'s' | 'm' | 'h' | 'd'}`,
->>>>>>> 4b871ca (Keep users signed in with silent session refresh)
     });
 
     return { access_token, refresh_token };
   }
 
   toPublicUser(user: any) {
+    const role = String(user.role || '').toLowerCase();
     return {
       id: user.id,
       email: user.email,
@@ -168,6 +147,9 @@ export class AuthService {
       mobile: user.mobile,
       designation: user.designation,
       role: user.role,
+      garageId:
+        user.garageId ||
+        (role === Role.ADMIN ? user.id : null),
     };
   }
 

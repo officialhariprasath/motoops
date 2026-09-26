@@ -71,7 +71,10 @@ function applySessionCookies(
   }
 }
 
-async function refreshSession(req: NextRequest): Promise<{
+async function refreshSession(
+  req: NextRequest,
+  secret: Uint8Array
+): Promise<{
   access_token: string;
   refresh_token?: string;
   user?: SessionUser;
@@ -98,7 +101,7 @@ async function refreshSession(req: NextRequest): Promise<{
     const payload = data.data ?? data;
     if (!payload?.access_token) return null;
 
-    const verified = await jwtVerify(payload.access_token, SECRET);
+    const verified = await jwtVerify(payload.access_token, secret);
 
     return {
       access_token: payload.access_token,
@@ -153,6 +156,7 @@ export async function middleware(req: NextRequest) {
     return redirectHome(req);
   }
 
+  const SECRET = new TextEncoder().encode(secretValue);
   const accessToken = req.cookies.get("access_token")?.value;
   let payload: Record<string, unknown> | null = null;
   let refreshed:
@@ -172,26 +176,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-<<<<<<< HEAD
-  try {
-    const SECRET = new TextEncoder().encode(secretValue);
-    const { payload } = await jwtVerify(accessToken, SECRET);
-    const role = readRole(req, payload as Record<string, unknown>);
-    const home = getDashboardHome(role);
-
-    // Role-aware gates: non-admins cannot use /dashboard/admin/*
-    if (
-      pathname.startsWith("/dashboard/admin") &&
-      !canAccessAdminRoutes(role)
-    ) {
-      return NextResponse.redirect(new URL(home, req.url));
-=======
   // Access missing/expired → silent renew with refresh token (keeps session alive)
   if (!payload) {
-    const session = await refreshSession(req);
+    const session = await refreshSession(req, SECRET);
     if (!session) {
       return redirectHome(req);
->>>>>>> 4b871ca (Keep users signed in with silent session refresh)
     }
     payload = session.payload;
     refreshed = {
