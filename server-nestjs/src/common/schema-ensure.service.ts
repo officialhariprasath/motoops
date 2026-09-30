@@ -40,7 +40,20 @@ export class SchemaEnsureService implements OnModuleInit {
         ADD COLUMN IF NOT EXISTS "nextServiceOdometer" character varying NULL,
         ADD COLUMN IF NOT EXISTS "nextServiceAt" date NULL,
         ADD COLUMN IF NOT EXISTS "futureWorksNotes" text NULL,
-        ADD COLUMN IF NOT EXISTS "includeNextServiceOnBill" boolean NOT NULL DEFAULT false;
+        ADD COLUMN IF NOT EXISTS "includeNextServiceOnBill" boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "discountPercent" numeric(5,2) NOT NULL DEFAULT 0;
+    `);
+
+    // Backfill overall % from stored discount amount when percent is still 0
+    await q(`
+      UPDATE services
+      SET "discountPercent" = ROUND(
+        (("discount"::numeric / NULLIF("subtotal"::numeric, 0)) * 100)::numeric,
+        2
+      )
+      WHERE COALESCE("discountPercent", 0) = 0
+        AND COALESCE("discount", 0) > 0
+        AND COALESCE("subtotal", 0) > 0;
     `);
 
     await q(`
