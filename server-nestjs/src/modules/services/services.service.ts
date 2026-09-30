@@ -26,6 +26,59 @@ import { ServiceSubTaskEntity } from './entities/service-subtask.entity';
 import { ServiceTaskCommentEntity } from './entities/service-task-comment.entity';
 import * as bcrypt from 'bcrypt';
 
+function roundMoney(value: number) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function calcLineItemsSubtotal(
+  lineItems?: Array<{
+    rate?: number;
+    quantity?: number;
+    discountPercent?: number;
+  }>,
+) {
+  return roundMoney(
+    (lineItems || []).reduce((sum, item) => {
+      const amount = Number(item.rate || 0) * Number(item.quantity || 0);
+      const discountAmount =
+        amount * (Number(item.discountPercent || 0) / 100);
+      return sum + (amount - discountAmount);
+    }, 0),
+  );
+}
+
+/** Apply line-item subtotal + overall discount% → discount amount + grand total. */
+function applyLineItemBilling(
+  service: ServiceEntity,
+  discountPercentOverride?: number,
+) {
+  const itemsSubtotal = calcLineItemsSubtotal(service.lineItems);
+  let percent =
+    discountPercentOverride !== undefined
+      ? Number(discountPercentOverride || 0)
+      : Number(service.discountPercent || 0);
+
+  // Legacy rows may only have discount amount set
+  if (
+    (!percent || percent === 0) &&
+    Number(service.discount || 0) > 0 &&
+    itemsSubtotal > 0 &&
+    discountPercentOverride === undefined
+  ) {
+    percent = roundMoney(
+      (Number(service.discount || 0) / itemsSubtotal) * 100,
+    );
+  }
+
+  percent = Math.min(100, Math.max(0, percent));
+  const discountAmount = roundMoney((itemsSubtotal * percent) / 100);
+
+  service.discountPercent = percent;
+  service.discount = discountAmount;
+  service.subtotal = itemsSubtotal;
+  service.totalCost = roundMoney(itemsSubtotal - discountAmount);
+  service.grandTotal = service.totalCost;
+}
 
 @Injectable()
 export class ServicesService {
@@ -100,6 +153,7 @@ export class ServicesService {
       serviceDate,
       deliveryDate,
       discount: 0,
+      discountPercent: Number(dto.discountPercent || 0),
       tax: 0,
       subtotal: 0,
       totalCost: 0,
@@ -109,6 +163,12 @@ export class ServicesService {
       garageId,
       assignedMechanics: [],
     });
+
+    if ((service.lineItems || []).length > 0) {
+      applyLineItemBilling(service, Number(dto.discountPercent || 0));
+    } else if (dto.discount !== undefined) {
+      service.discount = Number(dto.discount || 0);
+    }
 
     if (dto.assignedMechanicIds?.length) {
       service.assignedMechanics = await this.userRepo.find({
@@ -473,17 +533,8 @@ export class ServicesService {
       );
     }
 
-    const lineTotal = (service.lineItems || []).reduce((sum, item) => {
-      const amount = Number(item.rate || 0) * Number(item.quantity || 0);
-      const discountAmount =
-        amount * (Number(item.discountPercent || 0) / 100);
-      return sum + (amount - discountAmount);
-    }, 0);
-
     if ((service.lineItems || []).length > 0) {
-      service.subtotal = lineTotal;
-      service.totalCost = lineTotal;
-      service.grandTotal = lineTotal;
+      applyLineItemBilling(service);
     } else {
       let laborCost = 0;
       let partsCost = 0;
@@ -596,14 +647,26 @@ export class ServicesService {
 
     if (dto.lineItems !== undefined) {
       service.lineItems = dto.lineItems;
-      const netTotal = (dto.lineItems || []).reduce((sum, item) => {
-        const amount = Number(item.rate || 0) * Number(item.quantity || 0);
-        const discountAmount = amount * (Number(item.discountPercent || 0) / 100);
-        return sum + (amount - discountAmount);
-      }, 0);
-      service.subtotal = netTotal;
-      service.totalCost = netTotal;
-      service.grandTotal = netTotal;
+    }
+
+    if (dto.discountPercent !== undefined) {
+      service.discountPercent = Number(dto.discountPercent || 0);
+    }
+
+    if (dto.lineItems !== undefined || dto.discountPercent !== undefined) {
+      if ((service.lineItems || []).length > 0) {
+        applyLineItemBilling(
+          service,
+          dto.discountPercent !== undefined
+            ? Number(dto.discountPercent || 0)
+            : undefined,
+        );
+      } else if (dto.lineItems !== undefined) {
+        service.subtotal = 0;
+        service.totalCost = 0;
+        service.grandTotal = 0;
+        service.discount = 0;
+      }
     }
 
     if (dto.assignedMechanicIds !== undefined) {
@@ -671,10 +734,17 @@ export class ServicesService {
 
     // ---------------- BILLING ----------------
 
-    if (
-      dto.discount !== undefined
-    ) {
-      service.discount =  dto.discount;
+    if (dto.discount !== undefined && dto.discountPercent === undefined) {
+      // Legacy amount-only updates: convert to percent when possible
+      const itemsSubtotal = calcLineItemsSubtotal(service.lineItems);
+      if ((service.lineItems || []).length > 0 && itemsSubtotal > 0) {
+        service.discountPercent = roundMoney(
+          (Number(dto.discount || 0) / itemsSubtotal) * 100,
+        );
+        applyLineItemBilling(service, service.discountPercent);
+      } else {
+        service.discount = Number(dto.discount || 0);
+      }
     }
 
     if (dto.tax !== undefined) {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  calcJobCardTotals,
   calcLineAmounts,
-  calcLineItemsTotal,
   formatMoney,
+  roundMoney,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
 
@@ -29,6 +30,8 @@ type CatalogItem = {
 type Props = {
   items: JobCardLineItem[];
   onChange: (items: JobCardLineItem[]) => void;
+  discountPercent?: number;
+  onDiscountPercentChange?: (discountPercent: number) => void;
   readOnly?: boolean;
   saving?: boolean;
 };
@@ -45,24 +48,28 @@ async function getCatalogItems() {
   }));
 }
 
-function round2(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
 export default function JobCardItemsSection({
   items,
   onChange,
+  discountPercent = 0,
+  onDiscountPercentChange,
   readOnly = false,
   saving = false,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [rate, setRate] = useState("0");
   const [quantity, setQuantity] = useState("1");
-  const [discountPercent, setDiscountPercent] = useState("0");
-  const [discountAmount, setDiscountAmount] = useState("0");
+  const [lineDiscountPercent, setLineDiscountPercent] = useState("0");
+  const [lineDiscountAmount, setLineDiscountAmount] = useState("0");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState("");
+
+  const [totalDisPercent, setTotalDisPercent] = useState(
+    String(Number(discountPercent || 0))
+  );
+  const [totalDisAmount, setTotalDisAmount] = useState("0");
 
   const catalogQuery = useQuery({
     queryKey: ["catalog-items-active"],
@@ -71,10 +78,13 @@ export default function JobCardItemsSection({
   });
 
   const catalog = catalogQuery.data ?? [];
-  const total = useMemo(() => calcLineItemsTotal(items), [items]);
+  const totals = useMemo(
+    () => calcJobCardTotals(items, Number(discountPercent || 0)),
+    [items, discountPercent]
+  );
 
   const lineAmount = useMemo(() => {
-    return round2(Number(rate || 0) * Number(quantity || 0));
+    return roundMoney(Number(rate || 0) * Number(quantity || 0));
   }, [rate, quantity]);
 
   const suggestions = useMemo(() => {
@@ -85,29 +95,62 @@ export default function JobCardItemsSection({
       .slice(0, 8);
   }, [catalog, description]);
 
+  // Keep total discount fields in sync with saved percent + current items subtotal
+  useEffect(() => {
+    const percent = Number(discountPercent || 0);
+    setTotalDisPercent(String(percent));
+    setTotalDisAmount(String(totals.discountAmount));
+  }, [discountPercent, totals.discountAmount, totals.itemsSubtotal]);
+
   const resetForm = () => {
+    setEditingId(null);
     setDescription("");
     setRate("0");
     setQuantity("1");
-    setDiscountPercent("0");
-    setDiscountAmount("0");
+    setLineDiscountPercent("0");
+    setLineDiscountAmount("0");
     setShowSuggestions(false);
     setError("");
   };
 
-  const syncDiscountFromPercent = (percentValue: string, amountBase = lineAmount) => {
+  const syncLineDiscountFromPercent = (
+    percentValue: string,
+    amountBase = lineAmount
+  ) => {
     const percent = Number(percentValue || 0);
-    const nextAmount = round2((amountBase * percent) / 100);
-    setDiscountPercent(percentValue);
-    setDiscountAmount(String(nextAmount));
+    const nextAmount = roundMoney((amountBase * percent) / 100);
+    setLineDiscountPercent(percentValue);
+    setLineDiscountAmount(String(nextAmount));
   };
 
-  const syncPercentFromAmount = (amountValue: string, amountBase = lineAmount) => {
+  const syncLinePercentFromAmount = (
+    amountValue: string,
+    amountBase = lineAmount
+  ) => {
     const amount = Number(amountValue || 0);
     const percent =
-      amountBase > 0 ? round2((amount / amountBase) * 100) : 0;
-    setDiscountAmount(amountValue);
-    setDiscountPercent(String(percent));
+      amountBase > 0 ? roundMoney((amount / amountBase) * 100) : 0;
+    setLineDiscountAmount(amountValue);
+    setLineDiscountPercent(String(percent));
+  };
+
+  const openAddDialog = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const openEditDialog = (item: JobCardLineItem) => {
+    const { amount, discountAmount } = calcLineAmounts(item);
+    setEditingId(item.id);
+    setDescription(item.description);
+    setRate(String(item.rate));
+    setQuantity(String(item.quantity));
+    setLineDiscountPercent(String(item.discountPercent || 0));
+    setLineDiscountAmount(String(discountAmount));
+    setShowSuggestions(false);
+    setError("");
+    setOpen(true);
+    void amount;
   };
 
   const handleDescriptionChange = (value: string) => {
@@ -119,33 +162,35 @@ export default function JobCardItemsSection({
     setDescription(item.name.toUpperCase());
     setRate(String(item.rate));
     setShowSuggestions(false);
-    const amountBase = round2(Number(item.rate || 0) * Number(quantity || 0));
-    syncDiscountFromPercent(discountPercent, amountBase);
+    const amountBase = roundMoney(
+      Number(item.rate || 0) * Number(quantity || 0)
+    );
+    syncLineDiscountFromPercent(lineDiscountPercent, amountBase);
   };
 
   const handleRateChange = (value: string) => {
     setRate(value);
-    const amountBase = round2(Number(value || 0) * Number(quantity || 0));
-    syncDiscountFromPercent(discountPercent, amountBase);
+    const amountBase = roundMoney(Number(value || 0) * Number(quantity || 0));
+    syncLineDiscountFromPercent(lineDiscountPercent, amountBase);
   };
 
   const handleQuantityChange = (value: string) => {
     setQuantity(value);
-    const amountBase = round2(Number(rate || 0) * Number(value || 0));
-    syncDiscountFromPercent(discountPercent, amountBase);
+    const amountBase = roundMoney(Number(rate || 0) * Number(value || 0));
+    syncLineDiscountFromPercent(lineDiscountPercent, amountBase);
   };
 
   const removeItem = (itemId: string) => {
     onChange(items.filter((row) => row.id !== itemId));
   };
 
-  const addItem = () => {
+  const saveItem = () => {
     const next: JobCardLineItem = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}`,
+      id: editingId ?? crypto.randomUUID?.() ?? `${Date.now()}`,
       description: description.trim().toUpperCase(),
       rate: Number(rate || 0),
       quantity: Number(quantity || 0),
-      discountPercent: Number(discountPercent || 0),
+      discountPercent: Number(lineDiscountPercent || 0),
     };
 
     if (!next.description) {
@@ -165,9 +210,16 @@ export default function JobCardItemsSection({
       return;
     }
     const amount = next.rate * next.quantity;
-    const disAmt = Number(discountAmount || 0);
+    const disAmt = Number(lineDiscountAmount || 0);
     if (disAmt < 0 || disAmt > amount) {
       setError("Discount amount cannot exceed line amount");
+      return;
+    }
+
+    if (editingId) {
+      onChange(items.map((row) => (row.id === editingId ? next : row)));
+      resetForm();
+      setOpen(false);
       return;
     }
 
@@ -176,19 +228,37 @@ export default function JobCardItemsSection({
     setOpen(true);
   };
 
+  const commitTotalDiscountPercent = (percentValue: string) => {
+    const percent = Math.min(100, Math.max(0, Number(percentValue || 0)));
+    const amount = roundMoney((totals.itemsSubtotal * percent) / 100);
+    setTotalDisPercent(String(percent));
+    setTotalDisAmount(String(amount));
+    onDiscountPercentChange?.(percent);
+  };
+
+  const commitTotalDiscountAmount = (amountValue: string) => {
+    const amount = Math.max(0, Number(amountValue || 0));
+    const capped =
+      totals.itemsSubtotal > 0
+        ? Math.min(amount, totals.itemsSubtotal)
+        : 0;
+    const percent =
+      totals.itemsSubtotal > 0
+        ? roundMoney((capped / totals.itemsSubtotal) * 100)
+        : 0;
+    setTotalDisAmount(String(capped));
+    setTotalDisPercent(String(percent));
+    onDiscountPercentChange?.(percent);
+  };
+
+  const isEditing = Boolean(editingId);
+
   return (
     <section className="space-y-4 rounded-lg border p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold">Items</h3>
         {!readOnly && (
-          <Button
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              resetForm();
-              setOpen(true);
-            }}
-          >
+          <Button type="button" disabled={saving} onClick={openAddDialog}>
             <Plus className="mr-2 h-4 w-4" />
             Add Item
           </Button>
@@ -226,15 +296,28 @@ export default function JobCardItemsSection({
                   <td className="p-2 font-medium">{formatMoney(netAmount)}</td>
                   {!readOnly && (
                     <td className="p-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={saving}
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={saving}
+                          title="Edit item"
+                          onClick={() => openEditDialog(item)}
+                        >
+                          <Pencil className="h-4 w-4 text-foreground" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={saving}
+                          title="Delete item"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -250,15 +333,97 @@ export default function JobCardItemsSection({
                 </td>
               </tr>
             )}
+            {items.length > 0 && (
+              <tr className="border-t bg-muted/40 font-medium">
+                <td className="p-2" colSpan={4}>
+                  TOTAL
+                </td>
+                <td className="p-2">{formatMoney(totals.grossTotal)}</td>
+                <td className="p-2">
+                  {readOnly || !onDiscountPercentChange ? (
+                    formatMoney(totals.discountPercent)
+                  ) : (
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      className="h-8 w-20 bg-card"
+                      value={totalDisPercent}
+                      disabled={saving}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setTotalDisPercent(value);
+                        const percent = Number(value || 0);
+                        setTotalDisAmount(
+                          String(
+                            roundMoney((totals.itemsSubtotal * percent) / 100)
+                          )
+                        );
+                      }}
+                      onBlur={() =>
+                        commitTotalDiscountPercent(totalDisPercent)
+                      }
+                      aria-label="Total discount percent"
+                    />
+                  )}
+                </td>
+                <td className="p-2">
+                  {readOnly || !onDiscountPercentChange ? (
+                    formatMoney(totals.discountAmount)
+                  ) : (
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="h-8 w-24 bg-card"
+                      value={totalDisAmount}
+                      disabled={saving}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setTotalDisAmount(value);
+                        const amount = Number(value || 0);
+                        const percent =
+                          totals.itemsSubtotal > 0
+                            ? roundMoney(
+                                (amount / totals.itemsSubtotal) * 100
+                              )
+                            : 0;
+                        setTotalDisPercent(String(percent));
+                      }}
+                      onBlur={() => commitTotalDiscountAmount(totalDisAmount)}
+                      aria-label="Total discount amount"
+                    />
+                  )}
+                </td>
+                <td className="p-2 font-semibold">
+                  {formatMoney(totals.grandTotal)}
+                </td>
+                {!readOnly && <td className="p-2" />}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
         <div className="rounded-md border bg-muted px-4 py-3 text-sm">
-          <span className="text-muted-foreground">Total Net Amount: </span>
+          <span className="text-muted-foreground">Items subtotal: </span>
+          <span className="font-medium">{formatMoney(totals.itemsSubtotal)}</span>
+        </div>
+        <div className="rounded-md border bg-muted px-4 py-3 text-sm">
+          <span className="text-muted-foreground">Total discount: </span>
+          <span className="font-medium">
+            {formatMoney(totals.discountAmount)}
+            {totals.discountPercent
+              ? ` (${formatMoney(totals.discountPercent)}%)`
+              : ""}
+          </span>
+        </div>
+        <div className="rounded-md border bg-muted px-4 py-3 text-sm">
+          <span className="text-muted-foreground">Grand total: </span>
           <span className="font-semibold text-foreground">
-            {formatMoney(total)}
+            {formatMoney(totals.grandTotal)}
           </span>
           {saving && (
             <span className="ml-2 text-muted-foreground">Saving…</span>
@@ -275,11 +440,11 @@ export default function JobCardItemsSection({
       >
         <DialogContent className="bg-card max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Item</DialogTitle>
+            <DialogTitle>{isEditing ? "Edit Item" : "Add Item"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {items.length > 0 && (
+            {!isEditing && items.length > 0 && (
               <div className="rounded-md border bg-muted/40 p-3">
                 <p className="mb-2 text-sm font-medium">
                   Items so far ({items.length})
@@ -302,16 +467,26 @@ export default function JobCardItemsSection({
                             {" \u00B7 "}Net {formatMoney(netAmount)}
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={saving}
-                          className="shrink-0"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <div className="flex shrink-0 items-center">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={saving}
+                            onClick={() => openEditDialog(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={saving}
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </li>
                     );
                   })}
@@ -392,9 +567,9 @@ export default function JobCardItemsSection({
                   min={0}
                   max={100}
                   step="0.01"
-                  value={discountPercent}
+                  value={lineDiscountPercent}
                   onChange={(event) =>
-                    syncDiscountFromPercent(event.target.value)
+                    syncLineDiscountFromPercent(event.target.value)
                   }
                 />
               </div>
@@ -404,9 +579,9 @@ export default function JobCardItemsSection({
                   type="number"
                   min={0}
                   step="0.01"
-                  value={discountAmount}
+                  value={lineDiscountAmount}
                   onChange={(event) =>
-                    syncPercentFromAmount(event.target.value)
+                    syncLinePercentFromAmount(event.target.value)
                   }
                 />
               </div>
@@ -429,8 +604,8 @@ export default function JobCardItemsSection({
             >
               Cancel
             </Button>
-            <Button type="button" onClick={addItem} disabled={saving}>
-              Add
+            <Button type="button" onClick={saveItem} disabled={saving}>
+              {isEditing ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

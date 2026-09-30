@@ -26,6 +26,40 @@ function calcLineItemsTotal(
   }, 0);
 }
 
+function roundMoney(value: number) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function calcInvoiceTotal(serviceRow: {
+  lineItems?: Array<{
+    rate?: number;
+    quantity?: number;
+    discountPercent?: number;
+  }>;
+  discountPercent?: number;
+  discount?: number;
+}) {
+  const itemsSubtotal = roundMoney(calcLineItemsTotal(serviceRow.lineItems));
+  let percent = Number(serviceRow.discountPercent || 0);
+  if (
+    (!percent || percent === 0) &&
+    Number(serviceRow.discount || 0) > 0 &&
+    itemsSubtotal > 0
+  ) {
+    percent = roundMoney(
+      (Number(serviceRow.discount || 0) / itemsSubtotal) * 100,
+    );
+  }
+  percent = Math.min(100, Math.max(0, percent));
+  const discountAmount = roundMoney((itemsSubtotal * percent) / 100);
+  return {
+    itemsSubtotal,
+    discountPercent: percent,
+    discountAmount,
+    total: roundMoney(itemsSubtotal - discountAmount),
+  };
+}
+
 @Injectable()
 export class InvoicesService {
   constructor(
@@ -96,16 +130,17 @@ export class InvoicesService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const total = Number(
-      calcLineItemsTotal(serviceRow.lineItems).toFixed(2),
-    );
+    const billing = calcInvoiceTotal(serviceRow);
+    const total = billing.total;
     if (total <= 0 && documentType === 'BILL') {
       throw new BadRequestException(
         'Add line items before generating a bill',
       );
     }
 
-    serviceRow.subtotal = total;
+    serviceRow.discountPercent = billing.discountPercent;
+    serviceRow.discount = billing.discountAmount;
+    serviceRow.subtotal = billing.itemsSubtotal;
     serviceRow.totalCost = total;
     serviceRow.grandTotal = total;
 

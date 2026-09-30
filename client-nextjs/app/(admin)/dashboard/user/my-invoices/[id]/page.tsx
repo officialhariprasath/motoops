@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
+  calcJobCardTotals,
   calcLineAmounts,
   formatCurrency,
+  formatMoney,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
 import { paymentStatusTone } from "@/lib/job-card-status";
@@ -36,6 +38,14 @@ export default function CustomerInvoiceViewPage() {
   const lineItems = useMemo(
     () => (invoice?.service?.lineItems ?? []) as JobCardLineItem[],
     [invoice]
+  );
+  const totals = useMemo(
+    () =>
+      calcJobCardTotals(
+        lineItems,
+        Number(invoice?.service?.discountPercent || 0)
+      ),
+    [lineItems, invoice]
   );
 
   if (error) return <p className="p-6 text-red-600">{error}</p>;
@@ -107,6 +117,34 @@ export default function CustomerInvoiceViewPage() {
                 </td>
               </tr>
             ))}
+            <tr className="border-b text-muted-foreground">
+              <td className="py-2" colSpan={2}>
+                Subtotal
+              </td>
+              <td className="py-2 text-right">
+                {formatCurrency(totals.itemsSubtotal)}
+              </td>
+            </tr>
+            {totals.discountAmount > 0 && (
+              <tr className="border-b text-muted-foreground">
+                <td className="py-2" colSpan={2}>
+                  Discount ({formatMoney(totals.discountPercent)}%)
+                </td>
+                <td className="py-2 text-right">
+                  -{formatCurrency(totals.discountAmount)}
+                </td>
+              </tr>
+            )}
+            <tr className="font-semibold">
+              <td className="py-2" colSpan={2}>
+                Grand total
+              </td>
+              <td className="py-2 text-right">
+                {formatCurrency(
+                  Number(invoice.totalAmount ?? totals.grandTotal)
+                )}
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

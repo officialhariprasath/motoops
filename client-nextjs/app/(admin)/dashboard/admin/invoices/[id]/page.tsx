@@ -263,6 +263,7 @@ export default function InvoiceDetailsPage() {
                 vehicle: service?.vehicle,
                 notes: service?.notes,
                 items,
+                discountPercent: Number(service?.discountPercent || 0),
                 paidAmount: invoice.paidAmount,
                 dueAmount: invoice.dueAmount,
                 showPaymentOnSheet: true,
