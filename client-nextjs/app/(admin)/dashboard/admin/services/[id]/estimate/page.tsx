@@ -259,6 +259,7 @@ export default function EstimatePage() {
                 vehicle: service.vehicle,
                 notes: service.notes,
                 items,
+                discountPercent: Number(service.discountPercent || 0),
                 showPaymentOnSheet: false,
                 includeNextService: false,
                 fontSizePx,

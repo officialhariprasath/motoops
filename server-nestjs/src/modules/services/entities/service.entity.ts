@@ -129,7 +129,14 @@ export class ServiceEntity {
     default: 0,
   })
   discount!: number;
-  
+
+  /** Overall discount % on items subtotal (source of truth for job-card totals). */
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    default: 0,
+  })
+  discountPercent!: number;
 
   @Column('decimal', {
     precision: 10,

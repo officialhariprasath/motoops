@@ -51,11 +51,14 @@ async function getServiceInvoices(serviceId: string) {
   return (json.data ?? json ?? []) as any[];
 }
 
-async function saveLineItems(id: string, lineItems: JobCardLineItem[]) {
+async function saveLineItems(
+  id: string,
+  payload: { lineItems: JobCardLineItem[]; discountPercent: number }
+) {
   const res = await fetch(`/api/services/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lineItems }),
+    body: JSON.stringify(payload),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json?.message || "Failed to save items");
@@ -171,6 +174,12 @@ export default function ServiceViewPage() {
   const [draftItems, setDraftItems] = useState<JobCardLineItem[] | null>(null);
   const displayItems = draftItems ?? items;
   const latestItemsRef = useRef<JobCardLineItem[]>([]);
+  const savedDiscountPercent = Number(serviceQuery.data?.discountPercent || 0);
+  const [draftDiscountPercent, setDraftDiscountPercent] = useState<
+    number | null
+  >(null);
+  const displayDiscountPercent = draftDiscountPercent ?? savedDiscountPercent;
+  const latestDiscountRef = useRef(0);
 
   const estimateDoc = (invoicesQuery.data ?? []).find(
     (inv) => inv.documentType === "ESTIMATE"
@@ -186,18 +195,26 @@ export default function ServiceViewPage() {
   );
 
   const saveMutation = useMutation({
-    mutationFn: (lineItems: JobCardLineItem[]) => saveLineItems(id, lineItems),
+    mutationFn: (payload: {
+      lineItems: JobCardLineItem[];
+      discountPercent: number;
+    }) => saveLineItems(id, payload),
     onSuccess: (saved, submitted) => {
       // Ignore stale responses if the user already changed items again
       const latestIds = latestItemsRef.current.map((row) => row.id).join(",");
-      const submittedIds = submitted.map((row) => row.id).join(",");
-      if (latestIds !== submittedIds) return;
+      const submittedIds = submitted.lineItems.map((row) => row.id).join(",");
+      if (
+        latestIds !== submittedIds ||
+        latestDiscountRef.current !== submitted.discountPercent
+      ) {
+        return;
+      }
 
       setSaveError("");
       const savedItems = (saved?.lineItems ?? []) as JobCardLineItem[];
       const hasValid =
         Array.isArray(savedItems) &&
-        savedItems.length === submitted.length &&
+        savedItems.length === submitted.lineItems.length &&
         savedItems.every(
           (row) =>
             row &&
@@ -208,20 +225,43 @@ export default function ServiceViewPage() {
       if (hasValid) {
         setDraftItems(savedItems);
         latestItemsRef.current = savedItems;
-        queryClient.setQueryData(["service", id], (prev: any) =>
-          prev ? { ...prev, ...saved, lineItems: savedItems } : saved
-        );
       } else {
-        setDraftItems(submitted);
+        setDraftItems(submitted.lineItems);
       }
+
+      const nextDiscount = Number(
+        saved?.discountPercent ?? submitted.discountPercent ?? 0
+      );
+      setDraftDiscountPercent(nextDiscount);
+      latestDiscountRef.current = nextDiscount;
+
+      queryClient.setQueryData(["service", id], (prev: any) =>
+        prev
+          ? {
+              ...prev,
+              ...saved,
+              lineItems: hasValid ? savedItems : submitted.lineItems,
+              discountPercent: nextDiscount,
+              discount: saved?.discount ?? prev.discount,
+              subtotal: saved?.subtotal ?? prev.subtotal,
+              totalCost: saved?.totalCost ?? prev.totalCost,
+              grandTotal: saved?.grandTotal ?? prev.grandTotal,
+            }
+          : saved
+      );
 
       queryClient.invalidateQueries({ queryKey: ["service", id] });
       queryClient.invalidateQueries({ queryKey: ["services"] });
     },
     onError: (error, submitted) => {
       const latestIds = latestItemsRef.current.map((row) => row.id).join(",");
-      const submittedIds = submitted.map((row) => row.id).join(",");
-      if (latestIds !== submittedIds) return;
+      const submittedIds = submitted.lineItems.map((row) => row.id).join(",");
+      if (
+        latestIds !== submittedIds ||
+        latestDiscountRef.current !== submitted.discountPercent
+      ) {
+        return;
+      }
       setSaveError(error instanceof Error ? error.message : "Failed to save items");
     },
   });
@@ -229,8 +269,31 @@ export default function ServiceViewPage() {
   useEffect(() => {
     setDraftItems(null);
     latestItemsRef.current = [];
+    setDraftDiscountPercent(null);
+    latestDiscountRef.current = 0;
     setSaveError("");
   }, [id]);
+
+  useEffect(() => {
+    if (draftDiscountPercent === null) {
+      latestDiscountRef.current = savedDiscountPercent;
+    }
+  }, [savedDiscountPercent, draftDiscountPercent]);
+
+  const persistItems = (
+    nextItems: JobCardLineItem[],
+    nextDiscountPercent = displayDiscountPercent
+  ) => {
+    setDraftItems(nextItems);
+    latestItemsRef.current = nextItems;
+    setDraftDiscountPercent(nextDiscountPercent);
+    latestDiscountRef.current = nextDiscountPercent;
+    setSaveError("");
+    saveMutation.mutate({
+      lineItems: nextItems,
+      discountPercent: nextDiscountPercent,
+    });
+  };
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateStatus(id, status),
@@ -664,13 +727,12 @@ export default function ServiceViewPage() {
 
         <JobCardItemsSection
           items={displayItems}
+          discountPercent={displayDiscountPercent}
           saving={saveMutation.isPending}
-          onChange={(next) => {
-            setDraftItems(next);
-            latestItemsRef.current = next;
-            setSaveError("");
-            saveMutation.mutate(next);
-          }}
+          onChange={(next) => persistItems(next, displayDiscountPercent)}
+          onDiscountPercentChange={(nextPercent) =>
+            persistItems(displayItems, nextPercent)
+          }
         />
 
         {saveError && <p className="text-sm text-red-600">{saveError}</p>}

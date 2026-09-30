@@ -5,8 +5,8 @@ import { DocumentTableCell } from "@/components/print/DocumentTableCell";
 import { NextServicePrintBlock } from "@/components/print/NextServicePrintBlock";
 import { OtherDetailsBlock } from "@/components/print/OtherDetailsBlock";
 import {
+  calcJobCardTotals,
   calcLineAmounts,
-  calcLineItemsTotal,
   formatMoney,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
@@ -51,6 +51,8 @@ export type ServiceDocumentModel = {
   vehicle?: Vehicle | null;
   notes?: string | null;
   items: JobCardLineItem[];
+  /** Overall job-card discount % applied on items subtotal. */
+  discountPercent?: number | null;
   paidAmount?: number | null;
   dueAmount?: number | null;
   showPaymentOnSheet?: boolean;
@@ -71,12 +73,16 @@ function ItemTable({
   startIndex,
   showTotal,
   totalAmount,
+  totalDiscountPercent,
+  totalDiscountAmount,
   totalNet,
 }: {
   items: JobCardLineItem[];
   startIndex: number;
   showTotal: boolean;
   totalAmount: number;
+  totalDiscountPercent: number;
+  totalDiscountAmount: number;
   totalNet: number;
 }) {
   return (
@@ -176,8 +182,12 @@ function ItemTable({
             <DocumentTableCell align="right">
               {formatMoney(totalAmount)}
             </DocumentTableCell>
-            <DocumentTableCell align="right" />
-            <DocumentTableCell align="right" />
+            <DocumentTableCell align="right">
+              {totalDiscountPercent ? formatMoney(totalDiscountPercent) : ""}
+            </DocumentTableCell>
+            <DocumentTableCell align="right">
+              {totalDiscountAmount ? formatMoney(totalDiscountAmount) : ""}
+            </DocumentTableCell>
             <DocumentTableCell align="right">
               {formatMoney(totalNet)}
             </DocumentTableCell>
@@ -281,11 +291,14 @@ function DocumentFooter({
 export function ServiceDocumentPages({ model }: Props) {
   const typeScale = documentTypeScale(model.fontSizePx);
   const pages = paginateLineItems(model.items, model.fontSizePx);
-  const totalNet = calcLineItemsTotal(model.items);
-  const totalAmount = model.items.reduce(
-    (sum, item) => sum + calcLineAmounts(item).amount,
-    0
+  const totals = calcJobCardTotals(
+    model.items,
+    Number(model.discountPercent || 0)
   );
+  const totalNet = totals.grandTotal;
+  const totalAmount = totals.grossTotal;
+  const totalDiscountPercent = totals.discountPercent;
+  const totalDiscountAmount = totals.discountAmount;
 
   let runningIndex = 0;
 
@@ -404,6 +417,8 @@ export function ServiceDocumentPages({ model }: Props) {
                   startIndex={startIndex}
                   showTotal={isLast}
                   totalAmount={totalAmount}
+                  totalDiscountPercent={totalDiscountPercent}
+                  totalDiscountAmount={totalDiscountAmount}
                   totalNet={totalNet}
                 />
                 {!isLast && (

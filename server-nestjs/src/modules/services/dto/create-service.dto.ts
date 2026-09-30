@@ -321,6 +321,10 @@ export class CreateServiceDto {
 
   @IsOptional()
   @IsNumber()
+  discountPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
   tax?: number;
 
   @IsOptional()
