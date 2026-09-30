@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Sidebar from "./sidebar";
 import Navbar from "./navbar";
+import SessionKeepAlive from "./SessionKeepAlive";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +22,7 @@ export default function AppShell({
 
   return (
     <div className="flex h-screen bg-background">
+      <SessionKeepAlive />
       {/* SIDEBAR */}
       <Sidebar />
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -50,4 +52,3 @@ export default function AppShell({
     </div>
   );
 }
-
