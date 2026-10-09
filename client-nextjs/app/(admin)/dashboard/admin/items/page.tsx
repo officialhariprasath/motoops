@@ -15,35 +15,44 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatMoney } from "@/lib/job-card-items";
+import { fetchCatalogItems } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
+
+type ItemKind = "GENERAL" | "PROFIT";
 
 type CatalogItem = {
   id: string;
   name: string;
   rate: number;
+  itemKind?: ItemKind;
   isActive?: boolean;
 };
 
-async function apiGetItems() {
-  const res = await fetch("/api/catalog/items?all=true", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load items");
-  return (json.data ?? json) as CatalogItem[];
+function apiErrorMessage(json: any, fallback: string) {
+  const raw = json?.message;
+  if (Array.isArray(raw) && raw.length) return String(raw[0]);
+  if (typeof raw === "string" && raw.trim()) return raw;
+  return fallback;
 }
 
-async function apiCreateItem(body: { name: string; rate: number }) {
+async function apiCreateItem(body: {
+  name: string;
+  rate: number;
+  itemKind: ItemKind;
+}) {
   const res = await fetch("/api/catalog/items", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to create item");
+  if (!res.ok) throw new Error(apiErrorMessage(json, "Failed to create item"));
   return json;
 }
 
 async function apiUpdateItem(
   id: string,
-  body: { name?: string; rate?: number }
+  body: { name?: string; rate?: number; itemKind?: ItemKind }
 ) {
   const res = await fetch(`/api/catalog/items/${id}`, {
     method: "PATCH",
@@ -51,19 +60,20 @@ async function apiUpdateItem(
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to update item");
+  if (!res.ok) throw new Error(apiErrorMessage(json, "Failed to update item"));
   return json;
 }
 
 async function apiDeleteItem(id: string) {
   const res = await fetch(`/api/catalog/items/${id}`, { method: "DELETE" });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.message || "Failed to remove item");
+  if (!res.ok) throw new Error(apiErrorMessage(json, "Failed to remove item"));
   return json;
 }
 
 export default function ItemsPage() {
   const queryClient = useQueryClient();
+  const [kindTab, setKindTab] = useState<ItemKind>("GENERAL");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
   const [name, setName] = useState("");
@@ -72,31 +82,47 @@ export default function ItemsPage() {
   const [deleteError, setDeleteError] = useState("");
 
   const itemsQuery = useQuery({
-    queryKey: ["catalog-items"],
-    queryFn: apiGetItems,
+    queryKey: queryKeys.catalogItems,
+    queryFn: () => fetchCatalogItems(true),
+    staleTime: STALE.referenceMs,
   });
 
-  const items = useMemo(
-    () => (itemsQuery.data ?? []).filter((item) => item.isActive !== false),
-    [itemsQuery.data]
-  );
+  const items = useMemo(() => {
+    return ((itemsQuery.data ?? []) as CatalogItem[])
+      .filter((item) => item.isActive !== false)
+      .filter((item) => {
+        const kind = item.itemKind === "PROFIT" ? "PROFIT" : "GENERAL";
+        return kind === kindTab;
+      });
+  }, [itemsQuery.data, kindTab]);
+
+  const invalidateCatalog = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.catalogItems });
+    queryClient.invalidateQueries({ queryKey: queryKeys.catalogItemsActive });
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
         name: name.trim(),
         rate: Number(rate || 0),
+        itemKind: kindTab,
       };
       if (!payload.name) throw new Error("Item description is required");
       if (Number.isNaN(payload.rate) || payload.rate < 0) {
         throw new Error("Valid rate is required");
       }
-      if (editing) return apiUpdateItem(editing.id, payload);
+      if (editing) {
+        return apiUpdateItem(editing.id, {
+          name: payload.name,
+          rate: payload.rate,
+          itemKind: kindTab,
+        });
+      }
       return apiCreateItem(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-items"] });
-      queryClient.invalidateQueries({ queryKey: ["catalog-items-active"] });
+      invalidateCatalog();
       setOpen(false);
       setEditing(null);
       setName("");
@@ -112,8 +138,7 @@ export default function ItemsPage() {
     mutationFn: apiDeleteItem,
     onSuccess: () => {
       setDeleteError("");
-      queryClient.invalidateQueries({ queryKey: ["catalog-items"] });
-      queryClient.invalidateQueries({ queryKey: ["catalog-items-active"] });
+      invalidateCatalog();
     },
     onError: (err) => {
       setDeleteError(err instanceof Error ? err.message : "Failed to remove item");
@@ -136,12 +161,39 @@ export default function ItemsPage() {
     setOpen(true);
   };
 
+  const tabLabel =
+    kindTab === "PROFIT" ? "Profit items" : "General items";
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-border p-1">
+          <button
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              kindTab === "GENERAL"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setKindTab("GENERAL")}
+          >
+            General items
+          </button>
+          <button
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              kindTab === "PROFIT"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setKindTab("PROFIT")}
+          >
+            Profit items
+          </button>
+        </div>
         <Button type="button" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Item
+          Add {kindTab === "PROFIT" ? "Profit" : "General"} Item
         </Button>
       </div>
 
@@ -195,8 +247,13 @@ export default function ItemsPage() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
-                      {itemsQuery.isLoading ? "Loading items..." : "No items yet."}
+                    <td
+                      colSpan={4}
+                      className="p-8 text-center text-sm text-muted-foreground"
+                    >
+                      {itemsQuery.isLoading
+                        ? "Loading items..."
+                        : `No ${tabLabel.toLowerCase()} yet.`}
                     </td>
                   </tr>
                 )}
@@ -209,7 +266,9 @@ export default function ItemsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Item" : "Add Item"}</DialogTitle>
+            <DialogTitle>
+              {editing ? `Edit ${tabLabel.slice(0, -1)}` : `Add ${tabLabel.slice(0, -1)}`}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -233,6 +292,10 @@ export default function ItemsPage() {
                 onChange={(event) => setRate(event.target.value)}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Saved under {tabLabel}. Names must be unique across General and
+              Profit.
+            </p>
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 

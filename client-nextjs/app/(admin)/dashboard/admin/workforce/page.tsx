@@ -23,6 +23,8 @@ import {
   jobCardStatusTone,
   normalizeJobCardStatus,
 } from "@/lib/job-card-status";
+import { fetchServicesList, fetchUsersList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 import WorkforceEmployeeForm from "./WorkforceEmployeeForm";
 
 type AttendanceStatus = "present" | "absent" | "leave";
@@ -40,20 +42,6 @@ type LeaveRequestRow = {
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const attendanceStorageKey = (date: string) => `garageAttendance:${date}`;
-
-const getUsers = async () => {
-  const res = await fetch("/api/user", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load users");
-  return json?.data ?? json ?? [];
-};
-
-const getServices = async () => {
-  const res = await fetch("/api/services", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load services");
-  return json?.data ?? json ?? [];
-};
 
 const getLeaveRequestsApi = async (): Promise<LeaveRequestRow[]> => {
   const res = await fetch("/api/leave-requests", { cache: "no-store" });
@@ -77,12 +65,14 @@ export default function WorkforcePage() {
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
 
   const usersQuery = useQuery({
-    queryKey: ["workforce", "users"],
-    queryFn: getUsers,
+    queryKey: queryKeys.usersList,
+    queryFn: fetchUsersList,
+    staleTime: STALE.referenceMs,
   });
   const servicesQuery = useQuery({
-    queryKey: ["workforce", "services"],
-    queryFn: getServices,
+    queryKey: queryKeys.servicesList,
+    queryFn: fetchServicesList,
+    staleTime: STALE.listsMs,
   });
   const leaveQuery = useQuery({
     queryKey: ["leave-requests"],
@@ -214,7 +204,7 @@ export default function WorkforcePage() {
   );
 
   const refreshEmployees = () => {
-    queryClient.invalidateQueries({ queryKey: ["workforce", "users"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.usersList });
     setShowEmployeeForm(false);
     setEditingEmployee(null);
   };

@@ -26,6 +26,8 @@ import {
   normalizeJobCardStatus,
   paymentStatusTone,
 } from "@/lib/job-card-status";
+import { fetchUsersList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 const getService = async (id: string) => {
   const res = await fetch(`/api/services/${id}`);
@@ -33,14 +35,6 @@ const getService = async (id: string) => {
   if (!res.ok) throw new Error(json?.message || "Failed to load job card");
   return json.data ?? json;
 };
-
-async function getMechanics() {
-  const res = await fetch("/api/user", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load workforce");
-  const users = (json.data ?? json ?? []) as any[];
-  return users.filter((u) => String(u.role || "").toLowerCase() === "mechanic");
-}
 
 async function getServiceInvoices(serviceId: string) {
   const res = await fetch(`/api/invoices?serviceId=${serviceId}`, {
@@ -157,8 +151,13 @@ export default function ServiceViewPage() {
   });
 
   const mechanicsQuery = useQuery({
-    queryKey: ["mechanics"],
-    queryFn: getMechanics,
+    queryKey: queryKeys.usersList,
+    queryFn: fetchUsersList,
+    staleTime: STALE.referenceMs,
+    select: (users: any[]) =>
+      (users ?? []).filter(
+        (u) => String(u.role || "").toLowerCase() === "mechanic"
+      ),
   });
 
   const invoicesQuery = useQuery({
@@ -251,7 +250,7 @@ export default function ServiceViewPage() {
       );
 
       queryClient.invalidateQueries({ queryKey: ["service", id] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.servicesList });
     },
     onError: (error, submitted) => {
       const latestIds = latestItemsRef.current.map((row) => row.id).join(",");
@@ -300,7 +299,7 @@ export default function ServiceViewPage() {
     onSuccess: (_data, status) => {
       setStatusError("");
       queryClient.invalidateQueries({ queryKey: ["service", id] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.servicesList });
       addNotification({
         title: "Status updated",
         message: `Job card moved to ${formatJobCardStatus(status)}.`,
@@ -319,7 +318,7 @@ export default function ServiceViewPage() {
     onSuccess: () => {
       setAssignError("");
       queryClient.invalidateQueries({ queryKey: ["service", id] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.servicesList });
       addNotification({
         title: "Workforce updated",
         message: "Assigned mechanics saved.",
@@ -357,8 +356,9 @@ export default function ServiceViewPage() {
       setBillError("");
       setShowBillModal(false);
       queryClient.invalidateQueries({ queryKey: ["service", id] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.servicesList });
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoicesList });
+      queryClient.invalidateQueries({ queryKey: ["invoices", "service", id] });
       addNotification({
         title: "Bill generated",
         message: `${invoice.invoiceNumber || "Bill"} created.`,

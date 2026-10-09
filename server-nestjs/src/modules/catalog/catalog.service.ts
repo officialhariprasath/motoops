@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 
 import { CatalogItemEntity } from './entities/catalog-item.entity';
 import { CreateCatalogItemDto, UpdateCatalogItemDto } from './dto/catalog-item.dto';
 
-const DEFAULT_BIKE_ITEMS: Array<{ name: string; rate: number }> = [
+const DEFAULT_BIKE_ITEMS: Array<{
+  name: string;
+  rate: number;
+  itemKind?: 'GENERAL' | 'PROFIT';
+}> = [
   { name: 'Engine Oil (1L)', rate: 450 },
   { name: 'Oil Filter', rate: 120 },
   { name: 'Air Filter', rate: 180 },
@@ -15,7 +23,7 @@ const DEFAULT_BIKE_ITEMS: Array<{ name: string; rate: number }> = [
   { name: 'Chain Sprocket Kit', rate: 1200 },
   { name: 'Chain Lubricant', rate: 180 },
   { name: 'Clutch Plate', rate: 650 },
-  { name: 'General Service Labour', rate: 400 },
+  { name: 'General Service Labour', rate: 400, itemKind: 'PROFIT' },
   { name: 'Wash & Polish', rate: 200 },
   { name: 'Puncture Repair', rate: 50 },
   { name: 'Tube', rate: 280 },
@@ -28,6 +36,10 @@ const DEFAULT_BIKE_ITEMS: Array<{ name: string; rate: number }> = [
   { name: 'Side Mirror', rate: 220 },
   { name: 'Grease Pack', rate: 60 },
 ];
+
+function kindLabel(kind: 'GENERAL' | 'PROFIT') {
+  return kind === 'PROFIT' ? 'Profit items' : 'General items';
+}
 
 @Injectable()
 export class CatalogService {
@@ -45,10 +57,34 @@ export class CatalogService {
         this.repo.create({
           name: item.name,
           rate: item.rate,
+          itemKind: item.itemKind ?? 'GENERAL',
           isActive: true,
           garageId,
         }),
       ),
+    );
+  }
+
+  private async assertUniqueName(
+    garageId: string,
+    name: string,
+    excludeId?: string,
+  ) {
+    const trimmed = name.trim();
+    const existing = await this.repo.findOne({
+      where: {
+        garageId,
+        name: ILike(trimmed),
+        isActive: true,
+        ...(excludeId ? { id: Not(excludeId) } : {}),
+      },
+    });
+    if (!existing) return;
+    const kind = (existing.itemKind === 'PROFIT' ? 'PROFIT' : 'GENERAL') as
+      | 'GENERAL'
+      | 'PROFIT';
+    throw new BadRequestException(
+      `Item already exists in ${kindLabel(kind)}`,
     );
   }
 
@@ -63,9 +99,12 @@ export class CatalogService {
   }
 
   async create(dto: CreateCatalogItemDto, garageId: string) {
+    const itemKind = dto.itemKind === 'PROFIT' ? 'PROFIT' : 'GENERAL';
+    await this.assertUniqueName(garageId, dto.name);
     const item = this.repo.create({
       name: dto.name.trim(),
       rate: dto.rate,
+      itemKind,
       isActive: true,
       garageId,
     });
@@ -76,8 +115,14 @@ export class CatalogService {
     const item = await this.repo.findOne({ where: { id, garageId } });
     if (!item) throw new NotFoundException('Item not found');
 
-    if (dto.name !== undefined) item.name = dto.name.trim();
+    if (dto.name !== undefined) {
+      await this.assertUniqueName(garageId, dto.name, id);
+      item.name = dto.name.trim();
+    }
     if (dto.rate !== undefined) item.rate = dto.rate;
+    if (dto.itemKind !== undefined) {
+      item.itemKind = dto.itemKind === 'PROFIT' ? 'PROFIT' : 'GENERAL';
+    }
     if (dto.isActive !== undefined) item.isActive = dto.isActive;
 
     return this.repo.save(item);

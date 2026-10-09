@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import Sidebar from "./sidebar";
 import Navbar from "./navbar";
 import SessionKeepAlive from "./SessionKeepAlive";
+import { prefetchAdminDashboardLists } from "@/lib/prefetch-dashboard";
 import {
   Sheet,
   SheetContent,
@@ -19,6 +21,19 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const role = String(user?.role || "").toLowerCase();
+      if (role === "admin") {
+        prefetchAdminDashboardLists(queryClient);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [queryClient]);
 
   return (
     <div className="flex h-screen bg-background">

@@ -6,22 +6,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/job-card-items";
 import { normalizeJobCardStatus } from "@/lib/job-card-status";
-
-async function apiGet(url: string) {
-  const res = await fetch(url, { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Request failed");
-  return json?.data ?? json ?? [];
-}
+import { fetchInvoicesList, fetchServicesList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 export default function ReportsPage() {
   const servicesQuery = useQuery({
-    queryKey: ["reports", "services"],
-    queryFn: () => apiGet("/api/services"),
+    queryKey: queryKeys.servicesList,
+    queryFn: fetchServicesList,
+    staleTime: STALE.listsMs,
   });
   const invoicesQuery = useQuery({
-    queryKey: ["reports", "invoices"],
-    queryFn: () => apiGet("/api/invoices"),
+    queryKey: queryKeys.invoicesList,
+    queryFn: fetchInvoicesList,
+    staleTime: STALE.listsMs,
   });
 
   const report = useMemo(() => {

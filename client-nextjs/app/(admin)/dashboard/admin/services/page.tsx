@@ -18,22 +18,10 @@ import {
   JOB_CARD_STATUSES,
   normalizeJobCardStatus,
 } from "@/lib/job-card-status";
+import { fetchServicesList, fetchUsersList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 const ACTIVE_JOB_STATUSES = new Set(["PENDING", "ASSIGNED", "IN_PROGRESS"]);
-
-const getServices = async () => {
-  const res = await fetch("/api/services");
-  if (!res.ok) throw new Error("Failed");
-  return res.json();
-};
-
-const getMechanics = async () => {
-  const res = await fetch("/api/user", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load workforce");
-  const users = (json.data ?? json ?? []) as any[];
-  return users.filter((u) => String(u.role || "").toLowerCase() === "mechanic");
-};
 
 async function saveAssignees(serviceId: string, assignedMechanicIds: string[]) {
   const res = await fetch(`/api/services/${serviceId}`, {
@@ -57,16 +45,24 @@ export default function ServicesPage() {
   const [assignError, setAssignError] = useState("");
 
   const servicesQuery = useQuery({
-    queryKey: ["services"],
-    queryFn: getServices,
+    queryKey: queryKeys.servicesList,
+    queryFn: fetchServicesList,
+    staleTime: STALE.listsMs,
   });
-  const mechanicsQuery = useQuery({
-    queryKey: ["mechanics"],
-    queryFn: getMechanics,
+  const usersQuery = useQuery({
+    queryKey: queryKeys.usersList,
+    queryFn: fetchUsersList,
+    staleTime: STALE.referenceMs,
   });
 
-  const services = servicesQuery.data?.data ?? [];
-  const mechanics = mechanicsQuery.data ?? [];
+  const services = servicesQuery.data ?? [];
+  const mechanics = useMemo(
+    () =>
+      (usersQuery.data ?? []).filter(
+        (u: any) => String(u.role || "").toLowerCase() === "mechanic"
+      ),
+    [usersQuery.data]
+  );
 
   const activeJobCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -133,7 +129,7 @@ export default function ServicesPage() {
       setAssignError("");
       setAssignServiceId(null);
       setSelectedMechanicId("");
-      queryClient.invalidateQueries({ queryKey: ["services"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.servicesList });
     },
     onError: (error: Error) => setAssignError(error.message),
   });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import ListControls from "@/components/dashboard/ListControls";
 import InvoicePaymentDialog, {
@@ -10,6 +11,8 @@ import InvoicePaymentDialog, {
 import { useGaragePageSize } from "@/lib/list-settings";
 import { formatCurrency, DOT_SEP } from "@/lib/job-card-items";
 import { paymentStatusTone } from "@/lib/job-card-status";
+import { fetchInvoicesList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -49,9 +52,7 @@ type Invoice = {
 };
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");
@@ -59,25 +60,20 @@ export default function InvoicesPage() {
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const pageSize = useGaragePageSize();
 
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
+  const invoicesQuery = useQuery({
+    queryKey: queryKeys.invoicesList,
+    queryFn: fetchInvoicesList,
+    staleTime: STALE.listsMs,
+  });
 
-  const fetchInvoices = async () => {
-    try {
-      setErrorMessage("");
-      const res = await fetch("/api/invoices", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Failed to load invoices");
-      setInvoices(data?.data ?? data ?? []);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to load invoices"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const invoices = (invoicesQuery.data ?? []) as Invoice[];
+  const loading = invoicesQuery.isLoading;
+  const errorMessage =
+    invoicesQuery.error instanceof Error
+      ? invoicesQuery.error.message
+      : invoicesQuery.isError
+        ? "Failed to load invoices"
+        : "";
 
   const filteredInvoices = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -129,8 +125,9 @@ export default function InvoicesPage() {
   }, [totalPages]);
 
   const handlePaymentSaved = (saved: PaymentInvoice) => {
-    setInvoices((current) =>
-      current.map((row) =>
+    queryClient.setQueryData(queryKeys.invoicesList, (current: unknown) => {
+      const rows = Array.isArray(current) ? (current as Invoice[]) : [];
+      return rows.map((row) =>
         row.id === saved.id
           ? {
               ...row,
@@ -139,8 +136,8 @@ export default function InvoicesPage() {
               paymentStatus: saved.paymentStatus,
             }
           : row
-      )
-    );
+      );
+    });
     setPaymentInvoice(null);
   };
 

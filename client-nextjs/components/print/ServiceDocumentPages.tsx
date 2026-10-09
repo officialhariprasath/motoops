@@ -8,6 +8,8 @@ import {
   calcJobCardTotals,
   calcLineAmounts,
   formatMoney,
+  formatPercent,
+  hasLineItemDiscounts,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
 import { documentTypeScale } from "@/lib/document-font";
@@ -72,6 +74,8 @@ function ItemTable({
   items,
   startIndex,
   showTotal,
+  showDiscountCols,
+  showOverallDiscountRow,
   totalAmount,
   totalDiscountPercent,
   totalDiscountAmount,
@@ -80,37 +84,64 @@ function ItemTable({
   items: JobCardLineItem[];
   startIndex: number;
   showTotal: boolean;
+  showDiscountCols: boolean;
+  showOverallDiscountRow: boolean;
   totalAmount: number;
   totalDiscountPercent: number;
   totalDiscountAmount: number;
   totalNet: number;
 }) {
+  const colCount = showDiscountCols ? 8 : 6;
+  const headers = (
+    showDiscountCols
+      ? ([
+          ["SNo", "center"],
+          ["Item Description", "left"],
+          ["Quantity", "center"],
+          ["Rate", "center"],
+          ["Amount", "center"],
+          ["Dis%", "center"],
+          ["Dis-Amt", "center"],
+          ["Net-Amt", "center"],
+        ] as const)
+      : ([
+          ["SNo", "center"],
+          ["Item Description", "left"],
+          ["Quantity", "center"],
+          ["Rate", "center"],
+          ["Amount", "center"],
+          ["Net-Amt", "center"],
+        ] as const)
+  );
+
   return (
     <table className="w-full table-fixed border-collapse">
       <colgroup>
-        <col style={{ width: "7%" }} />
-        <col style={{ width: "30%" }} />
-        <col style={{ width: "13%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "8%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "10%" }} />
+        {showDiscountCols ? (
+          <>
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "30%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+          </>
+        ) : (
+          <>
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "36%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
+          </>
+        )}
       </colgroup>
       <thead>
         <tr>
-          {(
-            [
-              ["SNo", "center"],
-              ["Item Description", "left"],
-              ["Quantity", "center"],
-              ["Rate", "center"],
-              ["Amount", "center"],
-              ["Dis%", "center"],
-              ["Dis-Amt", "center"],
-              ["Net-Amt", "center"],
-            ] as const
-          ).map(([heading, align]) => (
+          {headers.map(([heading, align]) => (
             <DocumentTableCell
               key={heading}
               as="th"
@@ -148,14 +179,18 @@ function ItemTable({
               <DocumentTableCell align="right">
                 {formatMoney(amount)}
               </DocumentTableCell>
-              <DocumentTableCell align="right">
-                {item.discountPercent
-                  ? formatMoney(item.discountPercent)
-                  : ""}
-              </DocumentTableCell>
-              <DocumentTableCell align="right">
-                {discountAmount ? formatMoney(discountAmount) : ""}
-              </DocumentTableCell>
+              {showDiscountCols && (
+                <>
+                  <DocumentTableCell align="right">
+                    {item.discountPercent
+                      ? formatPercent(item.discountPercent)
+                      : ""}
+                  </DocumentTableCell>
+                  <DocumentTableCell align="right">
+                    {discountAmount ? formatMoney(discountAmount) : ""}
+                  </DocumentTableCell>
+                </>
+              )}
               <DocumentTableCell align="right">
                 {formatMoney(netAmount)}
               </DocumentTableCell>
@@ -165,7 +200,7 @@ function ItemTable({
         {items.length === 0 && showTotal && (
           <tr>
             <DocumentTableCell
-              colSpan={8}
+              colSpan={colCount}
               align="center"
               className="text-muted-foreground"
               innerClassName="py-5"
@@ -182,14 +217,32 @@ function ItemTable({
             <DocumentTableCell align="right">
               {formatMoney(totalAmount)}
             </DocumentTableCell>
-            <DocumentTableCell align="right">
-              {totalDiscountPercent ? formatMoney(totalDiscountPercent) : ""}
-            </DocumentTableCell>
-            <DocumentTableCell align="right">
-              {totalDiscountAmount ? formatMoney(totalDiscountAmount) : ""}
-            </DocumentTableCell>
+            {showDiscountCols && (
+              <>
+                <DocumentTableCell align="right">
+                  {totalDiscountPercent
+                    ? formatPercent(totalDiscountPercent)
+                    : ""}
+                </DocumentTableCell>
+                <DocumentTableCell align="right">
+                  {totalDiscountAmount
+                    ? formatMoney(totalDiscountAmount)
+                    : ""}
+                </DocumentTableCell>
+              </>
+            )}
             <DocumentTableCell align="right">
               {formatMoney(totalNet)}
+            </DocumentTableCell>
+          </tr>
+        )}
+        {showTotal && showOverallDiscountRow && (
+          <tr className="font-semibold">
+            <DocumentTableCell align="right" colSpan={colCount - 1}>
+              Overall Discount ({formatPercent(totalDiscountPercent)}%)
+            </DocumentTableCell>
+            <DocumentTableCell align="right">
+              -{formatMoney(totalDiscountAmount)}
             </DocumentTableCell>
           </tr>
         )}
@@ -299,6 +352,9 @@ export function ServiceDocumentPages({ model }: Props) {
   const totalAmount = totals.grossTotal;
   const totalDiscountPercent = totals.discountPercent;
   const totalDiscountAmount = totals.discountAmount;
+  const showDiscountCols = hasLineItemDiscounts(model.items);
+  const showOverallDiscountRow =
+    !showDiscountCols && Number(totalDiscountPercent || 0) > 0;
 
   let runningIndex = 0;
 
@@ -416,6 +472,8 @@ export function ServiceDocumentPages({ model }: Props) {
                   items={pageItems}
                   startIndex={startIndex}
                   showTotal={isLast}
+                  showDiscountCols={showDiscountCols}
+                  showOverallDiscountRow={showOverallDiscountRow}
                   totalAmount={totalAmount}
                   totalDiscountPercent={totalDiscountPercent}
                   totalDiscountAmount={totalDiscountAmount}

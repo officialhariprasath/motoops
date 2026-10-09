@@ -1,4 +1,11 @@
-import { IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCatalogItemDto {
@@ -10,6 +17,10 @@ export class CreateCatalogItemDto {
   @IsNumber()
   @Min(0)
   rate!: number;
+
+  @IsOptional()
+  @IsIn(['GENERAL', 'PROFIT'])
+  itemKind?: 'GENERAL' | 'PROFIT';
 }
 
 export class UpdateCatalogItemDto {
@@ -23,6 +34,10 @@ export class UpdateCatalogItemDto {
   @IsNumber()
   @Min(0)
   rate?: number;
+
+  @IsOptional()
+  @IsIn(['GENERAL', 'PROFIT'])
+  itemKind?: 'GENERAL' | 'PROFIT';
 
   @IsOptional()
   isActive?: boolean;

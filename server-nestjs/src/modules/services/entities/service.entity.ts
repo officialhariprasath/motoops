@@ -79,6 +79,7 @@ export class ServiceEntity {
     rate: number;
     quantity: number;
     discountPercent: number;
+    itemKind?: 'GENERAL' | 'PROFIT';
   }>;
 
   @Column({ type: 'simple-json', nullable: true })

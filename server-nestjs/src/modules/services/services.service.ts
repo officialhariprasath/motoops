@@ -30,6 +30,25 @@ function roundMoney(value: number) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
 
+function roundPercent(value: number) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+const MONEY_SNAP = 0.2;
+
+function percentFromDiscountAmount(discountAmount: number, baseAmount: number) {
+  const base = roundMoney(baseAmount);
+  const capped = Math.min(
+    Math.max(0, roundMoney(discountAmount)),
+    Math.max(0, base),
+  );
+  if (base <= 0) return 0;
+  if (base - capped <= MONEY_SNAP) return 100;
+  if (Math.abs(capped - roundMoney(base / 2)) <= MONEY_SNAP) return 50;
+  return Math.min(100, Math.max(0, roundPercent((capped / base) * 100)));
+}
+
+/** Per-line rounding matches client calcLineAmounts (avoid 99.89 / 49.xx drift). */
 function calcLineItemsSubtotal(
   lineItems?: Array<{
     rate?: number;
@@ -39,10 +58,18 @@ function calcLineItemsSubtotal(
 ) {
   return roundMoney(
     (lineItems || []).reduce((sum, item) => {
-      const amount = Number(item.rate || 0) * Number(item.quantity || 0);
+      const amount = roundMoney(
+        Number(item.rate || 0) * Number(item.quantity || 0),
+      );
+      let percent = Math.min(
+        100,
+        Math.max(0, Number(item.discountPercent || 0)),
+      );
       const discountAmount =
-        amount * (Number(item.discountPercent || 0) / 100);
-      return sum + (amount - discountAmount);
+        percent >= 100
+          ? amount
+          : roundMoney((amount * percent) / 100);
+      return sum + roundMoney(amount - discountAmount);
     }, 0),
   );
 }
@@ -65,13 +92,17 @@ function applyLineItemBilling(
     itemsSubtotal > 0 &&
     discountPercentOverride === undefined
   ) {
-    percent = roundMoney(
-      (Number(service.discount || 0) / itemsSubtotal) * 100,
+    percent = percentFromDiscountAmount(
+      Number(service.discount || 0),
+      itemsSubtotal,
     );
   }
 
   percent = Math.min(100, Math.max(0, percent));
-  const discountAmount = roundMoney((itemsSubtotal * percent) / 100);
+  const discountAmount =
+    percent >= 100
+      ? itemsSubtotal
+      : roundMoney((itemsSubtotal * percent) / 100);
 
   service.discountPercent = percent;
   service.discount = discountAmount;
@@ -738,8 +769,9 @@ export class ServicesService {
       // Legacy amount-only updates: convert to percent when possible
       const itemsSubtotal = calcLineItemsSubtotal(service.lineItems);
       if ((service.lineItems || []).length > 0 && itemsSubtotal > 0) {
-        service.discountPercent = roundMoney(
-          (Number(dto.discount || 0) / itemsSubtotal) * 100,
+        service.discountPercent = percentFromDiscountAmount(
+          Number(dto.discount || 0),
+          itemsSubtotal,
         );
         applyLineItemBilling(service, service.discountPercent);
       } else {

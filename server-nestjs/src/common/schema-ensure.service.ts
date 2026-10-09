@@ -116,6 +116,12 @@ export class SchemaEnsureService implements OnModuleInit {
     await q(`ALTER TABLE services ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
     await q(`ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
     await q(`ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
+    await q(
+      `ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS "itemKind" character varying(16) NOT NULL DEFAULT 'GENERAL'`,
+    );
+    await q(
+      `UPDATE catalog_items SET "itemKind" = 'GENERAL' WHERE "itemKind" IS NULL OR TRIM("itemKind") = ''`,
+    );
     await q(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
     await q(`ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS "garageId" uuid NULL`);
 

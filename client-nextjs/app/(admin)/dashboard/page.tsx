@@ -12,21 +12,9 @@ import {
   paymentStatusTone,
 } from "@/lib/job-card-status";
 import { formatCurrency } from "@/lib/job-card-items";
-
-async function apiGet(url: string) {
-  const res = await fetch(url, { cache: "no-store" });
-  let json: any = null;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error("Invalid response from server");
-  }
-  if (!res.ok) {
-    throw new Error(json?.message || "Request failed");
-  }
-  const rows = json?.data ?? json;
-  return Array.isArray(rows) ? rows : [];
-}
+import { monthlyProfitFromInvoices } from "@/lib/dashboard-profit";
+import { fetchInvoicesList, fetchServicesList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 function isSameDay(date: Date, now: Date) {
   return date.toDateString() === now.toDateString();
@@ -77,12 +65,14 @@ function StatCard({
 
 export default function DashboardPage() {
   const servicesQuery = useQuery({
-    queryKey: ["dashboard", "services"],
-    queryFn: () => apiGet("/api/services"),
+    queryKey: queryKeys.servicesList,
+    queryFn: fetchServicesList,
+    staleTime: STALE.listsMs,
   });
   const invoicesQuery = useQuery({
-    queryKey: ["dashboard", "invoices"],
-    queryFn: () => apiGet("/api/invoices"),
+    queryKey: queryKeys.invoicesList,
+    queryFn: fetchInvoicesList,
+    staleTime: STALE.listsMs,
   });
 
   const stats = useMemo(() => {
@@ -117,6 +107,8 @@ export default function DashboardPage() {
       { daily: 0, weekly: 0, monthly: 0 }
     );
 
+    const labourProfitMonthly = monthlyProfitFromInvoices(invoices, now);
+
     return {
       todayJobs,
       inProgress: services.filter(
@@ -135,6 +127,7 @@ export default function DashboardPage() {
         .length,
       paidBills: bills.filter((b: any) => b.paymentStatus === "paid").length,
       revenue,
+      labourProfitMonthly,
     };
   }, [servicesQuery.data, invoicesQuery.data]);
 
@@ -244,7 +237,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Collected today"
           value={formatCurrency(stats.revenue.daily)}
@@ -256,6 +249,10 @@ export default function DashboardPage() {
         <StatCard
           label="Collected this month"
           value={formatCurrency(stats.revenue.monthly)}
+        />
+        <StatCard
+          label="Labour / Profit this month"
+          value={formatCurrency(stats.labourProfitMonthly)}
         />
       </div>
     </div>

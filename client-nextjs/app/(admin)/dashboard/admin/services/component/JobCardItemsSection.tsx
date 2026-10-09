@@ -16,15 +16,21 @@ import {
 import {
   calcJobCardTotals,
   calcLineAmounts,
+  calcOverallDiscount,
   formatMoney,
+  formatPercent,
+  percentFromDiscountAmount,
   roundMoney,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
+import { fetchCatalogItems } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 type CatalogItem = {
   id: string;
   name: string;
   rate: number;
+  itemKind?: "GENERAL" | "PROFIT";
 };
 
 type Props = {
@@ -35,18 +41,6 @@ type Props = {
   readOnly?: boolean;
   saving?: boolean;
 };
-
-async function getCatalogItems() {
-  const res = await fetch("/api/catalog/items", { cache: "no-store" });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.message || "Failed to load catalog");
-  const rows = (json.data ?? json ?? []) as CatalogItem[];
-  return rows.map((item) => ({
-    ...item,
-    rate: Number(item.rate || 0),
-    name: String(item.name || ""),
-  }));
-}
 
 export default function JobCardItemsSection({
   items,
@@ -65,6 +59,9 @@ export default function JobCardItemsSection({
   const [lineDiscountAmount, setLineDiscountAmount] = useState("0");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState("");
+  const [pendingItemKind, setPendingItemKind] = useState<"GENERAL" | "PROFIT">(
+    "GENERAL"
+  );
 
   const [totalDisPercent, setTotalDisPercent] = useState(
     String(Number(discountPercent || 0))
@@ -72,8 +69,20 @@ export default function JobCardItemsSection({
   const [totalDisAmount, setTotalDisAmount] = useState("0");
 
   const catalogQuery = useQuery({
-    queryKey: ["catalog-items-active"],
-    queryFn: getCatalogItems,
+    queryKey: queryKeys.catalogItemsActive,
+    queryFn: async (): Promise<CatalogItem[]> => {
+      const rows = (await fetchCatalogItems(false)) as CatalogItem[];
+      return rows.map((item) => ({
+        ...item,
+        rate: Number(item.rate || 0),
+        name: String(item.name || ""),
+        itemKind:
+          item.itemKind === "PROFIT"
+            ? ("PROFIT" as const)
+            : ("GENERAL" as const),
+      }));
+    },
+    staleTime: STALE.referenceMs,
     enabled: !readOnly,
   });
 
@@ -109,6 +118,7 @@ export default function JobCardItemsSection({
     setQuantity("1");
     setLineDiscountPercent("0");
     setLineDiscountAmount("0");
+    setPendingItemKind("GENERAL");
     setShowSuggestions(false);
     setError("");
   };
@@ -128,8 +138,7 @@ export default function JobCardItemsSection({
     amountBase = lineAmount
   ) => {
     const amount = Number(amountValue || 0);
-    const percent =
-      amountBase > 0 ? roundMoney((amount / amountBase) * 100) : 0;
+    const percent = percentFromDiscountAmount(amount, amountBase);
     setLineDiscountAmount(amountValue);
     setLineDiscountPercent(String(percent));
   };
@@ -147,6 +156,7 @@ export default function JobCardItemsSection({
     setQuantity(String(item.quantity));
     setLineDiscountPercent(String(item.discountPercent || 0));
     setLineDiscountAmount(String(discountAmount));
+    setPendingItemKind(item.itemKind === "PROFIT" ? "PROFIT" : "GENERAL");
     setShowSuggestions(false);
     setError("");
     setOpen(true);
@@ -161,6 +171,7 @@ export default function JobCardItemsSection({
   const pickSuggestion = (item: CatalogItem) => {
     setDescription(item.name.toUpperCase());
     setRate(String(item.rate));
+    setPendingItemKind(item.itemKind === "PROFIT" ? "PROFIT" : "GENERAL");
     setShowSuggestions(false);
     const amountBase = roundMoney(
       Number(item.rate || 0) * Number(quantity || 0)
@@ -185,12 +196,22 @@ export default function JobCardItemsSection({
   };
 
   const saveItem = () => {
+    const matched = catalog.find(
+      (row) =>
+        row.name.trim().toUpperCase() === description.trim().toUpperCase()
+    );
     const next: JobCardLineItem = {
       id: editingId ?? crypto.randomUUID?.() ?? `${Date.now()}`,
       description: description.trim().toUpperCase(),
       rate: Number(rate || 0),
       quantity: Number(quantity || 0),
       discountPercent: Number(lineDiscountPercent || 0),
+      itemKind:
+        matched?.itemKind === "PROFIT"
+          ? "PROFIT"
+          : pendingItemKind === "PROFIT"
+            ? "PROFIT"
+            : "GENERAL",
     };
 
     if (!next.description) {
@@ -209,12 +230,14 @@ export default function JobCardItemsSection({
       setError("Discount % must be between 0 and 100");
       return;
     }
-    const amount = next.rate * next.quantity;
+    const { amount } = calcLineAmounts(next);
     const disAmt = Number(lineDiscountAmount || 0);
-    if (disAmt < 0 || disAmt > amount) {
+    if (disAmt < 0 || disAmt > amount + 0.01) {
       setError("Discount amount cannot exceed line amount");
       return;
     }
+    // Prefer % snapped from amount when user typed amount
+    next.discountPercent = percentFromDiscountAmount(disAmt, amount);
 
     if (editingId) {
       onChange(items.map((row) => (row.id === editingId ? next : row)));
@@ -230,9 +253,12 @@ export default function JobCardItemsSection({
 
   const commitTotalDiscountPercent = (percentValue: string) => {
     const percent = Math.min(100, Math.max(0, Number(percentValue || 0)));
-    const amount = roundMoney((totals.itemsSubtotal * percent) / 100);
+    const { discountAmount } = calcOverallDiscount(
+      totals.itemsSubtotal,
+      percent
+    );
     setTotalDisPercent(String(percent));
-    setTotalDisAmount(String(amount));
+    setTotalDisAmount(String(discountAmount));
     onDiscountPercentChange?.(percent);
   };
 
@@ -242,11 +268,12 @@ export default function JobCardItemsSection({
       totals.itemsSubtotal > 0
         ? Math.min(amount, totals.itemsSubtotal)
         : 0;
-    const percent =
-      totals.itemsSubtotal > 0
-        ? roundMoney((capped / totals.itemsSubtotal) * 100)
-        : 0;
-    setTotalDisAmount(String(capped));
+    const percent = percentFromDiscountAmount(capped, totals.itemsSubtotal);
+    const { discountAmount } = calcOverallDiscount(
+      totals.itemsSubtotal,
+      percent
+    );
+    setTotalDisAmount(String(discountAmount));
     setTotalDisPercent(String(percent));
     onDiscountPercentChange?.(percent);
   };
@@ -291,7 +318,7 @@ export default function JobCardItemsSection({
                   <td className="p-2">{formatMoney(item.rate)}</td>
                   <td className="p-2">{item.quantity}</td>
                   <td className="p-2">{formatMoney(amount)}</td>
-                  <td className="p-2">{formatMoney(item.discountPercent)}</td>
+                  <td className="p-2">{formatPercent(item.discountPercent)}</td>
                   <td className="p-2">{formatMoney(disAmt)}</td>
                   <td className="p-2 font-medium">{formatMoney(netAmount)}</td>
                   {!readOnly && (
@@ -341,7 +368,7 @@ export default function JobCardItemsSection({
                 <td className="p-2">{formatMoney(totals.grossTotal)}</td>
                 <td className="p-2">
                   {readOnly || !onDiscountPercentChange ? (
-                    formatMoney(totals.discountPercent)
+                    formatPercent(totals.discountPercent)
                   ) : (
                     <Input
                       type="number"
@@ -357,7 +384,8 @@ export default function JobCardItemsSection({
                         const percent = Number(value || 0);
                         setTotalDisAmount(
                           String(
-                            roundMoney((totals.itemsSubtotal * percent) / 100)
+                            calcOverallDiscount(totals.itemsSubtotal, percent)
+                              .discountAmount
                           )
                         );
                       }}
@@ -383,13 +411,14 @@ export default function JobCardItemsSection({
                         const value = event.target.value;
                         setTotalDisAmount(value);
                         const amount = Number(value || 0);
-                        const percent =
-                          totals.itemsSubtotal > 0
-                            ? roundMoney(
-                                (amount / totals.itemsSubtotal) * 100
-                              )
-                            : 0;
-                        setTotalDisPercent(String(percent));
+                        setTotalDisPercent(
+                          String(
+                            percentFromDiscountAmount(
+                              amount,
+                              totals.itemsSubtotal
+                            )
+                          )
+                        );
                       }}
                       onBlur={() => commitTotalDiscountAmount(totalDisAmount)}
                       aria-label="Total discount amount"

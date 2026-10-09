@@ -3,6 +3,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -61,6 +62,10 @@ export class JobCardLineItemDto {
   @Min(0)
   @Max(100)
   discountPercent!: number;
+
+  @IsOptional()
+  @IsIn(['GENERAL', 'PROFIT'])
+  itemKind?: 'GENERAL' | 'PROFIT';
 }
 
 export class CreateTaskPartDto {

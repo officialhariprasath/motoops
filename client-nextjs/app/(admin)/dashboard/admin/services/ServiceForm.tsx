@@ -320,7 +320,7 @@ export default function ServiceForm({ editingService }: Props) {
     onSuccess: (updatedService, variables) => {
       queryClient.invalidateQueries({ queryKey: ["services"] });
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["usersList"] });
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
       queryClient.invalidateQueries({ queryKey: ["users-for-lookup"] });
 
       if (editingService?.id) {

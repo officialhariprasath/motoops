@@ -6,12 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import ListControls from "@/components/dashboard/ListControls";
 import CustomerSummaryCard from "@/components/dashboard/CustomerSummaryCard";
 import { useGaragePageSize } from "@/lib/list-settings";
-
-const getUsers = async () => {
-  const res = await fetch("/api/user");
-  if (!res.ok) throw new Error("Failed to fetch users");
-  return res.json();
-};
+import { fetchUsersList } from "@/lib/query-fetchers";
+import { queryKeys, STALE } from "@/lib/query-keys";
 
 export default function UsersPage() {
   const pageSize = useGaragePageSize();
@@ -19,12 +15,13 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
 
   const usersQuery = useQuery({
-    queryKey: ["usersList"],
-    queryFn: getUsers,
+    queryKey: queryKeys.usersList,
+    queryFn: fetchUsersList,
+    staleTime: STALE.referenceMs,
   });
 
   const customers = useMemo(() => {
-    const users = usersQuery.data?.data || [];
+    const users = usersQuery.data || [];
     return users.filter(
       (user: any) => String(user.role || "").toLowerCase() === "user"
     );
