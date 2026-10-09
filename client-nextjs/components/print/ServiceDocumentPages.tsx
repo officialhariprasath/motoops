@@ -9,7 +9,7 @@ import {
   calcLineAmounts,
   formatMoney,
   formatPercent,
-  hasLineItemDiscounts,
+  hasDocumentDiscounts,
   type JobCardLineItem,
 } from "@/lib/job-card-items";
 import { documentTypeScale } from "@/lib/document-font";
@@ -75,7 +75,6 @@ function ItemTable({
   startIndex,
   showTotal,
   showDiscountCols,
-  showOverallDiscountRow,
   totalAmount,
   totalDiscountPercent,
   totalDiscountAmount,
@@ -85,7 +84,6 @@ function ItemTable({
   startIndex: number;
   showTotal: boolean;
   showDiscountCols: boolean;
-  showOverallDiscountRow: boolean;
   totalAmount: number;
   totalDiscountPercent: number;
   totalDiscountAmount: number;
@@ -236,16 +234,6 @@ function ItemTable({
             </DocumentTableCell>
           </tr>
         )}
-        {showTotal && showOverallDiscountRow && (
-          <tr className="font-semibold">
-            <DocumentTableCell align="right" colSpan={colCount - 1}>
-              Overall Discount ({formatPercent(totalDiscountPercent)}%)
-            </DocumentTableCell>
-            <DocumentTableCell align="right">
-              -{formatMoney(totalDiscountAmount)}
-            </DocumentTableCell>
-          </tr>
-        )}
       </tbody>
     </table>
   );
@@ -352,9 +340,10 @@ export function ServiceDocumentPages({ model }: Props) {
   const totalAmount = totals.grossTotal;
   const totalDiscountPercent = totals.discountPercent;
   const totalDiscountAmount = totals.discountAmount;
-  const showDiscountCols = hasLineItemDiscounts(model.items);
-  const showOverallDiscountRow =
-    !showDiscountCols && Number(totalDiscountPercent || 0) > 0;
+  const showDiscountCols = hasDocumentDiscounts(
+    model.items,
+    totalDiscountPercent
+  );
 
   let runningIndex = 0;
 
@@ -473,7 +462,6 @@ export function ServiceDocumentPages({ model }: Props) {
                   startIndex={startIndex}
                   showTotal={isLast}
                   showDiscountCols={showDiscountCols}
-                  showOverallDiscountRow={showOverallDiscountRow}
                   totalAmount={totalAmount}
                   totalDiscountPercent={totalDiscountPercent}
                   totalDiscountAmount={totalDiscountAmount}

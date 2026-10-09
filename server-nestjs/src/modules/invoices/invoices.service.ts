@@ -17,10 +17,11 @@ function roundMoney(value: number) {
 }
 
 function roundPercent(value: number) {
-  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+  return Math.round((Number(value || 0) + Number.EPSILON) * 10000) / 10000;
 }
 
 const MONEY_SNAP = 0.2;
+const AMOUNT_ROUNDTRIP_SNAP = 0.05;
 
 function percentFromDiscountAmount(discountAmount: number, baseAmount: number) {
   const base = roundMoney(baseAmount);
@@ -32,6 +33,19 @@ function percentFromDiscountAmount(discountAmount: number, baseAmount: number) {
   if (base - capped <= MONEY_SNAP) return 100;
   if (Math.abs(capped - roundMoney(base / 2)) <= MONEY_SNAP) return 50;
   return Math.min(100, Math.max(0, roundPercent((capped / base) * 100)));
+}
+
+function snapDiscountAmount(amount: number, subtotal: number) {
+  const a = roundMoney(amount);
+  const whole = Math.round(a);
+  if (
+    whole >= 0 &&
+    whole <= subtotal + AMOUNT_ROUNDTRIP_SNAP &&
+    Math.abs(a - whole) <= AMOUNT_ROUNDTRIP_SNAP
+  ) {
+    return Math.min(whole, roundMoney(subtotal));
+  }
+  return a;
 }
 
 /** Per-line rounding matches client (avoid subtotal drift → 99.89%). */
@@ -85,7 +99,10 @@ function calcInvoiceTotal(serviceRow: {
   const discountAmount =
     percent >= 100
       ? itemsSubtotal
-      : roundMoney((itemsSubtotal * percent) / 100);
+      : snapDiscountAmount(
+          roundMoney((itemsSubtotal * percent) / 100),
+          itemsSubtotal,
+        );
   return {
     itemsSubtotal,
     discountPercent: percent,

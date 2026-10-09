@@ -12,18 +12,24 @@ export function roundMoney(value: number) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
 
-/** Percent rounding (2 dp). Do not use roundMoney for percentages. */
+/**
+ * Percent rounding with 4 dp so amount→%→amount round-trips
+ * (e.g. ₹50 off ₹1050 → 4.7619% → ₹50.00, not 4.76% → ₹49.98).
+ */
 export function roundPercent(value: number) {
-  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+  return Math.round((Number(value || 0) + Number.EPSILON) * 10000) / 10000;
 }
 
 export function formatPercent(value: number) {
   const n = roundPercent(value);
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  if (Number.isInteger(n)) return String(n);
+  return parseFloat(n.toFixed(4)).toString();
 }
 
 /** Snap tolerance for amount→% (covers paise drift like 100 vs 100.11). */
 const MONEY_SNAP = 0.2;
+/** When %→amount drifts by a few paise (e.g. 4.76% of 1050 → 49.98), snap to ₹. */
+const AMOUNT_ROUNDTRIP_SNAP = 0.05;
 
 /**
  * Derive overall/line discount % from a typed amount, snapping common values
@@ -42,6 +48,20 @@ export function percentFromDiscountAmount(
   if (base - capped <= MONEY_SNAP) return 100;
   if (Math.abs(capped - roundMoney(base / 2)) <= MONEY_SNAP) return 50;
   return Math.min(100, Math.max(0, roundPercent((capped / base) * 100)));
+}
+
+/** Prefer whole-rupee discount amounts when float % only drifted by paise. */
+function snapDiscountAmount(amount: number, subtotal: number) {
+  const a = roundMoney(amount);
+  const whole = Math.round(a);
+  if (
+    whole >= 0 &&
+    whole <= subtotal + AMOUNT_ROUNDTRIP_SNAP &&
+    Math.abs(a - whole) <= AMOUNT_ROUNDTRIP_SNAP
+  ) {
+    return Math.min(whole, roundMoney(subtotal));
+  }
+  return a;
 }
 
 export function calcLineAmounts(item: JobCardLineItem) {
@@ -99,13 +119,26 @@ export function calcOverallDiscount(
     percent = 100;
     discountAmount = subtotal;
   } else {
-    discountAmount = roundMoney((subtotal * percent) / 100);
+    discountAmount = snapDiscountAmount(
+      roundMoney((subtotal * percent) / 100),
+      subtotal
+    );
   }
   return {
     discountPercent: percent,
     discountAmount,
     grandTotal: roundMoney(subtotal - discountAmount),
   };
+}
+
+/** Show Dis%/Dis-Amt on print when any line OR overall discount exists. */
+export function hasDocumentDiscounts(
+  items: JobCardLineItem[],
+  overallDiscountPercent = 0
+) {
+  return (
+    hasLineItemDiscounts(items) || Number(overallDiscountPercent || 0) > 0
+  );
 }
 
 export function calcJobCardTotals(

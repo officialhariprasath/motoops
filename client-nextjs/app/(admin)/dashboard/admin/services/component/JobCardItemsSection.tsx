@@ -274,7 +274,7 @@ export default function JobCardItemsSection({
       percent
     );
     setTotalDisAmount(String(discountAmount));
-    setTotalDisPercent(String(percent));
+    setTotalDisPercent(formatPercent(percent));
     onDiscountPercentChange?.(percent);
   };
 
