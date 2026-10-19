@@ -23,6 +23,7 @@ import { TaskPartEntity } from './entities/task-part.entity';
 import { VehicleEntity } from '../vehicles/entities/vehicle.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { InvoiceEntity } from '../invoices/entities/invoice.entity';
+import { GarageSettingsModule } from '../garage-settings/garage-settings.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { InvoiceEntity } from '../invoices/entities/invoice.entity';
       UserEntity,
       InvoiceEntity,
     ]),
+    GarageSettingsModule,
   ],
   controllers: [
     ServicesController,

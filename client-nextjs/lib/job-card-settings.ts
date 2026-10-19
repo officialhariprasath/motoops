@@ -34,7 +34,6 @@ export const INDIAN_BIKE_MAKERS = [
 export type IndianBikeMaker = (typeof INDIAN_BIKE_MAKERS)[number];
 
 const SETTINGS_KEY = "garageSettings";
-const DAILY_COUNTER_KEY = "jobCardDailyCounters";
 
 export function getGarageSettings(): Record<string, any> {
   if (typeof window === "undefined") return {};
@@ -53,18 +52,14 @@ export function getJobCardPrefix() {
     .replace(/\s+/g, "");
 }
 
-function getDateKey(date = new Date()) {
+export function dateKeyFromLocal(date: Date | string = new Date()) {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
-}
-
-function getDailyCounters(): Record<string, number> {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(DAILY_COUNTER_KEY) || "{}");
-  } catch {
-    return {};
+  if (typeof date === "string") {
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}${match[2]}${match[3]}`;
   }
+  const d = date instanceof Date ? date : new Date(date);
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
 /** Format: {PREFIX}{YYYYMMDD}{NNNN} e.g. JC202609180001 */
@@ -74,46 +69,14 @@ export function formatJobCardNumber(prefix: string, dateKey: string, sequence: n
   return `${cleanPrefix}${dateKey}${padded}`;
 }
 
-export function peekNextJobCardNumber(date = new Date()) {
-  const prefix = getJobCardPrefix();
-  const dateKey = getDateKey(date);
-  const counters = getDailyCounters();
-  const next = Math.max(1, Number(counters[dateKey] || 0) + 1);
-  return formatJobCardNumber(prefix, dateKey, next);
-}
-
-export function consumeNextJobCardNumber(usedNumber?: string, date = new Date()) {
-  const dateKey = getDateKey(date);
-  const counters = getDailyCounters();
-  let next = Math.max(1, Number(counters[dateKey] || 0) + 1);
-
-  if (usedNumber) {
-    const match = usedNumber.match(/(\d{4})\s*$/);
-    if (match) {
-      const usedSeq = Number(match[1]);
-      if (!Number.isNaN(usedSeq) && usedSeq >= next) {
-        next = usedSeq;
-      }
-    }
-  }
-
-  localStorage.setItem(
-    DAILY_COUNTER_KEY,
-    JSON.stringify({
-      ...counters,
-      [dateKey]: next,
-    })
-  );
-
-  return next;
-}
-
+/**
+ * Offline/local preview only. Prefer fetchNextJobCardNumber for create forms
+ * so prefix + sequence come from the garage account, not this device.
+ */
 export function previewJobCardNumber(prefix: string, date = new Date()) {
   const cleanPrefix = (prefix || "").trim().toUpperCase().replace(/\s+/g, "");
-  const dateKey = getDateKey(date);
-  const counters = getDailyCounters();
-  const next = Math.max(1, Number(counters[dateKey] || 0) + 1);
-  return formatJobCardNumber(cleanPrefix, dateKey, next);
+  const dateKey = dateKeyFromLocal(date);
+  return formatJobCardNumber(cleanPrefix, dateKey, 1);
 }
 
 export function toDateTimeLocalValue(date = new Date()) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../../common/decorators/user.decorator';
@@ -13,6 +13,19 @@ export class GarageSettingsController {
   @Get()
   get(@User() user: any) {
     return this.service.get(resolveGarageId(user));
+  }
+
+  /** DB-backed next number using garage prefix (syncs across devices). */
+  @Get('next-job-card-number')
+  nextJobCardNumber(
+    @User() user: any,
+    @Query('at') at?: string,
+    @Query('dateKey') dateKey?: string,
+  ) {
+    return this.service.nextJobCardNumber(
+      resolveGarageId(user),
+      dateKey || at || null,
+    );
   }
 
   @Put()
