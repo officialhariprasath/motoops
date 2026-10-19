@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
 import ImageUploadField from "@/components/dashboard/ImageUploadField";
 import {
-  formatJobCardNumber,
+  alignLocalCounterFromServerNext,
   previewJobCardNumber,
 } from "@/lib/job-card-settings";
 import {
@@ -49,7 +49,6 @@ export default function SettingsPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [jobCardPreview, setJobCardPreview] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +59,12 @@ export default function SettingsPage() {
           const merged = { ...defaultSettings, ...remote };
           setSettings(merged);
           cacheGarageSettingsLocally(merged);
+          // Soft-align local daily counter from DB (does not block UI)
+          void fetchNextJobCardNumber().then((next) => {
+            if (next?.jobCardNumber) {
+              alignLocalCounterFromServerNext(next.jobCardNumber);
+            }
+          });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -69,36 +74,6 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const next = await fetchNextJobCardNumber();
-      if (cancelled) return;
-      const typedPrefix = String(settings.jobCardPrefix || "JC")
-        .trim()
-        .toUpperCase()
-        .replace(/\s+/g, "");
-      if (next?.jobCardNumber) {
-        const savedPrefix = String(next.prefix || "")
-          .trim()
-          .toUpperCase();
-        // Live preview: use typed prefix; keep DB sequence when prefix matches saved
-        setJobCardPreview(
-          formatJobCardNumber(
-            typedPrefix || "JC",
-            next.dateKey,
-            savedPrefix === typedPrefix ? next.sequence : 1,
-          ),
-        );
-      } else {
-        setJobCardPreview(previewJobCardNumber(typedPrefix || "JC"));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [settings.jobCardPrefix]);
 
   const updateField = (field: keyof typeof defaultSettings, value: any) => {
     setSettings((current) => ({ ...current, [field]: value }));
@@ -111,10 +86,12 @@ export default function SettingsPage() {
       const merged = { ...defaultSettings, ...saved };
       setSettings(merged);
       cacheGarageSettingsLocally(merged);
-      const next = await fetchNextJobCardNumber();
-      if (next?.jobCardNumber) {
-        setJobCardPreview(next.jobCardNumber);
-      }
+      // Soft-align local counter from server after prefix save
+      void fetchNextJobCardNumber().then((next) => {
+        if (next?.jobCardNumber) {
+          alignLocalCounterFromServerNext(next.jobCardNumber);
+        }
+      });
       window.dispatchEvent(new Event(DELETE_ACTIONS_UPDATED_EVENT));
       setSaveDialogOpen(true);
     } catch (error) {
@@ -124,6 +101,9 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
+
+  // Instant local preview from typed prefix (server still assigns on create save)
+  const jobCardPreview = previewJobCardNumber(settings.jobCardPrefix);
 
   if (loading) {
     return (

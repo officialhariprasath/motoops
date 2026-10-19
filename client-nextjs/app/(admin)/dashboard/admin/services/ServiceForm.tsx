@@ -19,6 +19,9 @@ import CustomerVehicleLookup from "./component/CustomerVehicleLookup";
 import { addNotification } from "@/lib/notifications";
 import {
   INDIAN_BIKE_MAKERS,
+  alignLocalCounterFromServerNext,
+  consumeNextJobCardNumber,
+  peekNextJobCardNumber,
   toDateTimeLocalValue,
 } from "@/lib/job-card-settings";
 import {
@@ -244,6 +247,8 @@ export default function ServiceForm({ editingService }: Props) {
     editingService?.vehicle?.vehicleCode || ""
   );
 
+  const initialJobCardAt = toDateTimeLocalValue();
+
   const form = useForm<any>({
     resolver: zodResolver(jobCardSchema),
     defaultValues: isEdit
@@ -252,8 +257,9 @@ export default function ServiceForm({ editingService }: Props) {
           status: "PENDING",
           problemDescription: "",
           notes: "",
-          jobCardNumber: "",
-          jobCardAt: toDateTimeLocalValue(),
+          // Option A: instant local preview from cached prefix (e.g. RM)
+          jobCardNumber: peekNextJobCardNumber(initialJobCardAt),
+          jobCardAt: initialJobCardAt,
           customerName: "",
           customerMobile: "",
           customerAddress: "",
@@ -282,17 +288,24 @@ export default function ServiceForm({ editingService }: Props) {
     setSelectedVehicleCode(editingService?.vehicle?.vehicleCode || "");
   }, [editingService, reset]);
 
-  // Load garage prefix + next sequence from server (not this device's localStorage)
+  // Option A: show local number immediately; soft-align from server in background
   useEffect(() => {
     if (editingService) return;
+    const at = watchedJobCardAt || toDateTimeLocalValue();
+    setValue("jobCardNumber", peekNextJobCardNumber(at));
+
     let cancelled = false;
-    (async () => {
+    void (async () => {
       await syncGarageSettingsCache();
-      const next = await fetchNextJobCardNumber(watchedJobCardAt || null);
-      if (!cancelled && next?.jobCardNumber) {
-        setValue("jobCardNumber", next.jobCardNumber);
-      }
+      if (cancelled) return;
+      setValue("jobCardNumber", peekNextJobCardNumber(at));
+
+      const next = await fetchNextJobCardNumber(at);
+      if (cancelled || !next?.jobCardNumber) return;
+      alignLocalCounterFromServerNext(next.jobCardNumber);
+      setValue("jobCardNumber", peekNextJobCardNumber(at));
     })();
+
     return () => {
       cancelled = true;
     };
@@ -355,6 +368,12 @@ export default function ServiceForm({ editingService }: Props) {
       const createdId = createdService?.id;
       const assignedNumber =
         createdService?.jobCardNumber || variables.data.jobCardNumber;
+
+      // Align local daily counter with the number the server actually saved
+      consumeNextJobCardNumber(
+        assignedNumber,
+        variables.data.jobCardAt || undefined,
+      );
 
       if (createdId) {
         addNotification({
@@ -475,7 +494,6 @@ export default function ServiceForm({ editingService }: Props) {
               <Input
                 {...register("jobCardNumber")}
                 readOnly
-                placeholder="Loading garage number…"
                 className="bg-muted text-foreground/80"
               />
             </Field>
