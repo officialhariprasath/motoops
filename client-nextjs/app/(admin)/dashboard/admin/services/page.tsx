@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -43,6 +43,20 @@ async function saveAssignees(serviceId: string, assignedMechanicIds: string[]) {
 }
 
 export default function ServicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-10">
+          Loading job cards...
+        </div>
+      }
+    >
+      <ServicesPageContent />
+    </Suspense>
+  );
+}
+
+function ServicesPageContent() {
   const pageSize = useGaragePageSize();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();

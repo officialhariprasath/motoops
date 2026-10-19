@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +65,14 @@ function paymentFromSearchParam(raw: string | null) {
 }
 
 export default function InvoicesPage() {
+  return (
+    <Suspense fallback={<p className="p-6">Loading invoices...</p>}>
+      <InvoicesPageContent />
+    </Suspense>
+  );
+}
+
+function InvoicesPageContent() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
