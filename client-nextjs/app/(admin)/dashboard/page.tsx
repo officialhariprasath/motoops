@@ -173,7 +173,7 @@ export default function DashboardPage() {
           Pending jobs
         </Link>
         <Link
-          href="/dashboard/admin/invoices"
+          href="/dashboard/admin/invoices?type=BILL&payment=unpaid"
           className="rounded-md border px-3 py-1.5 text-sm"
         >
           Unpaid invoices
@@ -191,24 +191,25 @@ export default function DashboardPage() {
         <StatCard
           label="Unassigned"
           value={stats.pending}
-          href="/dashboard/admin/services"
+          href="/dashboard/admin/services?status=PENDING"
           toneClass={jobCardStatusTone("PENDING")}
         />
         <StatCard
           label="Assigned"
           value={stats.assigned}
-          href="/dashboard/admin/services"
+          href="/dashboard/admin/services?status=ASSIGNED"
           toneClass={jobCardStatusTone("ASSIGNED")}
         />
         <StatCard
           label="In progress"
           value={stats.inProgress}
-          href="/dashboard/admin/services"
+          href="/dashboard/admin/services?status=IN_PROGRESS"
           toneClass={jobCardStatusTone("IN_PROGRESS")}
         />
         <StatCard
           label="Completed"
           value={stats.completed}
+          href="/dashboard/admin/services?status=COMPLETED"
           toneClass={jobCardStatusTone("COMPLETED")}
         />
       </div>
@@ -217,22 +218,24 @@ export default function DashboardPage() {
         <StatCard
           label="Open estimates"
           value={stats.openEstimates}
-          href="/dashboard/admin/invoices"
+          href="/dashboard/admin/invoices?type=ESTIMATE"
         />
         <StatCard
           label="Unpaid bills"
           value={stats.unpaidBills}
-          href="/dashboard/admin/invoices"
+          href="/dashboard/admin/invoices?type=BILL&payment=unpaid"
           toneClass={paymentStatusTone("unpaid")}
         />
         <StatCard
           label="Partial bills"
           value={stats.partialBills}
+          href="/dashboard/admin/invoices?type=BILL&payment=partial"
           toneClass={paymentStatusTone("partial")}
         />
         <StatCard
           label="Paid bills"
           value={stats.paidBills}
+          href="/dashboard/admin/invoices?type=BILL&payment=paid"
           toneClass={paymentStatusTone("paid")}
         />
       </div>

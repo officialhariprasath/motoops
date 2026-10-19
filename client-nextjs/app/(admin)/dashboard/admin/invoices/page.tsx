@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import ListControls from "@/components/dashboard/ListControls";
@@ -51,14 +52,38 @@ type Invoice = {
   };
 };
 
+function typeFromSearchParam(raw: string | null) {
+  const value = String(raw || "").toUpperCase();
+  if (value === "ESTIMATE" || value === "BILL") return value;
+  return "ALL";
+}
+
+function paymentFromSearchParam(raw: string | null) {
+  const value = String(raw || "").toLowerCase();
+  if (value === "unpaid" || value === "partial" || value === "paid") return value;
+  return "ALL";
+}
+
 export default function InvoicesPage() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
-  const [paymentFilter, setPaymentFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState(() =>
+    typeFromSearchParam(searchParams.get("type"))
+  );
+  const [paymentFilter, setPaymentFilter] = useState(() =>
+    paymentFromSearchParam(searchParams.get("payment"))
+  );
   const [page, setPage] = useState(1);
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const pageSize = useGaragePageSize();
+
+  // Keep filters in sync when arriving from dashboard cards
+  useEffect(() => {
+    setTypeFilter(typeFromSearchParam(searchParams.get("type")));
+    setPaymentFilter(paymentFromSearchParam(searchParams.get("payment")));
+    setPage(1);
+  }, [searchParams]);
 
   const invoicesQuery = useQuery({
     queryKey: queryKeys.invoicesList,

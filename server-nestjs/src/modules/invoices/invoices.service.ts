@@ -11,6 +11,12 @@ import { ServiceEntity, ServiceStatus } from '../services/entities/service.entit
 import { UserEntity } from '../users/entities/user.entity';
 import { VehicleEntity } from '../vehicles/entities/vehicle.entity';
 import { CreateInvoiceDto, InvoiceDocumentTypeDto } from './dto/create-invoice.dto';
+import { GarageSettingsService } from '../garage-settings/garage-settings.service';
+import {
+  documentPrefixFor,
+  formatDocumentNumber,
+  parseDocumentSequence,
+} from './document-number';
 
 function roundMoney(value: number) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
@@ -125,6 +131,8 @@ export class InvoicesService {
 
     @InjectRepository(VehicleEntity)
     private vehicleRepo: Repository<VehicleEntity>,
+
+    private readonly garageSettings: GarageSettingsService,
   ) {}
 
   private paymentFromAmounts(total: number, paidAmount: number): {
@@ -140,24 +148,32 @@ export class InvoicesService {
     return { paidAmount: paid, dueAmount, paymentStatus };
   }
 
-  private async nextInvoiceNumber(garageId: string) {
-    const prefix = 'JMI';
+  /**
+   * New docs use garage prefix: RM → RME (estimate) / RMI (bill), same 6-digit
+   * serial style as legacy JME/JMI. Existing JME/JMI numbers are left alone.
+   */
+  private async nextDocumentNumber(
+    garageId: string,
+    documentType: 'ESTIMATE' | 'BILL',
+  ) {
+    const garagePrefix = await this.garageSettings.getJobCardPrefix(garageId);
+    const prefix = documentPrefixFor(garagePrefix, documentType);
     const rows = await this.invoiceRepo
       .createQueryBuilder('invoice')
       .select('invoice.invoiceNumber', 'invoiceNumber')
       .where('invoice.garageId = :garageId', { garageId })
       .andWhere('invoice.invoiceNumber IS NOT NULL')
-      .andWhere('invoice.invoiceNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .andWhere('invoice.invoiceNumber ILIKE :pattern', {
+        pattern: `${prefix}%`,
+      })
       .getRawMany<{ invoiceNumber: string }>();
 
     let max = 0;
     for (const row of rows) {
-      const match = String(row.invoiceNumber || '').match(
-        new RegExp(`^${prefix}(\\d+)$`, 'i'),
-      );
-      if (match) max = Math.max(max, Number(match[1]));
+      const sequence = parseDocumentSequence(row.invoiceNumber, prefix);
+      if (sequence != null) max = Math.max(max, sequence);
     }
-    return `${prefix}${String(max + 1).padStart(6, '0')}`;
+    return formatDocumentNumber(prefix, max + 1);
   }
 
   async create(
@@ -327,16 +343,18 @@ export class InvoicesService {
         existing.billExtras = billExtras;
       }
 
-      // Invoice-style IDs only (JMI). Convert old JME estimate numbers on bill.
-      const number = String(existing.invoiceNumber || '');
-      if (
-        !existing.invoiceNumber ||
-        upgradingToBill ||
-        number.toUpperCase().startsWith('JME')
-      ) {
-        if (!number.toUpperCase().startsWith('JMI')) {
-          existing.invoiceNumber = await this.nextInvoiceNumber(garageId);
-        }
+      // Keep existing JME/JMI/RME/RMI numbers. Only mint a new bill number when
+      // converting an estimate → bill (or if the row somehow has no number).
+      if (!existing.invoiceNumber) {
+        existing.invoiceNumber = await this.nextDocumentNumber(
+          garageId,
+          documentType,
+        );
+      } else if (upgradingToBill) {
+        existing.invoiceNumber = await this.nextDocumentNumber(
+          garageId,
+          'BILL',
+        );
       }
 
       const saved = await this.invoiceRepo.save(existing);
@@ -361,7 +379,10 @@ export class InvoicesService {
       generatedBy: user,
       documentType,
       garageId,
-      invoiceNumber: await this.nextInvoiceNumber(garageId),
+      invoiceNumber: await this.nextDocumentNumber(
+        garageId,
+        documentType === 'ESTIMATE' ? 'ESTIMATE' : 'BILL',
+      ),
       totalAmount: total,
       paidAmount: amounts.paidAmount,
       dueAmount: amounts.dueAmount,
