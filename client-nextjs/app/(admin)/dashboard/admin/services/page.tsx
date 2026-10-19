@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGaragePageSize } from "@/lib/list-settings";
@@ -22,6 +23,13 @@ import { fetchServicesList, fetchUsersList } from "@/lib/query-fetchers";
 import { queryKeys, STALE } from "@/lib/query-keys";
 
 const ACTIVE_JOB_STATUSES = new Set(["PENDING", "ASSIGNED", "IN_PROGRESS"]);
+const STATUS_VALUES = new Set(JOB_CARD_STATUSES.map((s) => s.value));
+
+function statusFromSearchParam(raw: string | null) {
+  if (!raw) return "ALL";
+  const normalized = normalizeJobCardStatus(raw);
+  return STATUS_VALUES.has(normalized) ? normalized : "ALL";
+}
 
 async function saveAssignees(serviceId: string, assignedMechanicIds: string[]) {
   const res = await fetch(`/api/services/${serviceId}`, {
@@ -35,14 +43,37 @@ async function saveAssignees(serviceId: string, assignedMechanicIds: string[]) {
 }
 
 export default function ServicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-10">
+          Loading job cards...
+        </div>
+      }
+    >
+      <ServicesPageContent />
+    </Suspense>
+  );
+}
+
+function ServicesPageContent() {
   const pageSize = useGaragePageSize();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState(() =>
+    statusFromSearchParam(searchParams.get("status"))
+  );
   const [page, setPage] = useState(1);
   const [assignServiceId, setAssignServiceId] = useState<string | null>(null);
   const [selectedMechanicId, setSelectedMechanicId] = useState<string>("");
   const [assignError, setAssignError] = useState("");
+
+  // Keep filter in sync when arriving from dashboard cards
+  useEffect(() => {
+    setStatusFilter(statusFromSearchParam(searchParams.get("status")));
+    setPage(1);
+  }, [searchParams]);
 
   const servicesQuery = useQuery({
     queryKey: queryKeys.servicesList,

@@ -240,25 +240,48 @@ export default function SettingsPage() {
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <h2 className="font-semibold">Job Card Numbering</h2>
+          <h2 className="font-semibold">Document Numbering</h2>
           <p className="text-sm text-muted-foreground">
-            Job card numbers are generated as prefix + year + month + date + daily serial.
-            Example: JC202609180001. The prefix is saved to your garage account and used on
-            every device — not only this phone or browser.
+            One garage prefix drives job cards, invoices, and estimates on every device.
+            Job cards use prefix + date + daily serial (example: RM202610190001).
+            New estimates use prefix + E + serial (RME000001). New bills use prefix + I
+            + serial (RMI000001). Existing JME/JMI numbers are kept as-is.
           </p>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Job Card Prefix</label>
+            <label className="mb-1 block text-sm font-medium">Garage Prefix</label>
             <Input
               value={settings.jobCardPrefix}
               onChange={(event) => updateField("jobCardPrefix", event.target.value)}
-              placeholder="JC"
+              placeholder="RM"
             />
           </div>
 
-          <div className="rounded-md border bg-muted px-4 py-3 text-sm">
-            <span className="text-muted-foreground">Next job card will be: </span>
-            <span className="font-semibold text-foreground">{jobCardPreview}</span>
+          <div className="rounded-md border bg-muted px-4 py-3 text-sm space-y-1">
+            <div>
+              <span className="text-muted-foreground">Next job card: </span>
+              <span className="font-semibold text-foreground">{jobCardPreview}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">New estimate style: </span>
+              <span className="font-semibold text-foreground">
+                {String(settings.jobCardPrefix || "JC")
+                  .trim()
+                  .toUpperCase()
+                  .replace(/\s+/g, "") || "JC"}
+                E000001
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">New invoice/bill style: </span>
+              <span className="font-semibold text-foreground">
+                {String(settings.jobCardPrefix || "JC")
+                  .trim()
+                  .toUpperCase()
+                  .replace(/\s+/g, "") || "JC"}
+                I000001
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

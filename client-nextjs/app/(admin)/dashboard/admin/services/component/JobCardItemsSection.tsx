@@ -218,6 +218,15 @@ export default function JobCardItemsSection({
       setError("Item description is required");
       return;
     }
+    const duplicateOnCard = items.some(
+      (row) =>
+        row.id !== editingId &&
+        row.description.trim().toUpperCase() === next.description
+    );
+    if (duplicateOnCard) {
+      setError("This item already exists in the list");
+      return;
+    }
     if (next.quantity <= 0) {
       setError("Quantity must be greater than 0");
       return;
