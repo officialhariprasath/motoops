@@ -19,10 +19,12 @@ import CustomerVehicleLookup from "./component/CustomerVehicleLookup";
 import { addNotification } from "@/lib/notifications";
 import {
   INDIAN_BIKE_MAKERS,
-  consumeNextJobCardNumber,
-  peekNextJobCardNumber,
   toDateTimeLocalValue,
 } from "@/lib/job-card-settings";
+import {
+  fetchNextJobCardNumber,
+  syncGarageSettingsCache,
+} from "@/lib/garage-settings-api";
 import {
   JOB_CARD_STATUSES,
   normalizeJobCardStatus,
@@ -250,7 +252,7 @@ export default function ServiceForm({ editingService }: Props) {
           status: "PENDING",
           problemDescription: "",
           notes: "",
-          jobCardNumber: peekNextJobCardNumber(),
+          jobCardNumber: "",
           jobCardAt: toDateTimeLocalValue(),
           customerName: "",
           customerMobile: "",
@@ -271,17 +273,30 @@ export default function ServiceForm({ editingService }: Props) {
   const { control, register, handleSubmit, reset, setValue, formState } = form;
   const watchedCustomerId = useWatch({ control, name: "customerId" });
   const watchedVehicleId = useWatch({ control, name: "vehicleId" });
+  const watchedJobCardAt = useWatch({ control, name: "jobCardAt" });
 
   useEffect(() => {
-    if (!editingService) {
-      setValue("jobCardNumber", peekNextJobCardNumber());
-      setValue("jobCardAt", toDateTimeLocalValue());
-      return;
-    }
+    if (!editingService) return;
     reset(normalizeService(editingService), { keepDefaultValues: false });
     setSelectedCustomerCode(editingService?.customer?.customerCode || "");
     setSelectedVehicleCode(editingService?.vehicle?.vehicleCode || "");
-  }, [editingService, reset, setValue]);
+  }, [editingService, reset]);
+
+  // Load garage prefix + next sequence from server (not this device's localStorage)
+  useEffect(() => {
+    if (editingService) return;
+    let cancelled = false;
+    (async () => {
+      await syncGarageSettingsCache();
+      const next = await fetchNextJobCardNumber(watchedJobCardAt || null);
+      if (!cancelled && next?.jobCardNumber) {
+        setValue("jobCardNumber", next.jobCardNumber);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editingService, watchedJobCardAt, setValue]);
 
   const applyCustomer = (customer: any) => {
     if (!customer) return;
@@ -336,15 +351,15 @@ export default function ServiceForm({ editingService }: Props) {
         return;
       }
 
-      consumeNextJobCardNumber(variables.data.jobCardNumber);
-
       const createdService = updatedService?.data ?? updatedService;
       const createdId = createdService?.id;
+      const assignedNumber =
+        createdService?.jobCardNumber || variables.data.jobCardNumber;
 
       if (createdId) {
         addNotification({
           title: "Job card created",
-          message: `Job card ${variables.data.jobCardNumber} was created.`,
+          message: `Job card ${assignedNumber} was created.`,
           category: "service",
         });
         router.push(`/dashboard/admin/services/${createdId}`);
@@ -460,6 +475,7 @@ export default function ServiceForm({ editingService }: Props) {
               <Input
                 {...register("jobCardNumber")}
                 readOnly
+                placeholder="Loading garage number…"
                 className="bg-muted text-foreground/80"
               />
             </Field>

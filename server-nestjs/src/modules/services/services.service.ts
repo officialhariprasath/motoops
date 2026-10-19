@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,6 +23,7 @@ import {  UpdateServiceDto,} from './dto/updateService.dto';
 import { TaskPartEntity } from './entities/task-part.entity';
 import { ServiceSubTaskEntity } from './entities/service-subtask.entity';
 import { ServiceTaskCommentEntity } from './entities/service-task-comment.entity';
+import { GarageSettingsService } from '../garage-settings/garage-settings.service';
 import * as bcrypt from 'bcrypt';
 
 function roundMoney(value: number) {
@@ -152,6 +152,8 @@ export class ServicesService {
 
     @InjectRepository(ServiceTaskCommentEntity)
     private readonly commentRepo: Repository<ServiceTaskCommentEntity>,
+
+    private readonly garageSettings: GarageSettingsService,
   ) {}
 
   // ======================================================
@@ -172,16 +174,15 @@ export class ServicesService {
       garageId,
     );
 
-    if (dto.jobCardNumber?.trim()) {
-      const existing = await this.serviceRepo.findOne({
-        where: { jobCardNumber: dto.jobCardNumber.trim(), garageId },
-      });
-      if (existing) {
-        throw new ConflictException('Job card number already exists');
-      }
-    }
-
     const jobCardAt = dto.jobCardAt ? new Date(dto.jobCardAt) : new Date();
+    // Prefer ISO/local string from client so dateKey matches the form calendar day
+    const jobCardAtSource = dto.jobCardAt || jobCardAt;
+    let allocated = await this.garageSettings.allocateJobCardNumber(
+      garageId,
+      jobCardAtSource,
+      dto.jobCardNumber,
+    );
+
     const serviceDate = dto.serviceDate
       ? new Date(dto.serviceDate)
       : jobCardAt;
@@ -193,7 +194,7 @@ export class ServicesService {
       status: dto.status || ServiceStatus.PENDING,
       problemDescription: dto.problemDescription,
       notes: dto.notes,
-      jobCardNumber: dto.jobCardNumber?.trim() || undefined,
+      jobCardNumber: allocated.jobCardNumber,
       jobCardAt,
       petrolLevel: dto.petrolLevel ?? 0,
       lineItems: dto.lineItems ?? [],
@@ -231,7 +232,23 @@ export class ServicesService {
       }
     }
 
-    const savedService =  await this.serviceRepo.save(  service,  );
+    let savedService: ServiceEntity;
+    try {
+      savedService = await this.serviceRepo.save(service);
+    } catch (error: any) {
+      // Rare race: another device took the same number — allocate fresh and retry once
+      const isUnique =
+        error?.code === '23505' ||
+        /unique|duplicate/i.test(String(error?.message || ''));
+      if (!isUnique) throw error;
+      allocated = await this.garageSettings.allocateJobCardNumber(
+        garageId,
+        jobCardAtSource,
+        null,
+      );
+      service.jobCardNumber = allocated.jobCardNumber;
+      savedService = await this.serviceRepo.save(service);
+    }
 
     // ======================================================
     // CREATE TASKS

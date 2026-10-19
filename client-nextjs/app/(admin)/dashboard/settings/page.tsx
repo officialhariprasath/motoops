@@ -16,10 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DELETE_ACTIONS_UPDATED_EVENT } from "@/lib/delete-settings";
 import ImageUploadField from "@/components/dashboard/ImageUploadField";
-import { previewJobCardNumber } from "@/lib/job-card-settings";
+import {
+  formatJobCardNumber,
+  previewJobCardNumber,
+} from "@/lib/job-card-settings";
 import {
   cacheGarageSettingsLocally,
   fetchGarageSettings,
+  fetchNextJobCardNumber,
   saveGarageSettingsRemote,
 } from "@/lib/garage-settings-api";
 import { DOCUMENT_FONT_SIZES } from "@/lib/document-font";
@@ -45,6 +49,7 @@ export default function SettingsPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [jobCardPreview, setJobCardPreview] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +70,36 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const next = await fetchNextJobCardNumber();
+      if (cancelled) return;
+      const typedPrefix = String(settings.jobCardPrefix || "JC")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "");
+      if (next?.jobCardNumber) {
+        const savedPrefix = String(next.prefix || "")
+          .trim()
+          .toUpperCase();
+        // Live preview: use typed prefix; keep DB sequence when prefix matches saved
+        setJobCardPreview(
+          formatJobCardNumber(
+            typedPrefix || "JC",
+            next.dateKey,
+            savedPrefix === typedPrefix ? next.sequence : 1,
+          ),
+        );
+      } else {
+        setJobCardPreview(previewJobCardNumber(typedPrefix || "JC"));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.jobCardPrefix]);
+
   const updateField = (field: keyof typeof defaultSettings, value: any) => {
     setSettings((current) => ({ ...current, [field]: value }));
   };
@@ -76,6 +111,10 @@ export default function SettingsPage() {
       const merged = { ...defaultSettings, ...saved };
       setSettings(merged);
       cacheGarageSettingsLocally(merged);
+      const next = await fetchNextJobCardNumber();
+      if (next?.jobCardNumber) {
+        setJobCardPreview(next.jobCardNumber);
+      }
       window.dispatchEvent(new Event(DELETE_ACTIONS_UPDATED_EVENT));
       setSaveDialogOpen(true);
     } catch (error) {
@@ -85,8 +124,6 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
-
-  const jobCardPreview = previewJobCardNumber(settings.jobCardPrefix);
 
   if (loading) {
     return (
@@ -206,7 +243,8 @@ export default function SettingsPage() {
           <h2 className="font-semibold">Job Card Numbering</h2>
           <p className="text-sm text-muted-foreground">
             Job card numbers are generated as prefix + year + month + date + daily serial.
-            Example: JC202609180001
+            Example: JC202609180001. The prefix is saved to your garage account and used on
+            every device — not only this phone or browser.
           </p>
 
           <div>

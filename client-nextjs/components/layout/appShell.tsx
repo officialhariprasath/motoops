@@ -7,6 +7,7 @@ import Sidebar from "./sidebar";
 import Navbar from "./navbar";
 import SessionKeepAlive from "./SessionKeepAlive";
 import { prefetchAdminDashboardLists } from "@/lib/prefetch-dashboard";
+import { syncGarageSettingsCache } from "@/lib/garage-settings-api";
 import {
   Sheet,
   SheetContent,
@@ -24,6 +25,8 @@ export default function AppShell({
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Pull garage settings (incl. job card prefix) onto every device at login/shell mount
+    void syncGarageSettingsCache();
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       const role = String(user?.role || "").toLowerCase();
